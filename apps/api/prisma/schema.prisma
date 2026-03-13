@@ -1,0 +1,52 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Trade {
+  ELECTRICAL
+  HVAC
+  PLUMBING
+  WELDING
+}
+
+enum Role {
+  USER
+  ASSISTANT
+}
+
+model User {
+  id        String    @id @default(cuid())
+  deviceId  String    @unique
+  trade     Trade     @default(ELECTRICAL)
+  createdAt DateTime  @default(now())
+  sessions  Session[]
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  trade      Trade
+  startedAt  DateTime  @default(now())
+  endedAt    DateTime?
+  jobAddress String?
+  jobNotes   String?
+  summary    String?   @db.Text
+  messages   Message[]
+}
+
+model Message {
+  id            String   @id @default(cuid())
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id])
+  role          Role
+  content       String   @db.Text
+  imageKey      String?
+  isSafetyAlert Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}

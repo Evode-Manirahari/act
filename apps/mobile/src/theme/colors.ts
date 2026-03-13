@@ -1,0 +1,16 @@
+export const Colors = {
+  primary: '#EA580C',
+  primaryDim: '#C2490A',
+  background: '#0A0A0A',
+  surface: '#111111',
+  surfaceAlt: '#1A1A1A',
+  border: '#2A2A2A',
+  text: '#FFFFFF',
+  textMuted: '#888888',
+  userBubble: '#1A2A4A',
+  aiBubble: '#111111',
+  danger: '#DC2626',
+  dangerDim: '#7F1D1D',
+  safe: '#16A34A',
+  orange: '#EA580C',
+} as const;
