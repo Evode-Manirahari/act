@@ -1,0 +1,15 @@
+{
+  "name": "actober",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:api": "pnpm --filter api dev",
+    "dev:mobile": "pnpm --filter mobile start",
+    "build": "pnpm --recursive build",
+    "test": "pnpm --recursive test",
+    "tsc": "pnpm --recursive tsc"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

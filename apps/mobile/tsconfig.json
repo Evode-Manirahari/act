@@ -1,0 +1,10 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@actober/shared-types": ["../../packages/shared-types/src"],
+      "@actober/trade-knowledge": ["../../packages/trade-knowledge/src"]
+    }
+  }
+}
