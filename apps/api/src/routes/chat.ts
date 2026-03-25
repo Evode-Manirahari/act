@@ -79,7 +79,7 @@ router.post('/', chatLimiter, async (req: Request, res: Response) => {
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
-      max_tokens: 1024,
+      max_tokens: 4096,
       system: systemPrompt,
       messages: claudeMessages,
     });
