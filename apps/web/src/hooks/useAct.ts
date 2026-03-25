@@ -51,6 +51,9 @@ export function useAct() {
             setSession(s)
             setMessages(s.messages ?? [])
             setPhase(s.phase)
+            if (s.project?.status === 'IN_PROGRESS') {
+              setActiveProject(s.project)
+            }
             setScreen(u.name ? 'chat' : 'onboarding')
             return
           }
@@ -195,6 +198,7 @@ export function useAct() {
       console.error('Abandon project error:', err)
     }
     setActiveProject(null)
+    setSuggestions(null)
     localStorage.removeItem(SESSION_KEY)
     setSession(null)
     setMessages([])

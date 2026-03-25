@@ -197,7 +197,7 @@ function ChatView({
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-3">
         {/* Resume banner */}
-        {activeProject?.status === 'IN_PROGRESS' && visible.length <= 1 && (
+        {activeProject?.status === 'IN_PROGRESS' && (
           <button
             onClick={onResumeProject}
             className="flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-4 text-left hover:border-primary/40 transition-colors"
