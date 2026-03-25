@@ -52,6 +52,7 @@ export interface Session {
   projectId?: string;
   phase: ConversationPhase;
   messages: Message[];
+  project?: Project;
   createdAt: string;
 }
 
