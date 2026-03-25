@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev:api": "pnpm --filter api dev",
+    "dev:web": "pnpm --filter web dev",
     "dev:mobile": "pnpm --filter mobile start",
     "build": "pnpm --recursive build",
     "test": "pnpm --recursive test",
@@ -11,5 +12,8 @@
   },
   "devDependencies": {
     "typescript": "^5.4.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "@sentry/cli"]
   }
 }

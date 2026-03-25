@@ -1,247 +1,378 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
+  View, Text, TextInput, TouchableOpacity, ScrollView,
+  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { MainTabParamList } from '../navigation/types';
-import { useActoberStore } from '../store/actober';
-import { Colors } from '../theme/colors';
-import { Trade } from '@actober/shared-types';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colors } from '../theme/colors';
+import { useActStore } from '../store/act';
+import { api } from '../api/act';
+import type { ProjectSuggestion } from '@actober/shared-types';
+import type { HomeStackParamList, RootStackParamList } from '../navigation/RootNavigator';
+import SuggestionCard from '../components/SuggestionCard';
+import ResumeBanner from '../components/ResumeBanner';
+import { useVoice } from '../hooks/useVoice';
+import { usePaywall } from '../hooks/usePaywall';
 
-type Props = {
-  navigation: BottomTabNavigationProp<MainTabParamList, 'Home'>;
-};
+const SESSION_ID_KEY = 'actober_active_session_id';
 
-const TRADES: { id: Trade; label: string; icon: string }[] = [
-  { id: 'ELECTRICAL', label: 'Electrical', icon: '⚡' },
-  { id: 'HVAC', label: 'HVAC', icon: '❄️' },
-  { id: 'PLUMBING', label: 'Plumbing', icon: '🔧' },
-  { id: 'WELDING', label: 'Welding', icon: '🔥' },
+const QUICK_CHIPS = [
+  '30 minutes free',
+  'I have cardboard',
+  'I\'m outdoors',
+  'No tools, no materials',
+  '1 hour + some tools',
+  'I have scrap wood',
+  'Rainy afternoon indoors',
+  'I want to improve a room',
 ];
 
-const SCENARIOS_BY_TRADE: Record<Trade, Array<{ icon: string; label: string; description: string }>> = {
-  ELECTRICAL: [
-    { icon: '🔌', label: 'Panel Inspection', description: 'Identify breakers, hazards, capacity' },
-    { icon: '⚡', label: 'Wire ID', description: 'Identify wiring era and gauge' },
-    { icon: '🏠', label: 'Retrofit Wiring', description: 'Old building rewire guidance' },
-    { icon: '⚠️', label: 'Safety Check', description: 'Full site hazard assessment' },
-  ],
-  HVAC: [
-    { icon: '❄️', label: 'System Diagnosis', description: 'Identify cooling/heating faults' },
-    { icon: '🌡️', label: 'Thermostat Wiring', description: 'R, Y, G, W, C wire identification' },
-    { icon: '🔥', label: 'Heat Exchanger', description: 'Inspect for cracks and CO risk' },
-    { icon: '⚠️', label: 'Refrigerant Safety', description: 'EPA 608 handling procedures' },
-  ],
-  PLUMBING: [
-    { icon: '🔧', label: 'Pipe ID', description: 'Identify pipe material and size' },
-    { icon: '💧', label: 'Leak Diagnosis', description: 'Find and trace leak sources' },
-    { icon: '🚿', label: 'DWV Rough-in', description: 'Drain, waste, vent layout' },
-    { icon: '⚠️', label: 'Safety Check', description: 'Gas, water pressure, backflow' },
-  ],
-  WELDING: [
-    { icon: '🔥', label: 'Joint Setup', description: 'Fit-up, preheat, and prep' },
-    { icon: '⚡', label: 'Process Setup', description: 'MIG, TIG, stick settings' },
-    { icon: '🔍', label: 'Weld Inspection', description: 'Visual inspection and defects' },
-    { icon: '⚠️', label: 'Safety Check', description: 'PPE, ventilation, fire watch' },
-  ],
+const CATEGORY_COLORS: Record<string, string> = {
+  MAKE: colors.make, IMPROVE: colors.improve,
+  GROW: colors.grow, CREATE: colors.create,
 };
 
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
+type NavProp = NativeStackNavigationProp<HomeStackParamList & RootStackParamList>;
 
-export default function HomeScreen({ navigation }: Props) {
-  const { currentUser, sessions, setTrade } = useActoberStore();
-  const activeTrade = currentUser?.trade ?? 'ELECTRICAL';
-  const recentSessions = sessions.slice(0, 3);
+export default function HomeScreen() {
+  const navigation = useNavigation<NavProp>();
+  const [input, setInput] = useState('');
+  const scrollRef = useRef<ScrollView>(null);
+
+  const {
+    user, session, setSession, clearSession,
+    messages, addMessage,
+    phase, setPhase,
+    suggestions, setSuggestions,
+    activeProject, setActiveProject,
+    isTyping, setIsTyping,
+  } = useActStore();
+
+  const { voiceEnabled, toggleVoice, loadVoicePreference, speak } = useVoice();
+  const { canStartProject, remaining, load: loadPaywall, recordProject, isPlus } = usePaywall();
+
+  useEffect(() => {
+    loadVoicePreference();
+    loadPaywall();
+    if (!session && user) startSession();
+  }, [user]);
+
+  useEffect(() => {
+    setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  }, [messages, isTyping]);
+
+  async function startSession() {
+    if (!user) return;
+    try {
+      const newSession = await api.createSession(user.id);
+      setSession(newSession);
+      await AsyncStorage.setItem(SESSION_ID_KEY, newSession.id);
+      await sendToACT(newSession.id, '__START__');
+    } catch {}
+  }
+
+  async function handleNewSession() {
+    clearSession();
+    await AsyncStorage.removeItem(SESSION_ID_KEY);
+    if (user) startSession();
+  }
+
+  async function sendToACT(sessionId: string, text: string) {
+    setIsTyping(true);
+    const isStart = text === '__START__';
+
+    if (!isStart) {
+      addMessage({
+        id: Date.now().toString(),
+        sessionId,
+        role: 'USER',
+        content: text,
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    try {
+      const response = await api.sendMessage(sessionId, isStart ? 'Hello' : text);
+      addMessage(response.message);
+      setPhase(response.phase);
+      if (response.suggestions) setSuggestions(response.suggestions);
+      if (response.project) setActiveProject(response.project);
+      if (voiceEnabled) speak(response.message.content);
+    } catch {
+      addMessage({
+        id: Date.now().toString(),
+        sessionId,
+        role: 'ASSISTANT',
+        content: "I'm having trouble connecting. Try again in a moment.",
+        createdAt: new Date().toISOString(),
+      });
+    } finally {
+      setIsTyping(false);
+    }
+  }
+
+  function handleSend() {
+    const text = input.trim();
+    if (!text || !session || isTyping) return;
+    setInput('');
+    sendToACT(session.id, text);
+  }
+
+  function handleChip(chip: string) {
+    setInput(chip);
+  }
+
+  async function handlePickSuggestion(suggestion: ProjectSuggestion) {
+    if (!user || !session) return;
+
+    // Paywall gate
+    if (!canStartProject) {
+      navigation.navigate('Paywall' as any);
+      return;
+    }
+
+    setSuggestions(null);
+
+    try {
+      const project = await api.commitToProject({
+        userId: user.id,
+        sessionId: session.id,
+        suggestion,
+        contextSnapshot: messages
+          .filter(m => m.role === 'USER')
+          .slice(0, 3)
+          .map(m => m.content)
+          .join(' / '),
+      });
+
+      setActiveProject(project);
+      setPhase('COACHING');
+      await recordProject();
+      await sendToACT(session.id, `Let's do: ${suggestion.title}`);
+      navigation.navigate('Project', { projectId: project.id });
+    } catch {}
+  }
+
+  const visibleMessages = messages.filter(m => !(m.role === 'USER' && m.content === 'Hello'));
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.wordmark}>ACTOBER</Text>
-          <Text style={styles.tagline}>Act on what you see.</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={90}
+    >
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>
+            ACTOBER <Text style={styles.headerAI}>AI</Text>
+          </Text>
+          {user?.name && (
+            <Text style={styles.headerGreeting}>Hey {user.name}</Text>
+          )}
         </View>
-
-        {/* Trade Selector */}
-        <Text style={styles.sectionLabel}>SELECT TRADE</Text>
-        <View style={styles.tradeRow}>
-          {TRADES.map((t) => (
+        <View style={styles.headerRight}>
+          {!isPlus && remaining < 3 && (
             <TouchableOpacity
-              key={t.id}
-              style={[styles.tradePill, activeTrade === t.id && styles.tradePillActive]}
-              onPress={() => setTrade(t.id)}
+              style={styles.remainingBadge}
+              onPress={() => navigation.navigate('Paywall' as any)}
             >
-              <Text style={styles.tradeIcon}>{t.icon}</Text>
-              <Text style={[styles.tradeLabel, activeTrade === t.id && styles.tradeLabelActive]}>
-                {t.label}
-              </Text>
+              <Text style={styles.remainingText}>{remaining} left</Text>
             </TouchableOpacity>
-          ))}
+          )}
+          <TouchableOpacity
+            style={[styles.voiceBtn, voiceEnabled && styles.voiceBtnOn]}
+            onPress={toggleVoice}
+          >
+            <Text style={styles.voiceBtnText}>{voiceEnabled ? '🔊' : '🔇'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.newBtn} onPress={handleNewSession}>
+            <Text style={styles.newBtnText}>New</Text>
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Scenario Cards — trade-specific */}
-        <Text style={styles.sectionLabel}>QUICK SCENARIOS</Text>
-        <View style={styles.scenarioGrid}>
-          {SCENARIOS_BY_TRADE[activeTrade].map((s, i) => (
-            <TouchableOpacity
-              key={i}
-              style={styles.scenarioCard}
-              onPress={() => navigation.navigate('Field')}
-            >
-              <Text style={styles.scenarioIcon}>{s.icon}</Text>
-              <Text style={styles.scenarioLabel}>{s.label}</Text>
-              <Text style={styles.scenarioDesc}>{s.description}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+      {/* Chat */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Resume banner — shown when user has an active project and chat is fresh */}
+        {activeProject && activeProject.status === 'IN_PROGRESS' && visibleMessages.length <= 1 && (
+          <ResumeBanner
+            project={activeProject}
+            onResume={() => navigation.navigate('Project', { projectId: activeProject.id })}
+          />
+        )}
 
-        {/* CTA */}
-        <TouchableOpacity
-          style={styles.ctaButton}
-          onPress={() => navigation.navigate('Field')}
-        >
-          <Text style={styles.ctaText}>START FIELD SESSION</Text>
-        </TouchableOpacity>
+        {visibleMessages.map((msg) => (
+          <View
+            key={msg.id}
+            style={[styles.bubble, msg.role === 'USER' ? styles.userBubble : styles.actBubble]}
+          >
+            {msg.role === 'ASSISTANT' && <Text style={styles.actLabel}>ACT</Text>}
+            <Text style={[
+              styles.bubbleText,
+              msg.role === 'USER' ? styles.userBubbleText : styles.actBubbleText,
+            ]}>
+              {msg.content}
+            </Text>
+          </View>
+        ))}
 
-        {/* Recent Sessions */}
-        {recentSessions.length > 0 && (
-          <>
-            <Text style={styles.sectionLabel}>RECENT SESSIONS</Text>
-            {recentSessions.map((s) => (
-              <View key={s.id} style={styles.sessionCard}>
-                <Text style={styles.sessionTrade}>{s.trade}</Text>
-                <Text style={styles.sessionAddress}>{s.jobAddress || 'No address'}</Text>
-                <Text style={styles.sessionTime}>{timeAgo(s.startedAt)}</Text>
-              </View>
+        {isTyping && (
+          <View style={[styles.bubble, styles.actBubble]}>
+            <Text style={styles.actLabel}>ACT</Text>
+            <ActivityIndicator size="small" color={colors.textMuted} />
+          </View>
+        )}
+
+        {suggestions && suggestions.length > 0 && (
+          <View style={styles.suggestionsContainer}>
+            <Text style={styles.suggestionsLabel}>Pick a project:</Text>
+            {suggestions.map((s, i) => (
+              <SuggestionCard
+                key={i}
+                suggestion={s}
+                color={CATEGORY_COLORS[s.category] ?? colors.primary}
+                onPress={() => handlePickSuggestion(s)}
+              />
             ))}
-          </>
+          </View>
         )}
       </ScrollView>
-    </SafeAreaView>
+
+      {/* Quick-start chips (only in DISCOVERY phase) */}
+      {phase === 'DISCOVERY' && messages.length <= 2 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chipsRow}
+          contentContainerStyle={styles.chipsContent}
+          keyboardShouldPersistTaps="always"
+        >
+          {QUICK_CHIPS.map((chip) => (
+            <TouchableOpacity key={chip} style={styles.chip} onPress={() => handleChip(chip)}>
+              <Text style={styles.chipText}>{chip}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      {/* Input */}
+      <View style={styles.inputRow}>
+        <TextInput
+          style={styles.input}
+          value={input}
+          onChangeText={setInput}
+          placeholder="Tell ACT what's around you..."
+          placeholderTextColor={colors.textLight}
+          multiline
+          maxLength={500}
+          returnKeyType="send"
+          onSubmitEditing={handleSend}
+          blurOnSubmit={false}
+        />
+        <TouchableOpacity
+          style={[styles.sendBtn, (!input.trim() || isTyping) && styles.sendBtnDisabled]}
+          onPress={handleSend}
+          disabled={!input.trim() || isTyping}
+        >
+          <Text style={styles.sendBtnText}>→</Text>
+        </TouchableOpacity>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.background },
-  container: { flex: 1 },
-  content: { padding: 20, paddingBottom: 40 },
-  header: { marginBottom: 32, marginTop: 8 },
-  wordmark: {
-    fontFamily: 'Courier New',
-    fontSize: 28,
-    fontWeight: '700',
-    color: Colors.primary,
-    letterSpacing: 4,
+  container: { flex: 1, backgroundColor: colors.background },
+
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 56, paddingBottom: 12,
+    borderBottomWidth: 1, borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  tagline: {
-    fontSize: 14,
-    color: Colors.textMuted,
-    marginTop: 4,
+  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text, letterSpacing: 1 },
+  headerAI: { color: colors.primary },
+  headerGreeting: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  remainingBadge: {
+    backgroundColor: colors.primaryLight + '80', borderRadius: 20,
+    paddingHorizontal: 10, paddingVertical: 4,
   },
-  sectionLabel: {
-    fontFamily: 'Courier New',
-    fontSize: 11,
-    color: Colors.textMuted,
-    letterSpacing: 2,
-    marginBottom: 12,
-    marginTop: 4,
+  remainingText: { fontSize: 11, fontWeight: '700', color: colors.primary },
+  voiceBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.border,
   },
-  tradeRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 28,
-    flexWrap: 'wrap',
+  voiceBtnOn: { backgroundColor: colors.primaryLight + '80', borderColor: colors.primary },
+  voiceBtnText: { fontSize: 16 },
+  newBtn: {
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+    borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface,
   },
-  tradePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
+  newBtnText: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+
+  scroll: { flex: 1 },
+  scrollContent: { padding: 16, gap: 10, paddingBottom: 8 },
+
+  bubble: {
+    maxWidth: '82%', borderRadius: 16, padding: 12, marginBottom: 2,
   },
-  tradePillActive: {
-    borderColor: Colors.primary,
-    backgroundColor: '#1A0E06',
+  actBubble: {
+    alignSelf: 'flex-start', backgroundColor: colors.actBubble,
+    borderWidth: 1, borderColor: colors.actBubbleBorder, borderTopLeftRadius: 4,
   },
-  tradeIcon: { fontSize: 14 },
-  tradeLabel: {
-    fontFamily: 'Courier New',
-    fontSize: 12,
-    color: Colors.textMuted,
+  userBubble: {
+    alignSelf: 'flex-end', backgroundColor: colors.userBubble, borderTopRightRadius: 4,
   },
-  tradeLabelActive: { color: Colors.primary },
-  scenarioGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginBottom: 28,
+  actLabel: {
+    fontSize: 9, fontWeight: '800', color: colors.primary,
+    marginBottom: 5, letterSpacing: 1.5,
   },
-  scenarioCard: {
-    width: '47%',
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 10,
-    padding: 14,
+  bubbleText: { fontSize: 15, lineHeight: 22 },
+  actBubbleText: { color: colors.text },
+  userBubbleText: { color: '#fff' },
+
+  suggestionsContainer: { marginTop: 6, gap: 10 },
+  suggestionsLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+
+  chipsRow: {
+    flexGrow: 0, borderTopWidth: 1, borderTopColor: colors.border,
+    backgroundColor: colors.surface,
   },
-  scenarioIcon: { fontSize: 22, marginBottom: 8 },
-  scenarioLabel: {
-    fontFamily: 'Courier New',
-    fontSize: 12,
-    color: Colors.text,
-    fontWeight: '600',
-    marginBottom: 4,
+  chipsContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
+  chip: {
+    backgroundColor: colors.surfaceAlt, borderRadius: 20,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderWidth: 1, borderColor: colors.border,
   },
-  scenarioDesc: {
-    fontSize: 11,
-    color: Colors.textMuted,
-    lineHeight: 15,
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.text },
+
+  inputRow: {
+    flexDirection: 'row', alignItems: 'flex-end',
+    padding: 12, gap: 8,
+    backgroundColor: colors.surface,
+    borderTopWidth: 1, borderTopColor: colors.border,
   },
-  ctaButton: {
-    backgroundColor: Colors.primary,
-    paddingVertical: 18,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 32,
+  input: {
+    flex: 1, minHeight: 44, maxHeight: 120,
+    backgroundColor: colors.surfaceAlt, borderRadius: 22,
+    paddingHorizontal: 16, paddingVertical: 12,
+    fontSize: 15, color: colors.text,
+    borderWidth: 1, borderColor: colors.border,
   },
-  ctaText: {
-    fontFamily: 'Courier New',
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 2,
+  sendBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
   },
-  sessionCard: {
-    backgroundColor: Colors.surface,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: 8,
-    padding: 14,
-    marginBottom: 8,
-  },
-  sessionTrade: {
-    fontFamily: 'Courier New',
-    fontSize: 11,
-    color: Colors.primary,
-    letterSpacing: 1,
-    marginBottom: 2,
-  },
-  sessionAddress: { fontSize: 13, color: Colors.text, marginBottom: 2 },
-  sessionTime: { fontSize: 11, color: Colors.textMuted },
+  sendBtnDisabled: { opacity: 0.4 },
+  sendBtnText: { fontSize: 20, color: '#fff', fontWeight: '700' },
 });

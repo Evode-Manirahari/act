@@ -7,46 +7,95 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Trade {
-  ELECTRICAL
-  HVAC
-  PLUMBING
-  WELDING
+model User {
+  id              String          @id @default(uuid())
+  deviceId        String          @unique
+  name            String?
+  experienceLevel ExperienceLevel @default(BEGINNER)
+  createdAt       DateTime        @default(now())
+  sessions        Session[]
+  projects        Project[]
 }
 
-enum Role {
+model Session {
+  id        String              @id @default(uuid())
+  userId    String
+  user      User                @relation(fields: [userId], references: [id])
+  projectId String?
+  project   Project?            @relation(fields: [projectId], references: [id])
+  phase     ConversationPhase   @default(DISCOVERY)
+  messages  Message[]
+  createdAt DateTime            @default(now())
+}
+
+model Message {
+  id        String      @id @default(uuid())
+  sessionId String
+  session   Session     @relation(fields: [sessionId], references: [id])
+  role      MessageRole
+  content   String
+  createdAt DateTime    @default(now())
+}
+
+model Project {
+  id               String          @id @default(uuid())
+  userId           String
+  user             User            @relation(fields: [userId], references: [id])
+  title            String
+  description      String
+  category         ProjectCategory
+  status           ProjectStatus   @default(SUGGESTED)
+  materials        String[]
+  timeRequired     Int
+  currentStepIndex Int             @default(0)
+  contextSnapshot  String
+  steps            Step[]
+  sessions         Session[]
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime        @default(now())
+}
+
+model Step {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id])
+  order       Int
+  title       String
+  description String
+  completed   Boolean  @default(false)
+
+  @@unique([projectId, order])
+}
+
+enum ExperienceLevel {
+  BEGINNER
+  INTERMEDIATE
+  EXPERIENCED
+}
+
+enum ProjectCategory {
+  MAKE
+  IMPROVE
+  GROW
+  CREATE
+}
+
+enum ProjectStatus {
+  SUGGESTED
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+enum MessageRole {
   USER
   ASSISTANT
 }
 
-model User {
-  id        String    @id @default(cuid())
-  deviceId  String    @unique
-  trade     Trade     @default(ELECTRICAL)
-  createdAt DateTime  @default(now())
-  sessions  Session[]
-}
-
-model Session {
-  id         String    @id @default(cuid())
-  userId     String
-  user       User      @relation(fields: [userId], references: [id])
-  trade      Trade
-  startedAt  DateTime  @default(now())
-  endedAt    DateTime?
-  jobAddress String?
-  jobNotes   String?
-  summary    String?   @db.Text
-  messages   Message[]
-}
-
-model Message {
-  id            String   @id @default(cuid())
-  sessionId     String
-  session       Session  @relation(fields: [sessionId], references: [id])
-  role          Role
-  content       String   @db.Text
-  imageKey      String?
-  isSafetyAlert Boolean  @default(false)
-  createdAt     DateTime @default(now())
+enum ConversationPhase {
+  DISCOVERY
+  SUGGESTION
+  COACHING
+  COMPLETE
 }

@@ -1,62 +1,45 @@
 import 'dotenv/config';
 import express from 'express';
-import cors from 'cors';
 import helmet from 'helmet';
+import cors from 'cors';
 import compression from 'compression';
-import { logger, requestLogger } from './utils/logger';
-import { captureException } from './lib/sentry';
 import { apiLimiter } from './middleware/rateLimiter';
-import { getRedis } from './lib/redis';
+import { logger } from './lib/logger';
 import usersRouter from './routes/users';
 import sessionsRouter from './routes/sessions';
 import chatRouter from './routes/chat';
-import transcribeRouter from './routes/transcribe';
-import exportRouter from './routes/export';
+import projectsRouter from './routes/projects';
 
 const app = express();
 
 app.use(helmet());
-app.use(cors({
-  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : '*',
-}));
+app.use(cors());
 app.use(compression());
-app.use(express.json({ limit: '10mb' }));
-app.use(requestLogger);
-app.use(apiLimiter);
+app.use(express.json({ limit: '1mb' }));
 
-// ── Health check ─────────────────────────────────────────────────────────────
-app.get('/health', async (_req, res) => {
-  const checks: Record<string, string> = { api: 'ok' };
-
-  try {
-    const redis = getRedis();
-    await redis.ping();
-    checks.redis = 'ok';
-  } catch {
-    checks.redis = 'unavailable';
-  }
-
-  const allOk = Object.values(checks).every((v) => v === 'ok');
-  return res.status(allOk ? 200 : 503).json({
-    status: allOk ? 'ok' : 'degraded',
-    checks,
-    ts: new Date().toISOString(),
-    version: process.env.npm_package_version ?? '1.0.0',
-    env: process.env.NODE_ENV ?? 'development',
-  });
+// Request logger
+app.use((req, _res, next) => {
+  logger.info(`${req.method} ${req.path}`);
+  next();
 });
 
+app.use(apiLimiter);
+
+// Routes
 app.use('/api/users', usersRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/chat', chatRouter);
-app.use('/api/transcribe', transcribeRouter);
-app.use('/api/sessions', exportRouter);
+app.use('/api/projects', projectsRouter);
+
+// Health check
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Global error handler
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  logger.error('unhandled error', { message: err.message });
-  captureException(err);
-  res.status(500).json({ error: 'Internal server error', code: 'SERVER_ERROR' });
+  logger.error('Unhandled error', { message: err.message, stack: err.stack });
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 export default app;
