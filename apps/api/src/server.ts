@@ -1,11 +1,8 @@
-import 'dotenv/config';
 import app from './app';
-import { initSentry } from './lib/sentry';
+import { logger } from './lib/logger';
 
-initSentry();
-
-const PORT = process.env.PORT || 3001;
+const PORT = parseInt(process.env.PORT || '3001');
 
 app.listen(PORT, () => {
-  console.log(`Actober API running on port ${PORT}`);
+  logger.info(`ACTOBER API running on port ${PORT}`);
 });

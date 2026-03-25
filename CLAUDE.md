@@ -1,62 +1,86 @@
 # Actober — CLAUDE.md
 
 ## Product Vision
-Actober is a real-time AI coaching system for skilled trade workers. A worker wears a camera on-site — phone chest mount today, smart glasses tomorrow. The AI (ACT) sees exactly what they see, hears their voice, and guides them through the job step by step. Live. Hands-free. On-site.
+ACTOBER AI helps people turn free time into hands-on progress.
+A user opens the app, tells ACT what they have around them — materials, tools, time, space — and ACT gives them a real project they can start right now, then guides them step by step until they finish something.
 
-**AI Persona**: ACT — the voice of Actober in the field
-**Tagline**: Act on what you see.
-**First vertical**: Electricians doing retrofit and renovation work in old buildings.
+**AI Persona**: ACT — warm, direct, practical. The mentor in the garage.
+**Tagline**: Because free time should build something.
+**Target user**: Anyone with free time and a little curiosity — teenagers, retirees, working adults on weekends.
 
-## Stack Decisions
-- **Mobile**: React Native (Expo SDK 51) — cross-platform, OTA updates via EAS
-- **API**: Node.js + Express + TypeScript — fast iteration, strong ecosystem
-- **Database**: PostgreSQL via Prisma ORM — relational, audit trails
-- **Cache**: Redis (ioredis) — session data, rate limiting, PDF cache
-- **AI**: OpenAI GPT-4o (vision + chat) + Whisper (speech-to-text)
-- **State**: Zustand — simple, no boilerplate
-- **Monorepo**: pnpm workspaces — shared types, unified tooling
+## Project Categories
+- **MAKE** — builds, woodworking, things made from materials
+- **IMPROVE** — home upgrades, organization, practical fixes
+- **GROW** — gardening, herbs, outdoor projects
+- **CREATE** — crafts, decorative items, handmade things
+
+## Stack
+- **Mobile**: React Native (Expo SDK 51), TypeScript
+- **API**: Node.js + Express + TypeScript
+- **Database**: PostgreSQL via Prisma ORM
+- **Cache**: Redis (rate limiting)
+- **AI**: Claude (claude-sonnet-4-6) via Anthropic SDK
+- **State**: Zustand
+- **Monorepo**: pnpm workspaces
 
 ## Folder Purposes
-- `apps/mobile` — React Native Expo app (the worker's interface)
+- `apps/mobile` — React Native Expo app
 - `apps/api` — Express REST API (AI orchestration, DB, business logic)
-- `packages/trade-knowledge` — AI system prompts and trade expertise
+- `packages/act-prompts` — ACT system prompt + conversation scaffolding
 - `packages/shared-types` — TypeScript types shared between mobile and API
 
 ## Current State
-- Phase 1: Project scaffold, dependencies, trade knowledge base
-- Phase 2: Prisma schema, all API routes (users, sessions, chat), 17 tests passing
-- Phase 3: Full mobile navigation + all 5 screens, Zustand store, zero TypeScript errors
-- Phase 4: Live AI chat loop wired — API client, session init, optimistic UI, safety flash, voice output, AppState persistence
-- Phase 5: Camera + GPT-4o vision — ActoberCamera component, image compression, capture→thumbnail→analysis flow, simulator demo mode
-- Phase 6: Voice input + hands-free mode — Whisper transcription (POST /api/transcribe), VoiceInput component, hold-to-record, walkie-talkie hands-free loop
-- Phase 7: Job documentation + PDF export — GPT-4o structured report, pdfkit builder, Redis 24h cache, GET /summary + GET /export, expo-file-system + expo-sharing
-- Phase 8: Offline mode & resilience — OfflineBanner (animated slide-in), useNetworkStatus (NetInfo), matchOfflineQuery (10 cached electrical answers), AsyncStorage offline queue (enqueue/flush on reconnect), session message backup, reconnect-sync effect (processes queue on isOnline transition), 71 tests total
-- Phase 9: Multi-trade expansion — HVAC, Plumbing, Welding system prompts; 25 offline knowledge entries (10 ELECTRICAL + 5 each HVAC/PLUMBING/WELDING); matchOfflineQuery trade filter; trade-specific quick chips on FieldScreen; trade-specific scenario cards on HomeScreen; getVisionContext() for per-trade image analysis; 102 tests total
-- Phase 10: Production deploy & monitoring — express-rate-limit (global 100/min, chat 20/min, transcribe 10/min, skip in test); @sentry/node API (graceful no-op without DSN); @sentry/react-native mobile; compression middleware; enhanced /health (Redis probe, degraded 503); Dockerfile (multi-stage pnpm monorepo build); railway.toml; eas.json (dev/preview/production profiles); .env.example updated; 116 tests total
+- Phase 1: Project scaffold, shared types, ACT prompts package
+- Phase 2: Prisma schema, API routes (users, sessions, chat, projects)
+- Phase 3: Mobile navigation, screens (Boot, Home, Project, History), Zustand store
+
+## Conversation Phases
+ACT moves through three phases in every session:
+1. **DISCOVERY** — ACT asks what the user has (materials, time, space, experience)
+2. **SUGGESTION** — ACT proposes 2-3 projects based on context
+3. **COACHING** — ACT guides step by step through the chosen project
 
 ## API Routes
 - `POST /api/users/register` — register or upsert user by deviceId
 - `GET  /api/users/:deviceId` — fetch user
-- `POST /api/sessions` — create session
+- `POST /api/sessions` — create a new chat session
+- `POST /api/chat` — send a message; ACT replies via Claude
 - `GET  /api/sessions/:id` — fetch session with messages
-- `GET  /api/sessions/user/:userId` — list user sessions (newest first)
-- `PATCH /api/sessions/:id` — update endedAt / jobNotes
-- `POST /api/chat` — AI chat (GPT-4o, vision-capable, safety detection)
+- `POST /api/projects` — save a project when user commits to one
+- `PATCH /api/projects/:id` — update project status / step progress
+- `GET  /api/projects/user/:userId` — list user's projects
 - `GET  /health` — health check
 
 ## THE RULE
 **DO NOT rebuild anything already working. Extend only.**
-
-Before touching any file, read it first. Understand what exists before changing anything.
+Read a file before touching it. Understand before changing.
 
 ## Colors
-- Primary: #EA580C (orange)
-- Background: #0A0A0A (near black)
-- Font: Courier New for labels/monospace, system font for body
+- Primary: #F97316 (warm orange)
+- Background: #FAFAF8 (warm off-white)
+- Surface: #FFFFFF
+- Text: #1A1A1A
+- TextMuted: #6B7280
+- Border: #E5E7EB
+- Success: #10B981 (green)
 
 ## ACT Persona
-ACT speaks like a calm master electrician. Short sentences. Trade language. Safety first.
-- ⚠️ = hazard
-- ✅ = safe
-- 🔧 = action item
-- 📋 = code reference
+ACT speaks like a wise, grounded mentor. Warm but direct. Encouraging without being cheesy. Patient with beginners.
+Short sentences. Practical language. No jargon. No filler.
+- "Let's start with what you've got."
+- "Keep it simple. We just need a solid first step."
+- "That's progress."
+- "Good. Now let's do the next part."
+- "You don't need a perfect plan to begin."
+
+## gstack
+Use the /browse skill from gstack for all web browsing tasks.
+
+Available skills:
+- `/plan-ceo-review` — First-principles founder review: are we solving the right problem?
+- `/plan-eng-review` — Lock in architecture, data flow, diagrams, edge cases before coding
+- `/review` — Paranoid staff engineer code review hunting production-breaking bugs
+- `/ship` — Release engineer: sync, test, resolve reviews, push to production
+- `/browse` — QA engineer: visual feedback via automated browser testing with screenshots
+- `/qa` — QA lead: systematic diff-aware testing of affected pages and routes
+- `/retro` — Engineering manager: retrospectives with per-person metrics and feedback

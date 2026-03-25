@@ -4,7 +4,7 @@
     "strict": true,
     "paths": {
       "@actober/shared-types": ["../../packages/shared-types/src"],
-      "@actober/trade-knowledge": ["../../packages/trade-knowledge/src"]
+      "@actober/act-prompts": ["../../packages/act-prompts/src"]
     }
   }
 }

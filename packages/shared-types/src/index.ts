@@ -1,23 +1,41 @@
-export type Trade = 'ELECTRICAL' | 'HVAC' | 'PLUMBING' | 'WELDING';
+export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'EXPERIENCED';
+export type ProjectCategory = 'MAKE' | 'IMPROVE' | 'GROW' | 'CREATE';
+export type ProjectStatus = 'SUGGESTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
 export type MessageRole = 'USER' | 'ASSISTANT';
+export type ConversationPhase = 'DISCOVERY' | 'SUGGESTION' | 'COACHING' | 'COMPLETE';
 
 export interface User {
   id: string;
   deviceId: string;
-  trade: Trade;
+  name?: string;
+  experienceLevel: ExperienceLevel;
   createdAt: string;
 }
 
-export interface Session {
+export interface Project {
   id: string;
   userId: string;
-  trade: Trade;
-  startedAt: string;
-  endedAt?: string;
-  jobAddress?: string;
-  jobNotes?: string;
-  summary?: string;
-  messages?: Message[];
+  title: string;
+  description: string;
+  category: ProjectCategory;
+  status: ProjectStatus;
+  materials: string[];
+  timeRequired: number; // minutes
+  steps: Step[];
+  currentStepIndex: number;
+  contextSnapshot: string;
+  startedAt?: string;
+  completedAt?: string;
+  createdAt: string;
+}
+
+export interface Step {
+  id: string;
+  projectId: string;
+  order: number;
+  title: string;
+  description: string;
+  completed: boolean;
 }
 
 export interface Message {
@@ -25,25 +43,37 @@ export interface Message {
   sessionId: string;
   role: MessageRole;
   content: string;
-  imageKey?: string;
-  isSafetyAlert: boolean;
   createdAt: string;
 }
 
-export interface ApiResponse<T> {
-  data?: T;
-  error?: string;
-  code?: string;
+export interface Session {
+  id: string;
+  userId: string;
+  projectId?: string;
+  phase: ConversationPhase;
+  messages: Message[];
+  createdAt: string;
+}
+
+export interface ProjectSuggestion {
+  title: string;
+  description: string;
+  category: ProjectCategory;
+  timeRequired: number; // minutes
+  materials: string[];
+  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  whyItFits: string;
+  steps: Array<{ title: string; description: string }>;
 }
 
 export interface ChatRequest {
   sessionId: string;
   message: string;
-  imageBase64?: string;
 }
 
 export interface ChatResponse {
-  message: string;
-  isSafetyAlert: boolean;
-  sessionId: string;
+  message: Message;
+  phase: ConversationPhase;
+  suggestions?: ProjectSuggestion[];
+  project?: Project;
 }

@@ -2,10 +2,13 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
     "declaration": false,
-    "declarationMap": false
+    "declarationMap": false,
+    "paths": {
+      "@actober/shared-types": ["../../packages/shared-types/src/index.ts"],
+      "@actober/act-prompts": ["../../packages/act-prompts/src/index.ts"]
+    }
   },
-  "include": ["src"],
+  "include": ["src", "../../packages/shared-types/src", "../../packages/act-prompts/src"],
   "exclude": ["node_modules", "dist"]
 }

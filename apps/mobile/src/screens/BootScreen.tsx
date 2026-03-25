@@ -1,90 +1,92 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-} from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, Animated } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { colors } from '../theme/colors';
+import { useActStore } from '../store/act';
+import { api } from '../api/act';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
-import { Colors } from '../theme/colors';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 
-type Props = {
-  navigation: NativeStackNavigationProp<RootStackParamList, 'Boot'>;
-};
+const DEVICE_ID_KEY = 'actober_device_id';
+const SESSION_ID_KEY = 'actober_active_session_id';
 
-const BOOT_LINES = [
-  'ACTOBER v1.0.0 INITIALIZING...',
-  'LOADING TRADE KNOWLEDGE BASE...',
-  'NEC 2023 CODE DATABASE: READY',
-  'ACT COACHING ENGINE: ACTIVE',
-  'VISION MODULE: STANDBY',
-];
+function generateDeviceId(): string {
+  return 'device_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+}
 
-export default function BootScreen({ navigation }: Props) {
-  const [visibleLines, setVisibleLines] = useState<number>(0);
-  const opacities = useRef(BOOT_LINES.map(() => new Animated.Value(0))).current;
+export default function BootScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { setUser, setSession } = useActStore();
+  const opacity = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const timers: ReturnType<typeof setTimeout>[] = [];
-
-    BOOT_LINES.forEach((_, i) => {
-      const timer = setTimeout(() => {
-        Animated.timing(opacities[i], {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-        setVisibleLines((v) => v + 1);
-      }, i * 400);
-      timers.push(timer);
-    });
-
-    const navTimer = setTimeout(async () => {
-      navigation.replace('Main');
-    }, BOOT_LINES.length * 400 + 600);
-    timers.push(navTimer);
-
-    return () => timers.forEach(clearTimeout);
+    Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    init();
   }, []);
+
+  async function init() {
+    // Ensure device ID
+    let deviceId = await AsyncStorage.getItem(DEVICE_ID_KEY);
+    if (!deviceId) {
+      deviceId = generateDeviceId();
+      await AsyncStorage.setItem(DEVICE_ID_KEY, deviceId);
+    }
+
+    // Brief splash pause
+    await new Promise(r => setTimeout(r, 900));
+
+    try {
+      const user = await api.registerUser(deviceId);
+      setUser(user);
+
+      // Try to resume the last active session
+      const savedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
+      if (savedSessionId) {
+        try {
+          const session = await api.getSession(savedSessionId);
+          if (session && session.phase !== 'COMPLETE') {
+            setSession(session);
+          } else {
+            await AsyncStorage.removeItem(SESSION_ID_KEY);
+          }
+        } catch {
+          await AsyncStorage.removeItem(SESSION_ID_KEY);
+        }
+      }
+
+      // Route: first-time users go to Onboarding; returning users go to Main
+      if (!user.name) {
+        navigation.replace('Onboarding');
+      } else {
+        navigation.replace('Main');
+      }
+    } catch {
+      navigation.replace('Main');
+    }
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        {BOOT_LINES.map((line, i) => (
-          <Animated.Text key={i} style={[styles.line, { opacity: opacities[i] }]}>
-            {line}
-          </Animated.Text>
-        ))}
-        {visibleLines > 0 && (
-          <View style={styles.cursor} />
-        )}
-      </View>
+      <Animated.View style={{ opacity, alignItems: 'center' }}>
+        <Text style={styles.logo}>ACTOBER</Text>
+        <Text style={styles.tagline}>because free time should build something.</Text>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-    backgroundColor: '#000000',
-    justifyContent: 'center',
-    padding: 32,
+    flex: 1, backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32,
   },
-  content: {
-    gap: 8,
+  logo: {
+    fontSize: 36, fontWeight: '800', color: '#FFFFFF',
+    letterSpacing: 4, textAlign: 'center',
   },
-  line: {
-    fontFamily: 'Courier New',
-    color: Colors.primary,
-    fontSize: 14,
-    letterSpacing: 0.5,
-  },
-  cursor: {
-    width: 10,
-    height: 16,
-    backgroundColor: Colors.primary,
-    marginTop: 8,
+  tagline: {
+    fontSize: 14, color: 'rgba(255,255,255,0.8)',
+    marginTop: 12, textAlign: 'center', fontStyle: 'italic',
   },
 });

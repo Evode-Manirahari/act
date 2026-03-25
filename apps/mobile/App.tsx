@@ -3,27 +3,25 @@ import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import RootNavigator from './src/navigation/RootNavigator';
-import { initSentry } from './src/lib/sentry';
-
-initSentry();
+import { colors } from './src/theme/colors';
 
 export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer
         theme={{
-          dark: true,
+          dark: false,
           colors: {
-            primary: '#EA580C',
-            background: '#0A0A0A',
-            card: '#111111',
-            text: '#FFFFFF',
-            border: '#2A2A2A',
-            notification: '#EA580C',
+            primary: colors.primary,
+            background: colors.background,
+            card: colors.surface,
+            text: colors.text,
+            border: colors.border,
+            notification: colors.primary,
           },
         }}
       >
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <RootNavigator />
       </NavigationContainer>
     </SafeAreaProvider>
