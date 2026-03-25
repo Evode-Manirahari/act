@@ -51,11 +51,10 @@ export default function HomeScreen() {
   } = useActStore();
 
   const { voiceEnabled, toggleVoice, loadVoicePreference, speak } = useVoice();
-  const { canStartProject, remaining, load: loadPaywall, recordProject, isPlus } = usePaywall();
+  const { canStartProject, remaining, isPlus } = usePaywall();
 
   useEffect(() => {
     loadVoicePreference();
-    loadPaywall();
     if (!session && user) startSession();
   }, [user]);
 
@@ -149,7 +148,6 @@ export default function HomeScreen() {
 
       setActiveProject(project);
       setPhase('COACHING');
-      await recordProject();
       await sendToACT(session.id, `Let's do: ${suggestion.title}`);
       navigation.navigate('Project', { projectId: project.id });
     } catch {}
@@ -201,8 +199,8 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Resume banner — shown when user has an active project and chat is fresh */}
-        {activeProject && activeProject.status === 'IN_PROGRESS' && visibleMessages.length <= 1 && (
+        {/* Resume banner — always shown when there's an active project */}
+        {activeProject && activeProject.status === 'IN_PROGRESS' && (
           <ResumeBanner
             project={activeProject}
             onResume={() => navigation.navigate('Project', { projectId: activeProject.id })}

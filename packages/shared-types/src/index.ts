@@ -9,6 +9,9 @@ export interface User {
   deviceId: string;
   name?: string;
   experienceLevel: ExperienceLevel;
+  subscriptionTier: 'FREE' | 'PLUS';
+  subscriptionExpiry?: string;
+  projectsThisMonth: number;
   createdAt: string;
 }
 
