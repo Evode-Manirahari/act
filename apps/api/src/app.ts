@@ -13,7 +13,12 @@ import projectsRouter from './routes/projects';
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+}));
 app.use(compression());
 app.use(express.json({ limit: '1mb' }));
 

@@ -12,7 +12,7 @@ FROM base AS deps
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
 COPY packages/shared-types/package.json ./packages/shared-types/
-COPY packages/trade-knowledge/package.json ./packages/trade-knowledge/
+COPY packages/act-prompts/package.json ./packages/act-prompts/
 COPY apps/api/package.json ./apps/api/
 
 RUN pnpm install --frozen-lockfile --filter api...
@@ -21,10 +21,9 @@ RUN pnpm install --frozen-lockfile --filter api...
 FROM deps AS builder
 
 COPY packages/shared-types/ ./packages/shared-types/
-COPY packages/trade-knowledge/ ./packages/trade-knowledge/
+COPY packages/act-prompts/ ./packages/act-prompts/
 COPY apps/api/ ./apps/api/
 
-RUN pnpm --filter @actober/trade-knowledge build
 RUN pnpm --filter api exec prisma generate
 RUN pnpm --filter api build
 
@@ -39,15 +38,15 @@ WORKDIR /app
 # Copy workspace manifests
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY packages/shared-types/package.json ./packages/shared-types/
-COPY packages/trade-knowledge/package.json ./packages/trade-knowledge/
+COPY packages/act-prompts/package.json ./packages/act-prompts/
 COPY apps/api/package.json ./apps/api/
 
 # Install production deps only
 RUN pnpm install --frozen-lockfile --prod --filter api...
 
 # Copy built artifacts
-COPY --from=builder /app/packages/trade-knowledge/dist ./packages/trade-knowledge/dist
 COPY --from=builder /app/packages/shared-types/src ./packages/shared-types/src
+COPY --from=builder /app/packages/act-prompts/src ./packages/act-prompts/src
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/apps/api/prisma ./apps/api/prisma
 
@@ -56,9 +55,10 @@ RUN pnpm --filter api exec prisma generate
 
 WORKDIR /app/apps/api
 
-EXPOSE 3001
+# Railway injects PORT — expose dynamically
+EXPOSE 8080
 
 ENV NODE_ENV=production
 ENV PATH="/app/node_modules/.bin:$PATH"
 
-CMD ["node", "dist/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]

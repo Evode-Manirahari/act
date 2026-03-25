@@ -3,12 +3,13 @@ builder = "DOCKERFILE"
 dockerfilePath = "apps/api/Dockerfile"
 
 [deploy]
-startCommand = "node dist/server.js"
 healthcheckPath = "/health"
 healthcheckTimeout = 120
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
 
-[deploy.envs]
-NODE_ENV = "production"
-PORT = "3001"
+# Required environment variables (set in Railway dashboard):
+# DATABASE_URL      — PostgreSQL connection string (Railway Postgres plugin)
+# ANTHROPIC_API_KEY — your Anthropic API key
+# NODE_ENV          — production (Railway sets this automatically)
+# PORT              — Railway sets this automatically

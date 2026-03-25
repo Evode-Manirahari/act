@@ -26,6 +26,13 @@ const UpdateProjectSchema = z.object({
   stepCompleted: z.number().int().min(0).optional(), // mark step at this index completed
 });
 
+const FREE_MONTHLY_LIMIT = 3;
+
+function isNewMonth(resetAt: Date): boolean {
+  const now = new Date();
+  return now.getFullYear() !== resetAt.getFullYear() || now.getMonth() !== resetAt.getMonth();
+}
+
 // POST /api/projects — commit to a project
 router.post('/', async (req: Request, res: Response) => {
   const parsed = CreateProjectSchema.safeParse(req.body);
@@ -34,6 +41,32 @@ router.post('/', async (req: Request, res: Response) => {
   }
 
   const { userId, sessionId, steps, ...projectData } = parsed.data;
+
+  // Enforce subscription limits
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  // Reset monthly counter if it's a new month
+  let projectsThisMonth = user.projectsThisMonth;
+  if (isNewMonth(user.monthResetAt)) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { projectsThisMonth: 0, monthResetAt: new Date() },
+    });
+    projectsThisMonth = 0;
+  }
+
+  const isPlus = user.subscriptionTier === 'PLUS' &&
+    (!user.subscriptionExpiry || user.subscriptionExpiry > new Date());
+
+  if (!isPlus && projectsThisMonth >= FREE_MONTHLY_LIMIT) {
+    return res.status(402).json({
+      error: 'Free limit reached',
+      code: 'UPGRADE_REQUIRED',
+      projectsThisMonth,
+      limit: FREE_MONTHLY_LIMIT,
+    });
+  }
 
   const project = await prisma.project.create({
     data: {
@@ -52,11 +85,17 @@ router.post('/', async (req: Request, res: Response) => {
     include: { steps: { orderBy: { order: 'asc' } } },
   });
 
-  // Link session to project and move to COACHING phase
-  await prisma.session.update({
-    where: { id: sessionId },
-    data: { projectId: project.id, phase: 'COACHING' },
-  });
+  // Link session to project, move to COACHING, increment monthly counter
+  await Promise.all([
+    prisma.session.update({
+      where: { id: sessionId },
+      data: { projectId: project.id, phase: 'COACHING' },
+    }),
+    prisma.user.update({
+      where: { id: userId },
+      data: { projectsThisMonth: { increment: 1 } },
+    }),
+  ]);
 
   res.status(201).json(project);
 });
