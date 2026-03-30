@@ -72,8 +72,7 @@ export default function ProjectDetailScreen() {
 
   async function handleResume() {
     setActiveProject(project!);
-    // Navigate to Today tab → Project screen
-    navigation.getParent()?.getParent()?.navigate('Today' as any, {
+    navigation.getParent()?.navigate('Today' as any, {
       screen: 'Project',
       params: { projectId: project!.id },
     });
@@ -84,19 +83,18 @@ export default function ProjectDetailScreen() {
       const updated = await api.updateProject(project!.id, { status: 'IN_PROGRESS' });
       upsertProject(updated);
       setActiveProject(updated);
-      navigation.getParent()?.getParent()?.navigate('Today' as any, {
+      navigation.getParent()?.navigate('Today' as any, {
         screen: 'Project',
         params: { projectId: project!.id },
       });
     } catch {
-      // Even on error, try navigating
       setActiveProject(project!);
-      navigation.getParent()?.getParent()?.navigate('Today' as any);
+      navigation.getParent()?.navigate('Today' as any);
     }
   }
 
   async function handleBuildAgain() {
-    navigation.getParent()?.getParent()?.navigate('Today' as any);
+    navigation.getParent()?.navigate('Today' as any);
   }
 
   async function handleShare() {
