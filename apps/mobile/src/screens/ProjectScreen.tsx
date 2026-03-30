@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Image,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Pressable,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -16,6 +16,7 @@ import type { HomeStackParamList } from '../navigation/RootNavigator';
 import CompletionModal from '../components/CompletionModal';
 import { useVoice } from '../hooks/useVoice';
 import { useStreak } from '../hooks/useStreak';
+import { useVoiceInput } from '../hooks/useVoiceInput';
 
 type NavProp = NativeStackNavigationProp<HomeStackParamList, 'Project'>;
 type RoutePropType = RouteProp<HomeStackParamList, 'Project'>;
@@ -43,6 +44,7 @@ export default function ProjectScreen() {
 
   const { voiceEnabled, speak } = useVoice();
   const { recordCompletion } = useStreak();
+  const { isRecording, isTranscribing, startRecording, stopRecording } = useVoiceInput();
   const [showAbandonConfirm, setShowAbandonConfirm] = useState(false);
 
   const project = activeProject;
@@ -345,6 +347,23 @@ export default function ProjectScreen() {
           onSubmitEditing={sendMessage}
           blurOnSubmit={false}
         />
+        {/* Mic — press and hold to record */}
+        <Pressable
+          style={[styles.micBtn, isRecording && styles.micBtnActive]}
+          onPressIn={() => !isTyping && startRecording()}
+          onPressOut={async () => {
+            const text = await stopRecording();
+            if (text) setInput((prev) => prev ? `${prev} ${text}` : text);
+          }}
+          onLongPress={() => {}}
+          disabled={isTyping}
+        >
+          {isTranscribing
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Text style={styles.micBtnText}>{isRecording ? '⏹' : '🎙'}</Text>
+          }
+        </Pressable>
+
         <TouchableOpacity
           style={[styles.sendBtn, { backgroundColor: categoryColor }, ((!input.trim() && !pendingImage) || isTyping) && styles.sendBtnDisabled]}
           onPress={sendMessage}
@@ -487,4 +506,11 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { opacity: 0.4 },
   sendBtnText: { fontSize: 20, color: '#fff', fontWeight: '700' },
+  micBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.border,
+  },
+  micBtnActive: { backgroundColor: colors.error, borderColor: colors.error },
+  micBtnText: { fontSize: 20 },
 });
