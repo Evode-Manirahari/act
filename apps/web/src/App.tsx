@@ -184,6 +184,7 @@ function ActApp() {
   }
   return (
     <ChatView
+      key={act.sessionKey}
       user={act.user}
       messages={act.messages}
       phase={act.phase}
