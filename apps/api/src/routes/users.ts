@@ -21,22 +21,30 @@ router.post('/register', async (req: Request, res: Response) => {
 
   const { deviceId, name, experienceLevel, domain } = parsed.data;
 
-  const user = await prisma.user.upsert({
-    where: { deviceId },
-    update: {
-      ...(name !== undefined && { name }),
-      ...(experienceLevel !== undefined && { experienceLevel }),
-      ...(domain !== undefined && { domain }),
-    },
-    create: {
-      deviceId,
-      name,
-      experienceLevel: experienceLevel ?? 'BEGINNER',
-      domain: domain ?? null,
-    },
-  });
-
-  res.json(user);
+  try {
+    const user = await prisma.user.upsert({
+      where: { deviceId },
+      update: {
+        ...(name !== undefined && { name }),
+        ...(experienceLevel !== undefined && { experienceLevel }),
+        ...(domain !== undefined && { domain }),
+      },
+      create: {
+        deviceId,
+        name,
+        experienceLevel: experienceLevel ?? 'BEGINNER',
+        domain: domain ?? null,
+      },
+    });
+    res.json(user);
+  } catch (err: any) {
+    // P2002 = unique constraint — race condition on concurrent registrations
+    if (err?.code === 'P2002') {
+      const user = await prisma.user.findUnique({ where: { deviceId } });
+      if (user) return res.json(user);
+    }
+    throw err;
+  }
 });
 
 // GET /api/users/:deviceId
