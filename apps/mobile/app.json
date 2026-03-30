@@ -10,6 +10,15 @@
       "expo-camera",
       "expo-av",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#F97316",
+          "sounds": [],
+          "iosDisplayInForeground": true
+        }
+      ],
+      [
         "@sentry/react-native/expo",
         {
           "url": "https://sentry.io/",
@@ -20,7 +29,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.actober.app"
+      "bundleIdentifier": "com.actober.app",
+      "infoPlist": {
+        "NSUserNotificationUsageDescription": "ACT sends you a daily reminder to work on a hands-on project."
+      }
     },
     "android": {
       "adaptiveIcon": {
