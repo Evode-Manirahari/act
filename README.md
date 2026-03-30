@@ -1,21 +1,18 @@
-# ACTOBER AI
+# ACT
 
-**Because free time should build something.**
+**AI guidance for physical work.**
 
-ACTOBER AI is a mobile app with an AI guide called ACT. You tell ACT what's around you — materials, time, space — and ACT gives you a project you can start right now, then walks you through it step by step.
+As multimodal AI, affordable wearable hardware, and a shrinking skilled labor pool converge, the opportunity is to put real-time AI intelligence in the hands of the person doing the physical work.
+
+A small camera and earpiece become your expert — seeing what you see, reasoning about the task, and talking you through each step.
+
+This isn't about replacing tradespeople. It's about making anyone significantly more capable on the job, faster.
 
 ## The core experience
 
-1. **ACT asks** — "Got some free time? Tell me what's around you."
-2. **ACT suggests** — real projects based on your time, materials, and space
-3. **ACT coaches** — step by step, until you finish something
-
-## Project categories
-
-- **Make** — builds, woodworking, useful things from materials
-- **Improve** — home upgrades, organization, practical fixes
-- **Grow** — gardening, herbs, outdoor projects
-- **Create** — crafts, handmade items, decorative things
+1. **ACT sees** — through your camera, in real time
+2. **ACT reasons** — about what's in front of you and what needs to happen next
+3. **ACT talks** — clear, step-by-step guidance through your earpiece
 
 ## Stack
 
