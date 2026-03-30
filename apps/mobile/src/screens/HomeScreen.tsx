@@ -21,6 +21,7 @@ import { usePaywall } from '../hooks/usePaywall';
 import { useVoiceInput } from '../hooks/useVoiceInput';
 import { useNotifications } from '../hooks/useNotifications';
 import { useStreak } from '../hooks/useStreak';
+import { buildNotificationContent } from '../lib/notificationContent';
 
 const SESSION_ID_KEY = 'actober_active_session_id';
 
@@ -440,6 +441,12 @@ export default function HomeScreen() {
         onToggle={handleToggleNotifications}
         onSetTime={handleSetNotifTime}
         onClose={closeNotifPanel}
+        previewContent={buildNotificationContent({
+          streak,
+          domain: user?.domain ?? null,
+          lastProjectTitle: null,
+          notifyHour: prefs.hour,
+        })}
       />
     </KeyboardAvoidingView>
   );
@@ -457,7 +464,7 @@ function formatHour(h: number): string {
 }
 
 function NotificationPanel({
-  visible, slideAnim, enabled, hour, onToggle, onSetTime, onClose,
+  visible, slideAnim, enabled, hour, onToggle, onSetTime, onClose, previewContent,
 }: {
   visible: boolean;
   slideAnim: Animated.Value;
@@ -466,6 +473,7 @@ function NotificationPanel({
   onToggle: (val: boolean) => void;
   onSetTime: (hour: number) => void;
   onClose: () => void;
+  previewContent: { title: string; body: string };
 }) {
   if (!visible) return null;
 
@@ -514,12 +522,8 @@ function NotificationPanel({
 
             <View style={notifStyles.previewBox}>
               <Text style={notifStyles.previewLabel}>Preview</Text>
-              <Text style={notifStyles.previewTitle}>ACT</Text>
-              <Text style={notifStyles.previewBody}>
-                {hour < 12 ? "What are you working on today?" :
-                 hour < 17 ? "Good time to get a job done." :
-                             "Evening. Quick fix before you wind down?"}
-              </Text>
+              <Text style={notifStyles.previewTitle}>{previewContent.title}</Text>
+              <Text style={notifStyles.previewBody}>{previewContent.body}</Text>
             </View>
           </>
         )}

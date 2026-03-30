@@ -59,7 +59,7 @@ export default function PaywallScreen({ onUpgrade }: Props) {
           <Text style={styles.pricePer}>per month</Text>
         </View>
 
-        <TouchableOpacity style={styles.upgradeBtn} onPress={onUpgrade}>
+        <TouchableOpacity style={styles.upgradeBtn} onPress={() => { onUpgrade(); navigation.goBack(); }}>
           <Text style={styles.upgradeBtnText}>Upgrade to ACT Plus</Text>
         </TouchableOpacity>
 
