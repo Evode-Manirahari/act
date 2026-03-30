@@ -1,15 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { colors } from '../theme/colors';
 import { useActStore } from '../store/act';
-import { api } from '../api/act';
+import { api, streamChat } from '../api/act';
 import type { HomeStackParamList } from '../navigation/RootNavigator';
 import CompletionModal from '../components/CompletionModal';
 import { useVoice } from '../hooks/useVoice';
@@ -29,12 +31,14 @@ export default function ProjectScreen() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RoutePropType>();
   const [input, setInput] = useState('');
+  const [pendingImage, setPendingImage] = useState<{ uri: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' } | null>(null);
   const [showCompletion, setShowCompletion] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const streamingIdRef = useRef<string | null>(null);
 
   const {
     session, activeProject, setActiveProject, upsertProject,
-    messages, addMessage, isTyping, setIsTyping, setPhase, clearSession,
+    messages, addMessage, appendToMessage, replaceMessage, isTyping, setIsTyping, setPhase, clearSession,
   } = useActStore();
 
   const { voiceEnabled, speak } = useVoice();
@@ -111,38 +115,81 @@ export default function ProjectScreen() {
     navigation.popToTop();
   }
 
+  async function handleTakePhoto() {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: false });
+    if (result.canceled || !result.assets[0]) return;
+    const manipulated = await ImageManipulator.manipulateAsync(
+      result.assets[0].uri,
+      [{ resize: { width: 1024 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    if (!manipulated.base64) return;
+    setPendingImage({ uri: manipulated.uri, base64: manipulated.base64, mimeType: 'image/jpeg' });
+  }
+
+  async function handlePickImage() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') return;
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.8, base64: false });
+    if (result.canceled || !result.assets[0]) return;
+    const manipulated = await ImageManipulator.manipulateAsync(
+      result.assets[0].uri,
+      [{ resize: { width: 1024 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+    if (!manipulated.base64) return;
+    setPendingImage({ uri: manipulated.uri, base64: manipulated.base64, mimeType: 'image/jpeg' });
+  }
+
   async function sendMessage() {
     const text = input.trim();
-    if (!text || !session || isTyping) return;
+    if ((!text && !pendingImage) || !session || isTyping) return;
+    const image = pendingImage;
     setInput('');
+    setPendingImage(null);
     setIsTyping(true);
 
     addMessage({
       id: Date.now().toString(),
       sessionId: session.id,
       role: 'USER',
-      content: text,
+      content: image ? `📷 ${text || 'What do you see?'}` : text,
       createdAt: new Date().toISOString(),
     });
 
+    const streamId = `stream_${Date.now()}`;
+    streamingIdRef.current = streamId;
+    addMessage({ id: streamId, sessionId: session.id, role: 'ASSISTANT', content: '', createdAt: new Date().toISOString() });
+
     try {
-      const response = await api.sendMessage(session.id, text);
-      addMessage(response.message);
+      const response = await streamChat(
+        session.id,
+        text || 'What do you see?',
+        {
+          imageBase64: image?.base64,
+          imageMimeType: image?.mimeType,
+          onDelta: (delta) => appendToMessage(streamId, delta),
+        }
+      );
+      replaceMessage(streamId, response.message);
       if (response.project) {
         setActiveProject(response.project);
         upsertProject(response.project);
       }
       if (voiceEnabled) speak(response.message.content);
     } catch {
-      addMessage({
-        id: Date.now().toString(),
+      replaceMessage(streamId, {
+        id: streamId,
         sessionId: session.id,
         role: 'ASSISTANT',
-        content: "Connection issue. Try again.",
+        content: 'Connection issue. Try again.',
         createdAt: new Date().toISOString(),
       });
     } finally {
       setIsTyping(false);
+      streamingIdRef.current = null;
     }
   }
 
@@ -268,13 +315,30 @@ export default function ProjectScreen() {
         )}
       </ScrollView>
 
+      {/* Pending image preview */}
+      {pendingImage && (
+        <View style={styles.imagePreviewRow}>
+          <Image source={{ uri: pendingImage.uri }} style={styles.imagePreview} />
+          <TouchableOpacity style={styles.imageRemove} onPress={() => setPendingImage(null)}>
+            <Text style={styles.imageRemoveText}>✕</Text>
+          </TouchableOpacity>
+          <Text style={styles.imagePreviewLabel}>Photo ready to send</Text>
+        </View>
+      )}
+
       {/* Input */}
       <View style={styles.inputRow}>
+        <TouchableOpacity style={styles.cameraBtn} onPress={handleTakePhoto} disabled={isTyping}>
+          <Text style={styles.cameraBtnText}>📷</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.cameraBtn} onPress={handlePickImage} disabled={isTyping}>
+          <Text style={styles.cameraBtnText}>🖼</Text>
+        </TouchableOpacity>
         <TextInput
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder="Ask ACT anything..."
+          placeholder={pendingImage ? 'Add a note... (or just send)' : 'Ask ACT anything...'}
           placeholderTextColor={colors.textLight}
           multiline
           maxLength={500}
@@ -282,9 +346,9 @@ export default function ProjectScreen() {
           blurOnSubmit={false}
         />
         <TouchableOpacity
-          style={[styles.sendBtn, { backgroundColor: categoryColor }, (!input.trim() || isTyping) && styles.sendBtnDisabled]}
+          style={[styles.sendBtn, { backgroundColor: categoryColor }, ((!input.trim() && !pendingImage) || isTyping) && styles.sendBtnDisabled]}
           onPress={sendMessage}
-          disabled={!input.trim() || isTyping}
+          disabled={(!input.trim() && !pendingImage) || isTyping}
         >
           <Text style={styles.sendBtnText}>→</Text>
         </TouchableOpacity>
@@ -387,12 +451,29 @@ const styles = StyleSheet.create({
   },
   actMessageText: { fontSize: 14, color: colors.text, lineHeight: 20 },
 
+  imagePreviewRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  imagePreview: { width: 48, height: 48, borderRadius: 8 },
+  imageRemove: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center',
+  },
+  imageRemoveText: { fontSize: 11, color: '#fff', fontWeight: '700' },
+  imagePreviewLabel: { fontSize: 12, color: colors.textMuted, flex: 1 },
+
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end',
-    padding: 12, gap: 8,
+    padding: 12, gap: 6,
     backgroundColor: colors.surface,
     borderTopWidth: 1, borderTopColor: colors.border,
   },
+  cameraBtn: {
+    width: 40, height: 44, alignItems: 'center', justifyContent: 'center',
+  },
+  cameraBtnText: { fontSize: 22 },
   input: {
     flex: 1, minHeight: 44, maxHeight: 120,
     backgroundColor: colors.surfaceAlt, borderRadius: 22,
