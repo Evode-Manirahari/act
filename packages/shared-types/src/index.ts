@@ -14,6 +14,7 @@ export interface User {
   subscriptionTier: 'FREE' | 'PLUS';
   subscriptionExpiry?: string;
   projectsThisMonth: number;
+  monthResetAt: string;
   createdAt: string;
 }
 

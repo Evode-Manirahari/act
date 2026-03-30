@@ -85,7 +85,7 @@ router.post('/', chatLimiter, async (req: Request, res: Response) => {
     // Build the new user message content — with optional image
     type ContentBlock =
       | { type: 'text'; text: string }
-      | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } };
+      | { type: 'image'; source: { type: 'base64'; media_type: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'; data: string } };
 
     let newUserContent: string | ContentBlock[];
     if (imageBase64 && imageMimeType) {
