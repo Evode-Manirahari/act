@@ -9,6 +9,7 @@ const RegisterSchema = z.object({
   deviceId: z.string().min(1),
   name: z.string().optional(),
   experienceLevel: z.enum(['BEGINNER', 'INTERMEDIATE', 'EXPERIENCED']).optional(),
+  domain: z.enum(['PLUMBING', 'ELECTRICAL', 'CARPENTRY', 'HVAC', 'PAINTING', 'TILING', 'GENERAL']).optional(),
 });
 
 // POST /api/users/register
@@ -18,15 +19,21 @@ router.post('/register', async (req: Request, res: Response) => {
     return res.status(400).json({ error: parsed.error.flatten() });
   }
 
-  const { deviceId, name, experienceLevel } = parsed.data;
+  const { deviceId, name, experienceLevel, domain } = parsed.data;
 
   const user = await prisma.user.upsert({
     where: { deviceId },
     update: {
       ...(name !== undefined && { name }),
       ...(experienceLevel !== undefined && { experienceLevel }),
+      ...(domain !== undefined && { domain }),
     },
-    create: { deviceId, name, experienceLevel: experienceLevel ?? 'BEGINNER' },
+    create: {
+      deviceId,
+      name,
+      experienceLevel: experienceLevel ?? 'BEGINNER',
+      domain: domain ?? null,
+    },
   });
 
   res.json(user);

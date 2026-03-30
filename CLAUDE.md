@@ -1,18 +1,21 @@
-# Actober — CLAUDE.md
+# ACT — CLAUDE.md
 
 ## Product Vision
-ACTOBER AI helps people turn free time into hands-on progress.
-A user opens the app, tells ACT what they have around them — materials, tools, time, space — and ACT gives them a real project they can start right now, then guides them step by step until they finish something.
+ACT is real-time AI guidance for physical workers.
+A small camera and earpiece become your expert — seeing what you see, reasoning about the task, and talking you through each step.
 
-**AI Persona**: ACT — warm, direct, practical. The mentor in the garage.
-**Tagline**: Because free time should build something.
-**Target user**: Anyone with free time and a little curiosity — teenagers, retirees, working adults on weekends.
+**AI Persona**: ACT — direct, safety-first, trade-calibrated. The best tradesperson you know in your ear.
+**Tagline**: AI guidance for physical work.
+**Target user**: Tradespeople, DIYers, and anyone doing hands-on physical work — plumbers, electricians, carpenters, HVAC techs, painters, tilers.
 
-## Project Categories
-- **MAKE** — builds, woodworking, things made from materials
-- **IMPROVE** — home upgrades, organization, practical fixes
-- **GROW** — gardening, herbs, outdoor projects
-- **CREATE** — crafts, decorative items, handmade things
+## Trade Domains (JobDomain)
+- **PLUMBING** 🔧 — pipes, fixtures, drains, water heaters
+- **ELECTRICAL** ⚡ — wiring, outlets, panels, fixtures
+- **CARPENTRY** 🪵 — framing, trim, doors, cabinets
+- **HVAC** ❄️ — heating, cooling, ventilation, ducts
+- **PAINTING** 🖌 — interior/exterior, prep, finishing
+- **TILING** 🧱 — floor, wall, grout, substrate
+- **GENERAL** 🔩 — general maintenance and repairs
 
 ## Stack
 - **Mobile**: React Native (Expo SDK 51), TypeScript
@@ -30,26 +33,20 @@ A user opens the app, tells ACT what they have around them — materials, tools,
 - `packages/shared-types` — TypeScript types shared between mobile and API
 
 ## Current State
-- Phase 1: Project scaffold, shared types, ACT prompts package
-- Phase 2: Prisma schema, API routes (users, sessions, chat, projects)
-- Phase 3: Mobile navigation, screens (Boot, Home, Project, History), Zustand store
+- Full web app (React+Vite): landing page + hash-routed chat app
+- Full mobile app (React Native Expo): boot, onboarding, home, project screens
+- API: Express + Prisma + Claude streaming SSE + vision support
+- Database: PostgreSQL (Prisma schema with User, Session, Message, Project, Step)
+- Cache: Redis (rate limiting, subscription enforcement)
+- Streaming: SSE via `anthropic.messages.stream()` — tokens appear in real-time
+- Vision: `imageBase64` + `imageMimeType` in chat requests → Claude image blocks
+- Trade domains: `JobDomain` on User, injected into system prompt per-request
 
 ## Conversation Phases
 ACT moves through three phases in every session:
-1. **DISCOVERY** — ACT asks what the user has (materials, time, space, experience)
-2. **SUGGESTION** — ACT proposes 2-3 projects based on context
-3. **COACHING** — ACT guides step by step through the chosen project
-
-## API Routes
-- `POST /api/users/register` — register or upsert user by deviceId
-- `GET  /api/users/:deviceId` — fetch user
-- `POST /api/sessions` — create a new chat session
-- `POST /api/chat` — send a message; ACT replies via Claude
-- `GET  /api/sessions/:id` — fetch session with messages
-- `POST /api/projects` — save a project when user commits to one
-- `PATCH /api/projects/:id` — update project status / step progress
-- `GET  /api/projects/user/:userId` — list user's projects
-- `GET  /health` — health check
+1. **DISCOVERY** — ACT asks what the job is, takes a photo if helpful
+2. **SUGGESTION** — ACT proposes 2-3 job plans with steps, materials, time estimate
+3. **COACHING** — ACT guides step by step; user confirms each step or shares photos
 
 ## THE RULE
 **DO NOT rebuild anything already working. Extend only.**
@@ -65,13 +62,33 @@ Read a file before touching it. Understand before changing.
 - Success: #10B981 (green)
 
 ## ACT Persona
-ACT speaks like a wise, grounded mentor. Warm but direct. Encouraging without being cheesy. Patient with beginners.
-Short sentences. Practical language. No jargon. No filler.
-- "Let's start with what you've got."
-- "Keep it simple. We just need a solid first step."
-- "That's progress."
-- "Good. Now let's do the next part."
-- "You don't need a perfect plan to begin."
+ACT speaks like the best tradesperson you know. Direct. Safety-first. No padding.
+Short sentences. Trade vocabulary where appropriate. Never condescending.
+- "Turn off the breaker first. Don't skip this."
+- "That fitting needs thread tape."
+- "Good — now hand-tighten. We'll torque it after."
+- "Photo helps here. Show me what you're working with."
+- "That's a hairline crack in the P-trap. Needs replacing, not patching."
+
+## API Routes
+- `POST /api/users/register` — register or upsert user by deviceId (accepts `domain`)
+- `GET  /api/users/:deviceId` — fetch user
+- `POST /api/sessions` — create a new chat session
+- `POST /api/chat` — **SSE streaming** chat; accepts `imageBase64` + `imageMimeType`
+- `GET  /api/sessions/:id` — fetch session with messages
+- `POST /api/projects` — save a project when user commits to one
+- `PATCH /api/projects/:id` — update project status / step progress
+- `GET  /api/projects/user/:userId` — list user's projects
+- `GET  /health` — health check
+
+## Streaming (SSE)
+`POST /api/chat` returns `Content-Type: text/event-stream`. Events:
+```
+data: {"type":"delta","content":"token text"}
+data: {"type":"done","message":{...},"phase":"COACHING","suggestions":[...]}
+data: {"type":"error","message":"error text"}
+```
+Client (web + mobile): ReadableStream reader, split on `\n`, parse `data: ` lines.
 
 ## gstack
 Use the /browse skill from gstack for all web browsing tasks.

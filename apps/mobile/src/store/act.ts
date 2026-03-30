@@ -11,10 +11,12 @@ interface ActState {
   setSession: (session: Session) => void;
   clearSession: () => void;
 
-  // Messages (optimistic UI)
+  // Messages (optimistic UI + streaming)
   messages: Message[];
   addMessage: (msg: Message) => void;
   setMessages: (msgs: Message[]) => void;
+  appendToMessage: (id: string, delta: string) => void;
+  replaceMessage: (id: string, msg: Message) => void;
 
   // Current phase
   phase: ConversationPhase;
@@ -49,6 +51,14 @@ export const useActStore = create<ActState>((set) => ({
   messages: [],
   addMessage: (msg) => set((s) => ({ messages: [...s.messages, msg] })),
   setMessages: (messages) => set({ messages }),
+  appendToMessage: (id, delta) => set((s) => ({
+    messages: s.messages.map((m) =>
+      m.id === id ? { ...m, content: m.content + delta } : m
+    ),
+  })),
+  replaceMessage: (id, msg) => set((s) => ({
+    messages: s.messages.map((m) => m.id === id ? msg : m),
+  })),
 
   phase: 'DISCOVERY',
   setPhase: (phase) => set({ phase }),

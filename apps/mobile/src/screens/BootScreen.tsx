@@ -69,8 +69,8 @@ export default function BootScreen() {
   return (
     <View style={styles.container}>
       <Animated.View style={{ opacity, alignItems: 'center' }}>
-        <Text style={styles.logo}>ACTOBER</Text>
-        <Text style={styles.tagline}>because free time should build something.</Text>
+        <Text style={styles.logo}>ACT</Text>
+        <Text style={styles.tagline}>AI guidance for physical work.</Text>
       </Animated.View>
     </View>
   );
@@ -82,8 +82,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32,
   },
   logo: {
-    fontSize: 36, fontWeight: '800', color: '#FFFFFF',
-    letterSpacing: 4, textAlign: 'center',
+    fontSize: 48, fontWeight: '900', color: '#FFFFFF',
+    letterSpacing: 8, textAlign: 'center',
   },
   tagline: {
     fontSize: 14, color: 'rgba(255,255,255,0.8)',
