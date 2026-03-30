@@ -21,7 +21,7 @@ export default function BootScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { setUser, setSession, setActiveProject, setPhase } = useActStore();
   const { reschedule } = useNotifications();
-  const { load: loadStreak, streak } = useStreak();
+  const { load: loadStreak } = useStreak();
   const opacity = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -45,8 +45,8 @@ export default function BootScreen() {
       setUser(user);
 
       // Reschedule notification with fresh content (streak + domain)
-      await loadStreak();
-      reschedule({ streak, domain: user.domain ?? null, lastProjectTitle: null });
+      const streakData = await loadStreak();
+      reschedule({ streak: streakData.streak, domain: user.domain ?? null, lastProjectTitle: null });
 
       // Try to resume the last active session
       const savedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);

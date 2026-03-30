@@ -24,7 +24,7 @@ export interface StreakData {
 export function useStreak() {
   const [data, setData] = useState<StreakData>({ streak: 0, lastBuildDate: null, totalCompleted: 0 });
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<StreakData> => {
     const [streakRaw, lastBuild, totalRaw] = await Promise.all([
       AsyncStorage.getItem(STREAK_KEY),
       AsyncStorage.getItem(LAST_BUILD_KEY),
@@ -40,7 +40,9 @@ export function useStreak() {
       await AsyncStorage.setItem(STREAK_KEY, '0');
     }
 
-    setData({ streak, lastBuildDate: lastBuild, totalCompleted: total });
+    const result: StreakData = { streak, lastBuildDate: lastBuild, totalCompleted: total };
+    setData(result);
+    return result;
   }, []);
 
   const recordCompletion = useCallback(async () => {

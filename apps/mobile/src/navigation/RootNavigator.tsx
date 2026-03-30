@@ -10,6 +10,7 @@ import HomeScreen from '../screens/HomeScreen';
 import ProjectScreen from '../screens/ProjectScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProjectDetailScreen from '../screens/ProjectDetailScreen';
+import ProfileScreen from '../screens/ProfileScreen';
 import { usePaywall } from '../hooks/usePaywall';
 
 export type RootStackParamList = {
@@ -32,6 +33,7 @@ export type HistoryStackParamList = {
 export type MainTabParamList = {
   Today: undefined;
   History: undefined;
+  Profile: undefined;
 };
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
@@ -81,6 +83,11 @@ function MainTabs() {
         name="History"
         component={HistoryStackNavigator}
         options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📋</Text> }}
+      />
+      <Tabs.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>👤</Text> }}
       />
     </Tabs.Navigator>
   );
