@@ -20,30 +20,20 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api-staging.actober.com",
+        "EXPO_PUBLIC_API_URL": "https://api.actguidance.app",
         "EXPO_PUBLIC_ENV": "staging"
       }
     },
     "production": {
-      "ios": {
-        "buildType": "release"
-      },
-      "android": {
-        "buildType": "app-bundle"
-      },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.actober.com",
+        "EXPO_PUBLIC_API_URL": "https://api.actguidance.app",
         "EXPO_PUBLIC_ENV": "production"
       }
     }
   },
   "submit": {
     "production": {
-      "ios": {
-        "appleId": "",
-        "ascAppId": "",
-        "appleTeamId": ""
-      },
+      "ios": {},
       "android": {
         "serviceAccountKeyPath": "./google-service-account.json",
         "track": "production"
