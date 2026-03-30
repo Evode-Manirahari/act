@@ -28,7 +28,7 @@ export default function PaywallScreen({ onUpgrade }: Props) {
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.header}>
-          <Text style={styles.brand}>ACTOBER</Text>
+          <Text style={styles.brand}>ACT</Text>
           <View style={styles.plusBadge}>
             <Text style={styles.plusText}>PLUS</Text>
           </View>

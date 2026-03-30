@@ -1,11 +1,17 @@
 {
   "expo": {
-    "name": "Actober",
-    "slug": "actober",
+    "name": "ACT",
+    "slug": "act-guidance",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
     "backgroundColor": "#0A0A0A",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAFAF8"
+    },
     "plugins": [
       "expo-camera",
       "expo-av",
@@ -17,32 +23,33 @@
           "sounds": [],
           "iosDisplayInForeground": true
         }
-      ],
-      [
-        "@sentry/react-native/expo",
-        {
-          "url": "https://sentry.io/",
-          "project": "actober",
-          "organization": "actober"
-        }
       ]
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.actober.app",
+      "bundleIdentifier": "com.actguidance.app",
       "infoPlist": {
-        "NSUserNotificationUsageDescription": "ACT sends you a daily reminder to work on a hands-on project."
+        "NSUserNotificationUsageDescription": "ACT sends you a daily reminder to work on a hands-on project.",
+        "NSCameraUsageDescription": "ACT uses your camera to see what you're working on and give accurate guidance.",
+        "NSMicrophoneUsageDescription": "ACT uses your microphone so you can describe the job by speaking.",
+        "NSPhotoLibraryUsageDescription": "ACT can read photos from your library to help diagnose the job."
       }
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0A0A0A"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F97316"
       },
-      "package": "com.actober.app"
+      "package": "com.actguidance.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_EXTERNAL_STORAGE"
+      ]
     },
     "extra": {
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
       }
     }
   }

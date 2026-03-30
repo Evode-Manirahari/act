@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity, StyleSheet,
+  View, Text, ScrollView, TouchableOpacity, StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -220,6 +220,7 @@ export default function HistoryScreen() {
   const navigation = useNavigation<NavProp>();
   const { user, projects, setProjects, setActiveProject } = useActStore();
   const { streak, totalCompleted, load: loadStreak } = useStreak();
+  const [loading, setLoading] = useState(false);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -230,10 +231,12 @@ export default function HistoryScreen() {
 
   async function loadProjects() {
     if (!user) return;
+    setLoading(true);
     try {
       const data = await api.getUserProjects(user.id);
       setProjects(data);
     } catch {}
+    setLoading(false);
   }
 
   function openDetail(project: Project) {
@@ -276,8 +279,15 @@ export default function HistoryScreen() {
         />
       )}
 
+      {/* Loading state */}
+      {loading && projects.length === 0 && (
+        <View style={styles.loadingState}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
+
       {/* Empty state */}
-      {!hasAny && (
+      {!loading && !hasAny && (
         <View style={styles.empty}>
           <View style={styles.emptyIconBg}>
             <Text style={styles.emptyIcon}>🔧</Text>
@@ -433,6 +443,10 @@ const styles = StyleSheet.create({
   cardMetaDot: { fontSize: 13, color: colors.border },
   cardChevron: { marginLeft: 'auto' as any },
   cardChevronText: { fontSize: 20, color: colors.textLight, lineHeight: 20 },
+
+  loadingState: {
+    paddingVertical: 80, alignItems: 'center',
+  },
 
   // Empty state
   empty: {

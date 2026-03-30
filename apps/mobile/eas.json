@@ -7,7 +7,7 @@
       "developmentClient": true,
       "distribution": "internal",
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:3001",
+        "EXPO_PUBLIC_API_URL": "http://localhost:3002",
         "EXPO_PUBLIC_ENV": "development"
       }
     },

@@ -42,8 +42,8 @@ export default function CompletionModal({ project, visible, onStartAnother, onDi
   async function handleShare() {
     try {
       await Share.share({
-        message: `I just built "${project.title}" with ACTOBER AI. Free time well spent. 🔧`,
-        title: 'ACTOBER AI',
+        message: `I just built "${project.title}" with ACT — AI guidance for physical work. 🔧`,
+        title: 'ACT',
       });
     } catch {}
   }
