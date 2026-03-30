@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Pressable,
-  Modal, Switch, Animated,
+  Modal, Switch, Animated, Keyboard,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -67,6 +67,7 @@ export default function HomeScreen() {
   const { streak } = useStreak();
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const notifSlide = useRef(new Animated.Value(300)).current;
+  const [connectionError, setConnectionError] = useState(false);
 
   useEffect(() => {
     loadVoicePreference();
@@ -118,52 +119,40 @@ export default function HomeScreen() {
 
   async function handleCameraCapture() {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      // Try camera
-      const camStatus = await ImagePicker.requestCameraPermissionsAsync();
-      if (camStatus.status !== 'granted') return;
-    }
-
+    if (status !== 'granted') return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
-      base64: false, // we'll do this after resize
+      base64: false,
     });
-
     if (result.canceled || !result.assets[0]) return;
-
-    const asset = result.assets[0];
-    // Resize to max 1024px on longest side for API efficiency
-    const manipulated = await ImageManipulator.manipulateAsync(
-      asset.uri,
-      [{ resize: { width: 1024 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-    );
-
-    if (!manipulated.base64) return;
-    setPendingImage({ uri: manipulated.uri, base64: manipulated.base64, mimeType: 'image/jpeg' });
+    try {
+      const manipulated = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 1024 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      if (manipulated.base64) {
+        setPendingImage({ uri: manipulated.uri, base64: manipulated.base64, mimeType: 'image/jpeg' });
+      }
+    } catch {}
   }
 
   async function handleTakePhoto() {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') return;
-
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.8,
-      base64: false,
-    });
-
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.8, base64: false });
     if (result.canceled || !result.assets[0]) return;
-
-    const asset = result.assets[0];
-    const manipulated = await ImageManipulator.manipulateAsync(
-      asset.uri,
-      [{ resize: { width: 1024 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
-    );
-
-    if (!manipulated.base64) return;
-    setPendingImage({ uri: manipulated.uri, base64: manipulated.base64, mimeType: 'image/jpeg' });
+    try {
+      const manipulated = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri,
+        [{ resize: { width: 1024 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      if (manipulated.base64) {
+        setPendingImage({ uri: manipulated.uri, base64: manipulated.base64, mimeType: 'image/jpeg' });
+      }
+    } catch {}
   }
 
   async function sendToACT(sessionId: string, text: string, image?: PendingImage) {
@@ -204,18 +193,19 @@ export default function HomeScreen() {
         }
       );
 
-      // Replace streaming stub with persisted message from server
+      setConnectionError(false);
       replaceMessage(streamId, response.message);
       setPhase(response.phase);
       if (response.suggestions) setSuggestions(response.suggestions);
       if (response.project) setActiveProject(response.project);
       if (voiceEnabled) speak(response.message.content);
     } catch {
+      setConnectionError(true);
       replaceMessage(streamId, {
         id: streamId,
         sessionId,
         role: 'ASSISTANT',
-        content: "I'm having trouble connecting. Try again in a moment.",
+        content: "Can't reach ACT right now. Check your connection and try again.",
         createdAt: new Date().toISOString(),
       });
     } finally {
@@ -230,6 +220,7 @@ export default function HomeScreen() {
     const image = pendingImage;
     setInput('');
     setPendingImage(null);
+    Keyboard.dismiss();
     sendToACT(session.id, text, image ?? undefined);
   }
 
@@ -308,6 +299,16 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Connection error banner */}
+      {connectionError && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>No connection — check your network</Text>
+          <TouchableOpacity onPress={() => setConnectionError(false)}>
+            <Text style={styles.errorBannerDismiss}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Chat */}
       <ScrollView
@@ -697,4 +698,12 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { opacity: 0.4 },
   sendBtnText: { fontSize: 20, color: '#fff', fontWeight: '700' },
+
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: '#FEF2F2', paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, borderBottomColor: '#FECACA',
+  },
+  errorBannerText: { fontSize: 13, color: colors.error, fontWeight: '600', flex: 1 },
+  errorBannerDismiss: { fontSize: 14, color: colors.error, fontWeight: '700', paddingLeft: 12 },
 });

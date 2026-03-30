@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity, StyleSheet,
-  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Pressable,
+  TextInput, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Pressable, Keyboard,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -151,6 +151,7 @@ export default function ProjectScreen() {
     const image = pendingImage;
     setInput('');
     setPendingImage(null);
+    Keyboard.dismiss();
     setIsTyping(true);
 
     addMessage({

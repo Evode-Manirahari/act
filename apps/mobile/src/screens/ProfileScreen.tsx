@@ -40,6 +40,7 @@ export default function ProfileScreen() {
   const [domain, setDomain] = useState<JobDomain>(user?.domain ?? 'GENERAL');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState(false);
 
   const hasChanges =
     name.trim() !== (user?.name ?? '') ||
@@ -52,9 +53,12 @@ export default function ProfileScreen() {
     try {
       const updated = await api.registerUser(user.deviceId, name.trim() || undefined, level, domain);
       setUser(updated);
+      setSaveError(false);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
-    } catch {}
+    } catch {
+      setSaveError(true);
+    }
     setSaving(false);
   }
 
@@ -144,6 +148,13 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* Save error */}
+        {saveError && (
+          <View style={styles.saveErrorBox}>
+            <Text style={styles.saveErrorText}>Couldn't save — check your connection.</Text>
+          </View>
+        )}
 
         {/* Save */}
         <TouchableOpacity
@@ -261,6 +272,13 @@ const styles = StyleSheet.create({
   saveBtnDisabled: { opacity: 0.35 },
   saveBtnSaved: { backgroundColor: colors.success },
   saveBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+
+  saveErrorBox: {
+    marginHorizontal: 20, marginTop: 16,
+    backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#FECACA',
+  },
+  saveErrorText: { fontSize: 13, color: colors.error, fontWeight: '600', textAlign: 'center' },
 
   footer: { alignItems: 'center', gap: 4, marginTop: 8, marginBottom: 8 },
   footerText: { fontSize: 12, color: colors.textLight },
