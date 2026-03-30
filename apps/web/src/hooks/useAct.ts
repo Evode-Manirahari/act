@@ -26,6 +26,7 @@ export function useAct() {
   const [activeProject, setActiveProject] = useState<Project | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [isTyping, setIsTyping] = useState(false)
+  const [sessionKey, setSessionKey] = useState(0)
   const sessionRef = useRef<Session | null>(null)
 
   useEffect(() => { sessionRef.current = session }, [session])
@@ -206,6 +207,7 @@ export function useAct() {
     setPhase('DISCOVERY')
     setSuggestions(null)
     setActiveProject(null)
+    setSessionKey(k => k + 1)
     setScreen('chat')
   }
 
@@ -220,7 +222,7 @@ export function useAct() {
   return {
     screen, setScreen,
     user, session, messages, phase, suggestions, activeProject, projects,
-    isTyping,
+    isTyping, sessionKey,
     finishOnboarding, kickoff, sendMessage, pickSuggestion,
     markStepDone, completeProject, abandonProject, newSession, loadProjects,
   }
