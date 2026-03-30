@@ -8,15 +8,16 @@ datasource db {
 }
 
 model User {
-  id                  String          @id @default(uuid())
-  deviceId            String          @unique
+  id                  String           @id @default(uuid())
+  deviceId            String           @unique
   name                String?
-  experienceLevel     ExperienceLevel @default(BEGINNER)
+  experienceLevel     ExperienceLevel  @default(BEGINNER)
+  domain              JobDomain?
   subscriptionTier    SubscriptionTier @default(FREE)
   subscriptionExpiry  DateTime?
-  projectsThisMonth   Int             @default(0)
-  monthResetAt        DateTime        @default(now())
-  createdAt           DateTime        @default(now())
+  projectsThisMonth   Int              @default(0)
+  monthResetAt        DateTime         @default(now())
+  createdAt           DateTime         @default(now())
   sessions            Session[]
   projects            Project[]
 }
@@ -70,6 +71,16 @@ model Step {
   completed   Boolean  @default(false)
 
   @@unique([projectId, order])
+}
+
+enum JobDomain {
+  PLUMBING
+  ELECTRICAL
+  CARPENTRY
+  HVAC
+  PAINTING
+  TILING
+  GENERAL
 }
 
 enum SubscriptionTier {

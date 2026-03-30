@@ -1,4 +1,5 @@
 export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'EXPERIENCED';
+export type JobDomain = 'PLUMBING' | 'ELECTRICAL' | 'CARPENTRY' | 'HVAC' | 'PAINTING' | 'TILING' | 'GENERAL';
 export type ProjectCategory = 'MAKE' | 'IMPROVE' | 'GROW' | 'CREATE';
 export type ProjectStatus = 'SUGGESTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
 export type MessageRole = 'USER' | 'ASSISTANT';
@@ -9,6 +10,7 @@ export interface User {
   deviceId: string;
   name?: string;
   experienceLevel: ExperienceLevel;
+  domain?: JobDomain;
   subscriptionTier: 'FREE' | 'PLUS';
   subscriptionExpiry?: string;
   projectsThisMonth: number;
@@ -73,6 +75,8 @@ export interface ProjectSuggestion {
 export interface ChatRequest {
   sessionId: string;
   message: string;
+  imageBase64?: string;
+  imageMimeType?: 'image/jpeg' | 'image/png' | 'image/webp';
 }
 
 export interface ChatResponse {

@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { api } from '../api/act'
-import type { User, Session, Message, Project, ProjectSuggestion, ConversationPhase } from '@actober/shared-types'
+import { api, streamChat } from '../api/act'
+import type { User, Session, Message, Project, ProjectSuggestion, ConversationPhase, JobDomain } from '@actober/shared-types'
 
-const DEVICE_ID_KEY = 'actober_device_id'
-const SESSION_KEY = 'actober_session_id'
+const DEVICE_ID_KEY = 'act_device_id'
+const SESSION_KEY = 'act_session_id'
 
 function getOrCreateDeviceId(): string {
   let id = localStorage.getItem(DEVICE_ID_KEY)
@@ -28,13 +28,9 @@ export function useAct() {
   const [isTyping, setIsTyping] = useState(false)
   const sessionRef = useRef<Session | null>(null)
 
-  // Keep ref in sync for use inside async callbacks
   useEffect(() => { sessionRef.current = session }, [session])
 
-  // Boot: register user, resume or create session
-  useEffect(() => {
-    boot()
-  }, [])
+  useEffect(() => { boot() }, [])
 
   async function boot() {
     try {
@@ -42,7 +38,6 @@ export function useAct() {
       const u = await api.registerUser(deviceId)
       setUser(u)
 
-      // Try resuming last session
       const savedId = localStorage.getItem(SESSION_KEY)
       if (savedId) {
         try {
@@ -51,9 +46,7 @@ export function useAct() {
             setSession(s)
             setMessages(s.messages ?? [])
             setPhase(s.phase)
-            if (s.project?.status === 'IN_PROGRESS') {
-              setActiveProject(s.project)
-            }
+            if (s.project?.status === 'IN_PROGRESS') setActiveProject(s.project)
             setScreen(u.name ? 'chat' : 'onboarding')
             return
           }
@@ -67,10 +60,10 @@ export function useAct() {
     }
   }
 
-  async function finishOnboarding(name: string, experienceLevel: 'BEGINNER' | 'INTERMEDIATE' | 'EXPERIENCED') {
+  async function finishOnboarding(name: string, experienceLevel: 'BEGINNER' | 'INTERMEDIATE' | 'EXPERIENCED', domain?: JobDomain) {
     if (!user) return
     try {
-      const updated = await api.registerUser(user.deviceId, name || undefined, experienceLevel)
+      const updated = await api.registerUser(user.deviceId, name || undefined, experienceLevel, domain)
       setUser(updated)
     } catch (err) {
       console.error('Finish onboarding error:', err)
@@ -90,7 +83,8 @@ export function useAct() {
     return s
   }
 
-  const sendMessage = useCallback(async (text: string, silent = false) => {
+  // Stream-aware sendMessage — shows tokens as they arrive
+  const sendMessage = useCallback(async (text: string, silent = false, imageBase64?: string, imageMimeType?: 'image/jpeg' | 'image/png' | 'image/webp') => {
     let s = sessionRef.current
     if (!s) {
       s = await startSession()
@@ -98,31 +92,39 @@ export function useAct() {
     }
 
     if (!silent) {
-      const optimistic: Message = {
+      setMessages(prev => [...prev, {
         id: Date.now().toString(),
-        sessionId: s.id,
+        sessionId: s!.id,
         role: 'USER',
-        content: text,
+        content: imageBase64 ? `📷 ${text || 'What do you see?'}` : text,
         createdAt: new Date().toISOString(),
-      }
-      setMessages(prev => [...prev, optimistic])
+      }])
     }
 
+    // Add streaming placeholder
+    const streamId = `stream_${Date.now()}`
+    const stub: Message = { id: streamId, sessionId: s.id, role: 'ASSISTANT', content: '', createdAt: new Date().toISOString() }
+    setMessages(prev => [...prev, stub])
     setIsTyping(true)
+
     try {
-      const res = await api.sendMessage(s.id, text)
-      setMessages(prev => [...prev.filter(m => m.id !== 'typing'), res.message])
+      const res = await streamChat(s.id, text, {
+        imageBase64,
+        imageMimeType,
+        onDelta: (delta) => {
+          setMessages(prev => prev.map(m => m.id === streamId ? { ...m, content: m.content + delta } : m))
+        },
+      })
+      // Replace stub with persisted server message
+      setMessages(prev => prev.map(m => m.id === streamId ? res.message : m))
       setPhase(res.phase)
       if (res.suggestions?.length) setSuggestions(res.suggestions)
       if (res.project) setActiveProject(res.project)
     } catch {
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        sessionId: s!.id,
-        role: 'ASSISTANT',
+      setMessages(prev => prev.map(m => m.id === streamId ? {
+        ...m,
         content: "I'm having trouble connecting. Try again in a moment.",
-        createdAt: new Date().toISOString(),
-      }])
+      } : m))
     } finally {
       setIsTyping(false)
     }
@@ -131,16 +133,7 @@ export function useAct() {
   async function kickoff() {
     const s = await startSession()
     if (!s || !user) return
-    setIsTyping(true)
-    try {
-      const res = await api.sendMessage(s.id, 'Hello')
-      setMessages([res.message])
-      setPhase(res.phase)
-    } catch (err) {
-      console.error('Kickoff error:', err)
-    } finally {
-      setIsTyping(false)
-    }
+    await sendMessage('Hello', true)
   }
 
   async function pickSuggestion(suggestion: ProjectSuggestion) {
@@ -156,7 +149,7 @@ export function useAct() {
       setActiveProject(project)
       setPhase('COACHING')
       setProjects(prev => [project, ...prev])
-      await sendMessage(`Let's do: ${suggestion.title}`)
+      await sendMessage(`Let's do this: ${suggestion.title}`)
       setScreen('project')
     } catch (err) {
       console.error('Pick suggestion error:', err)

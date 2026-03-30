@@ -1,14 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
-  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
+  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
 import { colors } from '../theme/colors';
 import { useActStore } from '../store/act';
-import { api } from '../api/act';
+import { api, streamChat } from '../api/act';
 import type { ProjectSuggestion } from '@actober/shared-types';
 import type { HomeStackParamList, RootStackParamList } from '../navigation/RootNavigator';
 import SuggestionCard from '../components/SuggestionCard';
@@ -19,14 +21,14 @@ import { usePaywall } from '../hooks/usePaywall';
 const SESSION_ID_KEY = 'actober_active_session_id';
 
 const QUICK_CHIPS = [
-  '30 minutes free',
-  'I have cardboard',
-  'I\'m outdoors',
-  'No tools, no materials',
-  '1 hour + some tools',
-  'I have scrap wood',
-  'Rainy afternoon indoors',
-  'I want to improve a room',
+  'Leaking pipe under the sink',
+  'Outlet not working',
+  'Door won\'t close properly',
+  'Fixing a squeaky floor',
+  'Patching drywall',
+  'Running new cable',
+  'Replace a light fixture',
+  'Unblock a drain',
 ];
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -36,14 +38,18 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 type NavProp = NativeStackNavigationProp<HomeStackParamList & RootStackParamList>;
 
+type PendingImage = { uri: string; base64: string; mimeType: 'image/jpeg' | 'image/png' | 'image/webp' };
+
 export default function HomeScreen() {
   const navigation = useNavigation<NavProp>();
   const [input, setInput] = useState('');
+  const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const streamingIdRef = useRef<string | null>(null);
 
   const {
     user, session, setSession, clearSession,
-    messages, addMessage,
+    messages, addMessage, appendToMessage, replaceMessage,
     phase, setPhase,
     suggestions, setSuggestions,
     activeProject, setActiveProject,
@@ -78,7 +84,57 @@ export default function HomeScreen() {
     if (user) startSession();
   }
 
-  async function sendToACT(sessionId: string, text: string) {
+  async function handleCameraCapture() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      // Try camera
+      const camStatus = await ImagePicker.requestCameraPermissionsAsync();
+      if (camStatus.status !== 'granted') return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+      base64: false, // we'll do this after resize
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    // Resize to max 1024px on longest side for API efficiency
+    const manipulated = await ImageManipulator.manipulateAsync(
+      asset.uri,
+      [{ resize: { width: 1024 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+
+    if (!manipulated.base64) return;
+    setPendingImage({ uri: manipulated.uri, base64: manipulated.base64, mimeType: 'image/jpeg' });
+  }
+
+  async function handleTakePhoto() {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') return;
+
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.8,
+      base64: false,
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    const manipulated = await ImageManipulator.manipulateAsync(
+      asset.uri,
+      [{ resize: { width: 1024 } }],
+      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+    );
+
+    if (!manipulated.base64) return;
+    setPendingImage({ uri: manipulated.uri, base64: manipulated.base64, mimeType: 'image/jpeg' });
+  }
+
+  async function sendToACT(sessionId: string, text: string, image?: PendingImage) {
     setIsTyping(true);
     const isStart = text === '__START__';
 
@@ -87,21 +143,44 @@ export default function HomeScreen() {
         id: Date.now().toString(),
         sessionId,
         role: 'USER',
-        content: text,
+        content: image ? `📷 ${text || 'What do you see?'}` : text,
         createdAt: new Date().toISOString(),
       });
     }
 
+    // Add streaming placeholder for ACT response
+    const streamId = `stream_${Date.now()}`;
+    streamingIdRef.current = streamId;
+    addMessage({
+      id: streamId,
+      sessionId,
+      role: 'ASSISTANT',
+      content: '',
+      createdAt: new Date().toISOString(),
+    });
+
     try {
-      const response = await api.sendMessage(sessionId, isStart ? 'Hello' : text);
-      addMessage(response.message);
+      const response = await streamChat(
+        sessionId,
+        isStart ? 'Hello' : text || 'What do you see?',
+        {
+          imageBase64: image?.base64,
+          imageMimeType: image?.mimeType,
+          onDelta: (delta) => {
+            appendToMessage(streamId, delta);
+          },
+        }
+      );
+
+      // Replace streaming stub with persisted message from server
+      replaceMessage(streamId, response.message);
       setPhase(response.phase);
       if (response.suggestions) setSuggestions(response.suggestions);
       if (response.project) setActiveProject(response.project);
       if (voiceEnabled) speak(response.message.content);
     } catch {
-      addMessage({
-        id: Date.now().toString(),
+      replaceMessage(streamId, {
+        id: streamId,
         sessionId,
         role: 'ASSISTANT',
         content: "I'm having trouble connecting. Try again in a moment.",
@@ -109,14 +188,17 @@ export default function HomeScreen() {
       });
     } finally {
       setIsTyping(false);
+      streamingIdRef.current = null;
     }
   }
 
   function handleSend() {
     const text = input.trim();
-    if (!text || !session || isTyping) return;
+    if ((!text && !pendingImage) || !session || isTyping) return;
+    const image = pendingImage;
     setInput('');
-    sendToACT(session.id, text);
+    setPendingImage(null);
+    sendToACT(session.id, text, image ?? undefined);
   }
 
   function handleChip(chip: string) {
@@ -126,7 +208,6 @@ export default function HomeScreen() {
   async function handlePickSuggestion(suggestion: ProjectSuggestion) {
     if (!user || !session) return;
 
-    // Paywall gate
     if (!canStartProject) {
       navigation.navigate('Paywall' as any);
       return;
@@ -148,7 +229,7 @@ export default function HomeScreen() {
 
       setActiveProject(project);
       setPhase('COACHING');
-      await sendToACT(session.id, `Let's do: ${suggestion.title}`);
+      await sendToACT(session.id, `Let's do this: ${suggestion.title}`);
       navigation.navigate('Project', { projectId: project.id });
     } catch {}
   }
@@ -164,9 +245,7 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>
-            ACTOBER <Text style={styles.headerAI}>AI</Text>
-          </Text>
+          <Text style={styles.headerTitle}>ACT</Text>
           {user?.name && (
             <Text style={styles.headerGreeting}>Hey {user.name}</Text>
           )}
@@ -199,7 +278,6 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Resume banner — always shown when there's an active project */}
         {activeProject && activeProject.status === 'IN_PROGRESS' && (
           <ResumeBanner
             project={activeProject}
@@ -219,19 +297,15 @@ export default function HomeScreen() {
             ]}>
               {msg.content}
             </Text>
+            {msg.role === 'ASSISTANT' && msg.content === '' && (
+              <ActivityIndicator size="small" color={colors.textMuted} />
+            )}
           </View>
         ))}
 
-        {isTyping && (
-          <View style={[styles.bubble, styles.actBubble]}>
-            <Text style={styles.actLabel}>ACT</Text>
-            <ActivityIndicator size="small" color={colors.textMuted} />
-          </View>
-        )}
-
         {suggestions && suggestions.length > 0 && (
           <View style={styles.suggestionsContainer}>
-            <Text style={styles.suggestionsLabel}>Pick a project:</Text>
+            <Text style={styles.suggestionsLabel}>Pick a job:</Text>
             {suggestions.map((s, i) => (
               <SuggestionCard
                 key={i}
@@ -244,7 +318,7 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {/* Quick-start chips (only in DISCOVERY phase) */}
+      {/* Quick-start chips (only in DISCOVERY phase early in convo) */}
       {phase === 'DISCOVERY' && messages.length <= 2 && (
         <ScrollView
           horizontal
@@ -261,24 +335,41 @@ export default function HomeScreen() {
         </ScrollView>
       )}
 
+      {/* Pending image preview */}
+      {pendingImage && (
+        <View style={styles.imagePreviewRow}>
+          <Image source={{ uri: pendingImage.uri }} style={styles.imagePreview} />
+          <TouchableOpacity style={styles.imageRemove} onPress={() => setPendingImage(null)}>
+            <Text style={styles.imageRemoveText}>✕</Text>
+          </TouchableOpacity>
+          <Text style={styles.imagePreviewLabel}>Photo ready to send</Text>
+        </View>
+      )}
+
       {/* Input */}
       <View style={styles.inputRow}>
+        <TouchableOpacity style={styles.cameraBtn} onPress={handleTakePhoto} disabled={isTyping}>
+          <Text style={styles.cameraBtnText}>📷</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.cameraBtn} onPress={handleCameraCapture} disabled={isTyping}>
+          <Text style={styles.cameraBtnText}>🖼</Text>
+        </TouchableOpacity>
         <TextInput
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder="Tell ACT what's around you..."
+          placeholder={pendingImage ? 'Add a note... (or just send)' : 'Describe the job or ask a question...'}
           placeholderTextColor={colors.textLight}
           multiline
-          maxLength={500}
+          maxLength={1000}
           returnKeyType="send"
           onSubmitEditing={handleSend}
           blurOnSubmit={false}
         />
         <TouchableOpacity
-          style={[styles.sendBtn, (!input.trim() || isTyping) && styles.sendBtnDisabled]}
+          style={[styles.sendBtn, ((!input.trim() && !pendingImage) || isTyping) && styles.sendBtnDisabled]}
           onPress={handleSend}
-          disabled={!input.trim() || isTyping}
+          disabled={(!input.trim() && !pendingImage) || isTyping}
         >
           <Text style={styles.sendBtnText}>→</Text>
         </TouchableOpacity>
@@ -296,8 +387,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1, borderBottomColor: colors.border,
     backgroundColor: colors.surface,
   },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.text, letterSpacing: 1 },
-  headerAI: { color: colors.primary },
+  headerTitle: { fontSize: 22, fontWeight: '900', color: colors.primary, letterSpacing: 3 },
   headerGreeting: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   remainingBadge: {
@@ -321,9 +411,7 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 10, paddingBottom: 8 },
 
-  bubble: {
-    maxWidth: '82%', borderRadius: 16, padding: 12, marginBottom: 2,
-  },
+  bubble: { maxWidth: '82%', borderRadius: 16, padding: 12, marginBottom: 2 },
   actBubble: {
     alignSelf: 'flex-start', backgroundColor: colors.actBubble,
     borderWidth: 1, borderColor: colors.actBubbleBorder, borderTopLeftRadius: 4,
@@ -331,10 +419,7 @@ const styles = StyleSheet.create({
   userBubble: {
     alignSelf: 'flex-end', backgroundColor: colors.userBubble, borderTopRightRadius: 4,
   },
-  actLabel: {
-    fontSize: 9, fontWeight: '800', color: colors.primary,
-    marginBottom: 5, letterSpacing: 1.5,
-  },
+  actLabel: { fontSize: 9, fontWeight: '800', color: colors.primary, marginBottom: 5, letterSpacing: 1.5 },
   bubbleText: { fontSize: 15, lineHeight: 22 },
   actBubbleText: { color: colors.text },
   userBubbleText: { color: '#fff' },
@@ -342,10 +427,7 @@ const styles = StyleSheet.create({
   suggestionsContainer: { marginTop: 6, gap: 10 },
   suggestionsLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
 
-  chipsRow: {
-    flexGrow: 0, borderTopWidth: 1, borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
+  chipsRow: { flexGrow: 0, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
   chipsContent: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
   chip: {
     backgroundColor: colors.surfaceAlt, borderRadius: 20,
@@ -354,12 +436,29 @@ const styles = StyleSheet.create({
   },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.text },
 
+  imagePreviewRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 12, paddingVertical: 8,
+    backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border,
+  },
+  imagePreview: { width: 48, height: 48, borderRadius: 8 },
+  imageRemove: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center',
+  },
+  imageRemoveText: { fontSize: 11, color: '#fff', fontWeight: '700' },
+  imagePreviewLabel: { fontSize: 12, color: colors.textMuted, flex: 1 },
+
   inputRow: {
     flexDirection: 'row', alignItems: 'flex-end',
-    padding: 12, gap: 8,
+    padding: 12, gap: 6,
     backgroundColor: colors.surface,
     borderTopWidth: 1, borderTopColor: colors.border,
   },
+  cameraBtn: {
+    width: 40, height: 44, alignItems: 'center', justifyContent: 'center',
+  },
+  cameraBtnText: { fontSize: 22 },
   input: {
     flex: 1, minHeight: 44, maxHeight: 120,
     backgroundColor: colors.surfaceAlt, borderRadius: 22,
