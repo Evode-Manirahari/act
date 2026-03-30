@@ -17,7 +17,7 @@ function generateDeviceId(): string {
 
 export default function BootScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { setUser, setSession } = useActStore();
+  const { setUser, setSession, setActiveProject, setPhase } = useActStore();
   const opacity = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -47,6 +47,10 @@ export default function BootScreen() {
           const session = await api.getSession(savedSessionId);
           if (session && session.phase !== 'COMPLETE') {
             setSession(session);
+            setPhase(session.phase);
+            if (session.project && session.project.status === 'IN_PROGRESS') {
+              setActiveProject(session.project);
+            }
           } else {
             await AsyncStorage.removeItem(SESSION_ID_KEY);
           }
