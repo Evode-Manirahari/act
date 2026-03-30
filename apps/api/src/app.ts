@@ -9,6 +9,7 @@ import usersRouter from './routes/users';
 import sessionsRouter from './routes/sessions';
 import chatRouter from './routes/chat';
 import projectsRouter from './routes/projects';
+import transcribeRouter from './routes/transcribe';
 
 const app = express();
 
@@ -35,6 +36,7 @@ app.use('/api/users', usersRouter);
 app.use('/api/sessions', sessionsRouter);
 app.use('/api/chat', chatRouter);
 app.use('/api/projects', projectsRouter);
+app.use('/api/transcribe', transcribeRouter);
 
 // Health check
 app.get('/health', (_req, res) => {

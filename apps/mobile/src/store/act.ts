@@ -5,6 +5,7 @@ interface ActState {
   // User
   user: User | null;
   setUser: (user: User) => void;
+  patchUser: (patch: Partial<User>) => void;
 
   // Active session
   session: Session | null;
@@ -43,6 +44,7 @@ interface ActState {
 export const useActStore = create<ActState>((set) => ({
   user: null,
   setUser: (user) => set({ user }),
+  patchUser: (patch) => set((s) => s.user ? { user: { ...s.user, ...patch } } : {}),
 
   session: null,
   setSession: (session) => set({ session, messages: session.messages ?? [] }),
