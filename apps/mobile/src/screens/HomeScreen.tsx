@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, ScrollView,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Image, Pressable,
+  Modal, Switch, Animated,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -18,6 +19,8 @@ import ResumeBanner from '../components/ResumeBanner';
 import { useVoice } from '../hooks/useVoice';
 import { usePaywall } from '../hooks/usePaywall';
 import { useVoiceInput } from '../hooks/useVoiceInput';
+import { useNotifications } from '../hooks/useNotifications';
+import { useStreak } from '../hooks/useStreak';
 
 const SESSION_ID_KEY = 'actober_active_session_id';
 
@@ -59,6 +62,10 @@ export default function HomeScreen() {
   const { voiceEnabled, toggleVoice, loadVoicePreference, speak } = useVoice();
   const { canStartProject, remaining, isPlus } = usePaywall();
   const { isRecording, isTranscribing, startRecording, stopRecording, cancelRecording } = useVoiceInput();
+  const { prefs, loaded: notifLoaded, enable: enableNotif, disable: disableNotif, setTime: setNotifTime } = useNotifications();
+  const { streak } = useStreak();
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const notifSlide = useRef(new Animated.Value(300)).current;
 
   useEffect(() => {
     loadVoicePreference();
@@ -83,6 +90,29 @@ export default function HomeScreen() {
     clearSession();
     await AsyncStorage.removeItem(SESSION_ID_KEY);
     if (user) startSession();
+  }
+
+  function openNotifPanel() {
+    setShowNotifPanel(true);
+    Animated.spring(notifSlide, { toValue: 0, useNativeDriver: true, tension: 80, friction: 10 }).start();
+  }
+
+  function closeNotifPanel() {
+    Animated.timing(notifSlide, { toValue: 300, duration: 220, useNativeDriver: true }).start(() => {
+      setShowNotifPanel(false);
+    });
+  }
+
+  async function handleToggleNotifications(val: boolean) {
+    if (val) {
+      await enableNotif({ streak, domain: user?.domain ?? null, lastProjectTitle: null });
+    } else {
+      await disableNotif();
+    }
+  }
+
+  async function handleSetNotifTime(hour: number) {
+    await setNotifTime(hour, { streak, domain: user?.domain ?? null, lastProjectTitle: null });
   }
 
   async function handleCameraCapture() {
@@ -266,6 +296,12 @@ export default function HomeScreen() {
           >
             <Text style={styles.voiceBtnText}>{voiceEnabled ? '🔊' : '🔇'}</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.voiceBtn, prefs.enabled && styles.voiceBtnOn]}
+            onPress={openNotifPanel}
+          >
+            <Text style={styles.voiceBtnText}>{prefs.enabled ? '🔔' : '🔕'}</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.newBtn} onPress={handleNewSession}>
             <Text style={styles.newBtnText}>New</Text>
           </TouchableOpacity>
@@ -394,9 +430,165 @@ export default function HomeScreen() {
           <Text style={styles.sendBtnText}>→</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Notification settings panel */}
+      <NotificationPanel
+        visible={showNotifPanel}
+        slideAnim={notifSlide}
+        enabled={prefs.enabled}
+        hour={prefs.hour}
+        onToggle={handleToggleNotifications}
+        onSetTime={handleSetNotifTime}
+        onClose={closeNotifPanel}
+      />
     </KeyboardAvoidingView>
   );
 }
+
+// ─── Notification Panel ───────────────────────────────────────────────────────
+
+const NOTIFY_HOURS = [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+
+function formatHour(h: number): string {
+  if (h === 0) return '12 AM';
+  if (h < 12) return `${h} AM`;
+  if (h === 12) return '12 PM';
+  return `${h - 12} PM`;
+}
+
+function NotificationPanel({
+  visible, slideAnim, enabled, hour, onToggle, onSetTime, onClose,
+}: {
+  visible: boolean;
+  slideAnim: Animated.Value;
+  enabled: boolean;
+  hour: number;
+  onToggle: (val: boolean) => void;
+  onSetTime: (hour: number) => void;
+  onClose: () => void;
+}) {
+  if (!visible) return null;
+
+  return (
+    <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
+      <TouchableOpacity style={notifStyles.backdrop} onPress={onClose} activeOpacity={1} />
+      <Animated.View style={[notifStyles.panel, { transform: [{ translateY: slideAnim }] }]}>
+        {/* Handle */}
+        <View style={notifStyles.handle} />
+
+        <View style={notifStyles.row}>
+          <View>
+            <Text style={notifStyles.title}>Daily Reminder</Text>
+            <Text style={notifStyles.subtitle}>
+              {enabled ? `ACT reminds you at ${formatHour(hour)}` : 'Off — ACT won\'t remind you'}
+            </Text>
+          </View>
+          <Switch
+            value={enabled}
+            onValueChange={onToggle}
+            trackColor={{ false: colors.border, true: colors.primary + 'A0' }}
+            thumbColor={enabled ? colors.primary : colors.textLight}
+          />
+        </View>
+
+        {enabled && (
+          <>
+            <Text style={notifStyles.timeLabel}>Remind me at</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={notifStyles.timeChips}
+            >
+              {NOTIFY_HOURS.map(h => (
+                <TouchableOpacity
+                  key={h}
+                  style={[notifStyles.chip, h === hour && notifStyles.chipActive]}
+                  onPress={() => onSetTime(h)}
+                >
+                  <Text style={[notifStyles.chipText, h === hour && notifStyles.chipTextActive]}>
+                    {formatHour(h)}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            <View style={notifStyles.previewBox}>
+              <Text style={notifStyles.previewLabel}>Preview</Text>
+              <Text style={notifStyles.previewTitle}>ACT</Text>
+              <Text style={notifStyles.previewBody}>
+                {hour < 12 ? "What are you working on today?" :
+                 hour < 17 ? "Good time to get a job done." :
+                             "Evening. Quick fix before you wind down?"}
+              </Text>
+            </View>
+          </>
+        )}
+
+        <TouchableOpacity style={notifStyles.doneBtn} onPress={onClose}>
+          <Text style={notifStyles.doneBtnText}>Done</Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+const notifStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  panel: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 24, paddingBottom: 40, paddingTop: 12,
+    gap: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.1, shadowRadius: 12, elevation: 12,
+  },
+  handle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: colors.border, alignSelf: 'center', marginBottom: 8,
+  },
+  row: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  title: { fontSize: 17, fontWeight: '700', color: colors.text },
+  subtitle: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
+
+  timeLabel: {
+    fontSize: 11, fontWeight: '800', color: colors.textMuted,
+    letterSpacing: 1.1, textTransform: 'uppercase',
+  },
+  timeChips: { flexDirection: 'row', gap: 8, paddingVertical: 4 },
+  chip: {
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 8,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  chipActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  chipTextActive: { color: '#fff' },
+
+  previewBox: {
+    backgroundColor: colors.surfaceAlt, borderRadius: 14,
+    padding: 14, gap: 4,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  previewLabel: {
+    fontSize: 10, fontWeight: '800', color: colors.textMuted,
+    letterSpacing: 1.1, textTransform: 'uppercase', marginBottom: 4,
+  },
+  previewTitle: { fontSize: 13, fontWeight: '700', color: colors.text },
+  previewBody: { fontSize: 14, color: colors.text, lineHeight: 20 },
+
+  doneBtn: {
+    backgroundColor: colors.primary, borderRadius: 14,
+    paddingVertical: 15, alignItems: 'center',
+  },
+  doneBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+});
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },

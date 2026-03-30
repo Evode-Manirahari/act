@@ -7,6 +7,8 @@ import { useActStore } from '../store/act';
 import { api } from '../api/act';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RootStackParamList } from '../navigation/RootNavigator';
+import { useNotifications } from '../hooks/useNotifications';
+import { useStreak } from '../hooks/useStreak';
 
 const DEVICE_ID_KEY = 'actober_device_id';
 const SESSION_ID_KEY = 'actober_active_session_id';
@@ -18,6 +20,8 @@ function generateDeviceId(): string {
 export default function BootScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { setUser, setSession, setActiveProject, setPhase } = useActStore();
+  const { reschedule } = useNotifications();
+  const { load: loadStreak, streak } = useStreak();
   const opacity = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -39,6 +43,10 @@ export default function BootScreen() {
     try {
       const user = await api.registerUser(deviceId);
       setUser(user);
+
+      // Reschedule notification with fresh content (streak + domain)
+      await loadStreak();
+      reschedule({ streak, domain: user.domain ?? null, lastProjectTitle: null });
 
       // Try to resume the last active session
       const savedSessionId = await AsyncStorage.getItem(SESSION_ID_KEY);
