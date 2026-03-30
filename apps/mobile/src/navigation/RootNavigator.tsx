@@ -9,6 +9,7 @@ import PaywallScreen from '../screens/PaywallScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ProjectScreen from '../screens/ProjectScreen';
 import HistoryScreen from '../screens/HistoryScreen';
+import ProjectDetailScreen from '../screens/ProjectDetailScreen';
 import { usePaywall } from '../hooks/usePaywall';
 
 export type RootStackParamList = {
@@ -23,6 +24,11 @@ export type HomeStackParamList = {
   Project: { projectId: string };
 };
 
+export type HistoryStackParamList = {
+  HistoryList: undefined;
+  ProjectDetail: { projectId: string };
+};
+
 export type MainTabParamList = {
   Today: undefined;
   History: undefined;
@@ -30,6 +36,7 @@ export type MainTabParamList = {
 
 const RootStack = createNativeStackNavigator<RootStackParamList>();
 const HomeStack = createNativeStackNavigator<HomeStackParamList>();
+const HistoryStack = createNativeStackNavigator<HistoryStackParamList>();
 const Tabs = createBottomTabNavigator<MainTabParamList>();
 
 function HomeStackNavigator() {
@@ -38,6 +45,15 @@ function HomeStackNavigator() {
       <HomeStack.Screen name="Home" component={HomeScreen} />
       <HomeStack.Screen name="Project" component={ProjectScreen} />
     </HomeStack.Navigator>
+  );
+}
+
+function HistoryStackNavigator() {
+  return (
+    <HistoryStack.Navigator screenOptions={{ headerShown: false }}>
+      <HistoryStack.Screen name="HistoryList" component={HistoryScreen} />
+      <HistoryStack.Screen name="ProjectDetail" component={ProjectDetailScreen} />
+    </HistoryStack.Navigator>
   );
 }
 
@@ -63,7 +79,7 @@ function MainTabs() {
       />
       <Tabs.Screen
         name="History"
-        component={HistoryScreen}
+        component={HistoryStackNavigator}
         options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>📋</Text> }}
       />
     </Tabs.Navigator>
