@@ -80,6 +80,16 @@ export async function streamChat(
   return finalResponse
 }
 
+// POST /api/transcribe — send audio blob, get back transcribed text
+export async function transcribeAudio(blob: Blob): Promise<string> {
+  const form = new FormData()
+  form.append('audio', blob, 'recording.webm')
+  const res = await fetch(`${API_BASE}/api/transcribe`, { method: 'POST', body: form })
+  if (!res.ok) throw new Error(`Transcription failed: ${res.status}`)
+  const { text } = await res.json()
+  return text as string
+}
+
 export const api = {
   registerUser: (deviceId: string, name?: string, experienceLevel?: ExperienceLevel, domain?: JobDomain) =>
     request<User>('/api/users/register', {
