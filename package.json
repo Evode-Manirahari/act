@@ -14,6 +14,14 @@
     "typescript": "^5.4.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["@prisma/client", "@prisma/engines", "prisma", "@sentry/cli"]
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "prisma",
+      "@sentry/cli"
+    ]
+  },
+  "dependencies": {
+    "hermes-parser": "^0.34.0"
   }
 }
