@@ -341,6 +341,17 @@ function ActApp() {
 
   if (act.screen === 'boot') return <Boot />
   if (act.screen === 'onboarding') return <Onboarding onDone={act.finishOnboarding} />
+  if (act.screen === 'home') {
+    return (
+      <HomeScreen
+        user={act.user}
+        projects={act.projects}
+        activeProject={act.activeProject}
+        onNew={() => act.newSession()}
+        onResume={() => act.setScreen('project')}
+      />
+    )
+  }
   if (act.screen === 'project' && act.activeProject) {
     return (
       <ProjectView
@@ -351,7 +362,7 @@ function ActApp() {
         onStepDone={act.markStepDone}
         onComplete={act.completeProject}
         onAbandon={act.abandonProject}
-        onBack={() => act.setScreen('chat')}
+        onBack={() => act.setScreen('home')}
         onNew={act.newSession}
       />
     )
@@ -365,11 +376,13 @@ function ActApp() {
       suggestions={act.suggestions}
       activeProject={act.activeProject}
       isTyping={act.isTyping}
+      limitReached={act.limitReached}
       onKickoff={act.kickoff}
       onSend={act.sendMessage}
       onPickSuggestion={act.pickSuggestion}
       onResumeProject={() => act.setScreen('project')}
-      onNew={act.newSession}
+      onNew={() => act.setScreen('home')}
+      onClearLimit={act.clearLimitReached}
     />
   )
 }
@@ -378,10 +391,133 @@ function ActApp() {
 
 function Boot() {
   return (
-    <div className="min-h-screen bg-[#F97316] flex flex-col items-center justify-center gap-3">
-      <h1 className="text-5xl font-black text-white tracking-[8px]">ACT</h1>
-      <p className="text-white/70 text-sm">AI guidance for physical work.</p>
-      <div className="mt-6 w-6 h-6 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+    <div className="min-h-screen bg-[#052424] flex flex-col items-center justify-center gap-4">
+      <LogoMark size={56} />
+      <div className="mt-4 w-5 h-5 border-2 border-white/20 border-t-[#F97316] rounded-full animate-spin" />
+    </div>
+  )
+}
+
+// ─── Home Screen ─────────────────────────────────────────────────────────────
+
+function HomeScreen({
+  user, projects, activeProject, onNew, onResume,
+}: {
+  user: ReturnType<typeof useAct>['user']
+  projects: ReturnType<typeof useAct>['projects']
+  activeProject: ReturnType<typeof useAct>['activeProject']
+  onNew: () => void
+  onResume: () => void
+}) {
+  const past = projects.filter(p => p.status === 'COMPLETED' || p.status === 'ABANDONED')
+
+  function relativeDate(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime()
+    const days = Math.floor(diff / 86400000)
+    if (days === 0) return 'Today'
+    if (days === 1) return 'Yesterday'
+    if (days < 7) return `${days}d ago`
+    if (days < 30) return `${Math.floor(days / 7)}w ago`
+    return `${Math.floor(days / 30)}mo ago`
+  }
+
+  return (
+    <div className="min-h-screen bg-[#FAFAF8] flex flex-col max-w-2xl mx-auto">
+      {/* Header */}
+      <header className="bg-[#052424] px-5 py-4 flex items-center justify-between">
+        <LogoWordmark dark />
+        <button
+          onClick={onNew}
+          className="text-sm font-bold text-white bg-[#F97316] px-4 py-2 rounded-full hover:bg-orange-500 transition-colors"
+        >
+          New job
+        </button>
+      </header>
+
+      <div className="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-6">
+        {/* Greeting */}
+        <div>
+          <p className="text-xl font-bold text-gray-900">
+            {user?.name ? `Hey ${user.name}.` : 'Hey there.'}
+          </p>
+          <p className="text-sm text-gray-500 mt-0.5">What are we fixing today?</p>
+        </div>
+
+        {/* Active project resume card */}
+        {activeProject && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">In progress</p>
+            <button
+              onClick={onResume}
+              className="w-full bg-white border-2 border-[#F97316]/30 rounded-2xl p-4 text-left hover:border-[#F97316] transition-colors group"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#F97316] mt-1.5 shrink-0 animate-pulse" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-gray-900 truncate">{activeProject.title}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    {activeProject.steps.filter(s => s.completed).length} of {activeProject.steps.length} steps done
+                  </p>
+                  <div className="mt-2 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#F97316] rounded-full transition-all"
+                      style={{ width: `${activeProject.steps.length > 0 ? (activeProject.steps.filter(s => s.completed).length / activeProject.steps.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+                <span className="text-[#F97316] font-bold text-lg group-hover:translate-x-0.5 transition-transform">→</span>
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* Start new job CTA when no active project */}
+        {!activeProject && (
+          <button
+            onClick={onNew}
+            className="w-full bg-[#052424] rounded-2xl px-5 py-6 text-left hover:bg-[#073232] transition-colors group"
+          >
+            <p className="text-[#F97316] font-bold text-sm mb-1">Start a job</p>
+            <p className="text-white text-lg font-bold leading-snug">
+              Describe the problem.<br />ACT will guide you through it.
+            </p>
+            <p className="text-white/40 text-sm mt-3 group-hover:text-white/60 transition-colors">Get started →</p>
+          </button>
+        )}
+
+        {/* Past jobs */}
+        {past.length > 0 && (
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Past jobs</p>
+            <div className="flex flex-col gap-2">
+              {past.map(p => (
+                <div key={p.id} className="bg-white border border-gray-100 rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full shrink-0 ${p.status === 'COMPLETED' ? 'bg-emerald-400' : 'bg-gray-300'}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{p.title}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {p.status === 'COMPLETED'
+                        ? `${p.steps.length} steps · ${relativeDate(p.createdAt)}`
+                        : `Abandoned · ${relativeDate(p.createdAt)}`}
+                    </p>
+                  </div>
+                  {p.status === 'COMPLETED' && (
+                    <span className="text-xs font-bold text-emerald-500 bg-emerald-50 px-2 py-0.5 rounded-full shrink-0">Done</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {past.length === 0 && !activeProject && (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <LogoMark size={48} />
+            <p className="mt-4 text-sm text-gray-400">No jobs yet. Start your first one above.</p>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -514,8 +650,8 @@ const CHIPS = [
 ]
 
 function ChatView({
-  user, messages, phase, suggestions, activeProject, isTyping,
-  onKickoff, onSend, onPickSuggestion, onResumeProject, onNew,
+  user, messages, phase, suggestions, activeProject, isTyping, limitReached,
+  onKickoff, onSend, onPickSuggestion, onResumeProject, onNew, onClearLimit,
 }: {
   user: ReturnType<typeof useAct>['user']
   messages: ReturnType<typeof useAct>['messages']
@@ -523,11 +659,13 @@ function ChatView({
   suggestions: ReturnType<typeof useAct>['suggestions']
   activeProject: ReturnType<typeof useAct>['activeProject']
   isTyping: boolean
+  limitReached: boolean
   onKickoff: () => void
   onSend: (text: string, silent?: boolean, imageBase64?: string, imageMimeType?: string) => void
   onPickSuggestion: (s: ProjectSuggestion) => void
   onResumeProject: () => void
   onNew: () => void
+  onClearLimit: () => void
 }) {
   const [input, setInput] = useState('')
   const [image, setImage] = useState<{ base64: string; mime: string; preview: string } | null>(null)
@@ -657,6 +795,17 @@ function ChatView({
               {chip}
             </button>
           ))}
+        </div>
+      )}
+
+      {limitReached && (
+        <div className="mx-3 mb-2 bg-orange-50 border border-[#F97316]/30 rounded-xl px-4 py-3 flex items-start gap-3">
+          <span className="text-lg shrink-0">⚡</span>
+          <div className="flex-1">
+            <p className="text-sm font-bold text-gray-900">Monthly limit reached</p>
+            <p className="text-xs text-gray-500 mt-0.5">You've used your free jobs this month. More coming soon.</p>
+          </div>
+          <button onClick={onClearLimit} className="text-gray-400 text-lg leading-none shrink-0">×</button>
         </div>
       )}
 
