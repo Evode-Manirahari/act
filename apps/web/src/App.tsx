@@ -26,87 +26,65 @@ export default function App() {
 }
 
 // ─── Actober AI Logo mark ────────────────────────────────────────────────────
+// Geometric, flat, readable at 24px.
+// 8 core shapes: squircle + orange body + 2 eyes + 2 pupils + spine + 2 spots.
 
-function LogoMark({ size = 36 }: { size?: number }) {
+function LogoMark({ size = 32 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <defs>
-        <radialGradient id="lbG" cx="38%" cy="28%" r="70%" gradientUnits="objectBoundingBox">
-          <stop offset="0%"  stopColor="#FF9035"/>
-          <stop offset="55%" stopColor="#F97316"/>
-          <stop offset="100%" stopColor="#C85C08"/>
-        </radialGradient>
-        <radialGradient id="leG" cx="38%" cy="32%" r="62%" gradientUnits="objectBoundingBox">
-          <stop offset="0%"  stopColor="#ffffff"/>
-          <stop offset="100%" stopColor="#dde8e8"/>
-        </radialGradient>
-        <radialGradient id="lpG" cx="35%" cy="30%" r="65%" gradientUnits="objectBoundingBox">
-          <stop offset="0%"  stopColor="#0e4040"/>
-          <stop offset="100%" stopColor="#020e0e"/>
-        </radialGradient>
-        <filter id="lbs" x="-8%" y="-8%" width="116%" height="116%">
-          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#F97316" floodOpacity="0.20"/>
-        </filter>
-        <filter id="les" x="-15%" y="-15%" width="130%" height="130%">
-          <feDropShadow dx="0" dy="1.5" stdDeviation="2" floodColor="#052424" floodOpacity="0.25"/>
-        </filter>
-        <filter id="lbs2" x="-5%" y="-5%" width="110%" height="110%">
-          <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#7A2E00" floodOpacity="0.40"/>
-        </filter>
-      </defs>
-      {/* Badge */}
-      <rect x="2" y="2" width="76" height="76" rx="20" fill="#052424" filter="url(#lbs)"/>
-      <rect x="3.5" y="3.5" width="73" height="73" rx="18.5" fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="1.5"/>
-      {/* Body */}
-      <ellipse cx="40" cy="56" rx="26" ry="22" fill="url(#lbG)" filter="url(#lbs2)"/>
-      <ellipse cx="40" cy="50" rx="24" ry="8" fill="none" stroke="rgba(255,200,120,0.22)" strokeWidth="1.5"/>
-      {/* Left eye */}
-      <circle cx="27" cy="38" r="13" fill="url(#leG)" filter="url(#les)"/>
-      <circle cx="27" cy="38" r="13" fill="none" stroke="rgba(5,36,36,0.12)" strokeWidth="1.2"/>
-      <circle cx="29" cy="40" r="6.5" fill="url(#lpG)"/>
-      <circle cx="25" cy="35" r="2.8" fill="white"/>
-      <circle cx="31" cy="43" r="1.1" fill="rgba(255,255,255,0.55)"/>
-      {/* Right eye */}
-      <circle cx="53" cy="38" r="13" fill="url(#leG)" filter="url(#les)"/>
-      <circle cx="53" cy="38" r="13" fill="none" stroke="rgba(5,36,36,0.12)" strokeWidth="1.2"/>
-      <circle cx="51" cy="40" r="6.5" fill="url(#lpG)"/>
-      <circle cx="49" cy="35" r="2.8" fill="white"/>
-      <circle cx="55" cy="43" r="1.1" fill="rgba(255,255,255,0.55)"/>
-      {/* Nostrils */}
-      <circle cx="37" cy="50" r="1.8" fill="rgba(5,36,36,0.28)"/>
-      <circle cx="43" cy="50" r="1.8" fill="rgba(5,36,36,0.28)"/>
-      {/* Smile */}
-      <path d="M31 54 Q40 60 49 54" stroke="rgba(5,36,36,0.38)" strokeWidth="1.8" strokeLinecap="round"/>
-      {/* Spine */}
-      <line x1="40" y1="34" x2="40" y2="76" stroke="#052424" strokeWidth="1.4" strokeOpacity="0.28"/>
-      {/* Spots */}
-      <circle cx="28" cy="58" r="5"   fill="#052424" fillOpacity="0.30"/>
-      <circle cx="52" cy="58" r="5"   fill="#052424" fillOpacity="0.30"/>
-      <circle cx="30" cy="69" r="3.5" fill="#052424" fillOpacity="0.20"/>
-      <circle cx="50" cy="69" r="3.5" fill="#052424" fillOpacity="0.20"/>
-      {/* Compass ticks */}
-      <line x1="40" y1="5"  x2="40" y2="9"  stroke="#F97316" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.55"/>
-      <line x1="40" y1="71" x2="40" y2="75" stroke="#F97316" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.40"/>
-      <line x1="5"  y1="40" x2="9"  y2="40" stroke="#F97316" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.40"/>
-      <line x1="71" y1="40" x2="75" y2="40" stroke="#F97316" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.40"/>
+    <svg
+      width={size} height={size}
+      viewBox="0 0 80 80" fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+      style={{ flexShrink: 0 }}
+    >
+      {/* 1 — Badge: dark teal squircle */}
+      <rect width="80" height="80" rx="20" fill="#052424"/>
+
+      {/* 2 — Body: orange rounded shape, fills lower 45% of badge.
+               Ladybug abdomen. Frog torso. */}
+      <path
+        d="M12 52 Q12 78 40 78 Q68 78 68 52 Z"
+        fill="#F97316"
+      />
+
+      {/* 3 & 4 — Eyes: two large white circles, dominant element.
+                 At 24px they read as two bright dots — instantly frog. */}
+      <circle cx="24" cy="36" r="15" fill="#ffffff"/>
+      <circle cx="56" cy="36" r="15" fill="#ffffff"/>
+
+      {/* 5 & 6 — Pupils: dark teal circles, inset.
+                 Slightly forward-facing gaze (trustworthy). */}
+      <circle cx="27" cy="39" r="7.5" fill="#052424"/>
+      <circle cx="53" cy="39" r="7.5" fill="#052424"/>
+
+      {/* 7 — Spine: single 1.5px vertical line through center.
+               The ladybug wing-split DNA. Disappears below 32px — that's fine. */}
+      <line x1="40" y1="24" x2="40" y2="76"
+            stroke="#052424" strokeWidth="1.5" strokeOpacity="0.22"/>
+
+      {/* 8 — Spots: two symmetric dots on orange body. */}
+      <circle cx="27" cy="62" r="4.5" fill="#052424" fillOpacity="0.28"/>
+      <circle cx="53" cy="62" r="4.5" fill="#052424" fillOpacity="0.28"/>
     </svg>
   )
 }
 
 function LogoWordmark({ dark: isDark }: { dark: boolean }) {
-  const wordColor = isDark ? '#ffffff' : '#052424'
+  const wordColor = isDark ? 'rgba(255,255,255,0.90)' : '#111111'
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <LogoMark size={36} />
-      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-        <span style={{ fontFamily: 'Inter, sans-serif', fontWeight: 700, fontSize: 20, letterSpacing: '-0.4px' }}>
-          <span style={{ color: '#F97316' }}>Act</span>
-          <span style={{ color: wordColor }}>ober</span>
-        </span>
-        <span style={{ fontFamily: 'JetBrains Mono, monospace', fontSize: 8, letterSpacing: '3px', color: '#F97316', opacity: 0.65, marginTop: 2 }}>
-          AI GUIDANCE
-        </span>
-      </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+      <LogoMark size={32} />
+      <span style={{
+        fontFamily: 'Inter, -apple-system, sans-serif',
+        fontWeight: 700,
+        fontSize: 18,
+        letterSpacing: '-0.3px',
+        lineHeight: 1,
+      }}>
+        <span style={{ color: '#F97316' }}>Act</span>
+        <span style={{ color: wordColor }}>ober</span>
+      </span>
     </div>
   )
 }
@@ -204,6 +182,7 @@ function LandingPage({ onTry }: { onTry: () => void }) {
 
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <section className="ti-hero">
+        <LogoMark size={64} />
         <p className="ti-eyebrow">AI guidance for physical work — actober.com</p>
         <h1 className="ti-h1">
           <span className="ti-h1-anim">The expert</span>
