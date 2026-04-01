@@ -42,37 +42,44 @@ function useReveal() {
 // ─── Landing Page ────────────────────────────────────────────────────────────
 
 function LandingPage({ onTry }: { onTry: () => void }) {
-  useReveal()
+  const [open, setOpen] = useState<number | null>(0)
+  const [dark, setDark] = useState(true)
 
-  const TRADES = [
-    { emoji: '🔧', label: 'Plumbing',   desc: 'Pipes, fixtures, drains, water heaters' },
-    { emoji: '⚡', label: 'Electrical', desc: 'Wiring, outlets, panels, fixtures' },
-    { emoji: '🪵', label: 'Carpentry',  desc: 'Framing, trim, doors, cabinets' },
-    { emoji: '❄️', label: 'HVAC',       desc: 'Heating, cooling, ventilation, ducts' },
-    { emoji: '🖌️', label: 'Painting',   desc: 'Prep, prime, interior & exterior' },
-    { emoji: '🧱', label: 'Tiling',     desc: 'Floor, wall, grout, substrate' },
-    { emoji: '🔩', label: 'General',    desc: 'Maintenance, repairs, mixed jobs' },
-  ]
-
-  const HOW = [
+  const CAPABILITIES = [
     {
       n: '01',
-      title: 'Describe or show the job',
-      body: "Tell ACT what you're working on. Show it a photo. It sees what you see and identifies the problem instantly.",
-      tag: 'Camera + voice',
+      title: 'Sees what you see',
+      body: 'Point your camera at the problem. ACT reads the image in real time — crack in the P-trap, wiring fault, moisture damage. No guessing required.',
+      tag: 'Vision AI',
     },
     {
       n: '02',
-      title: 'Get a calibrated plan',
-      body: 'ACT proposes step-by-step jobs with materials list, time estimate, and safety guidance for your trade and skill level.',
-      tag: 'Tailored to you',
+      title: 'Hands-free voice guidance',
+      body: 'Works through your earpiece while your hands are busy. Ask questions out loud, get answers instantly. No screen touching on the job.',
+      tag: 'Voice + Audio',
     },
     {
       n: '03',
-      title: 'Work through it together',
-      body: 'ACT coaches you step by step, hands-free. Ask questions mid-job. Send photos when stuck. It talks you through to completion.',
-      tag: 'Hands-free',
+      title: 'Calibrated to your trade',
+      body: 'Plumber gets pipe specs and fitting types. Electrician gets wiring standards and breaker logic. The vocabulary, the safety rules, the tool list — all trade-specific.',
+      tag: 'Trade Intelligence',
     },
+    {
+      n: '04',
+      title: 'Safety-first, always',
+      body: "ACT never skips the breaker shutoff, the water valve, the PPE check. Every job starts with safety. It's not optional — it's built in.",
+      tag: 'Safety Protocol',
+    },
+  ]
+
+  const TRADES = [
+    { label: 'Plumbing',   sub: 'Pipes, fixtures, drains, water heaters' },
+    { label: 'Electrical', sub: 'Wiring, outlets, panels, fixtures' },
+    { label: 'Carpentry',  sub: 'Framing, trim, doors, cabinets' },
+    { label: 'HVAC',       sub: 'Heating, cooling, ventilation, ducts' },
+    { label: 'Painting',   sub: 'Prep, prime, interior & exterior' },
+    { label: 'Tiling',     sub: 'Floor, wall, grout, substrate' },
+    { label: 'General',    sub: 'Maintenance, repairs, mixed jobs' },
   ]
 
   const DEMO = [
@@ -80,286 +87,167 @@ function LandingPage({ onTry }: { onTry: () => void }) {
     { role: 'act',  text: "Hairline crack on the P-trap elbow — that's your leak.\n\nFirst: shutoff valve under the sink, clockwise until it stops.\n\nYou'll need a replacement P-trap (1.5\" standard) and a bucket. Ready when you are." },
     { role: 'user', text: 'Do I need thread tape?' },
     { role: 'act',  text: "No. Plastic P-traps use compression washers, not tape. Hand-tighten the slip joints, then a quarter turn with channel-locks. Don't overtighten — it'll crack." },
-    { role: 'user', text: "Done. No drips." },
+    { role: 'user', text: 'Done. No drips.' },
     { role: 'act',  text: "Good work. Run the water for 30 seconds and check underneath. If it's dry, you're done." },
   ]
 
-  const FEATURES = [
-    { icon: '👁', title: 'Sees what you see',      body: 'Point your camera at the problem. ACT reads the image and tells you exactly what it is and what to do.' },
-    { icon: '🎙', title: 'Hands-free voice',        body: 'Works through your earpiece while your hands are busy. Ask questions out loud, get answers instantly.' },
-    { icon: '⚡', title: 'Calibrated to your level', body: 'Beginner gets step-by-step basics. Experienced gets direct, trade-specific language. No padding.' },
-    { icon: '🛡', title: 'Safety-first always',     body: 'Every job includes safety steps. ACT never skips the breaker, the shutoff, the PPE — even if you would.' },
-  ]
-
   return (
-    <div className="bg-[#060606] text-white min-h-screen overflow-x-hidden">
+    <div className="ti-root" data-theme={dark ? 'dark' : 'light'}>
 
-      {/* ── Nav ─────────────────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-white/[0.06] backdrop-blur-xl bg-[#060606]/80">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <span className="font-black text-lg tracking-[5px] text-[#F97316]">ACT</span>
-          <div className="hidden md:flex items-center gap-8 text-sm text-[#555]">
-            <a href="#how"      className="hover:text-white transition-colors duration-200">How it works</a>
-            <a href="#trades"   className="hover:text-white transition-colors duration-200">Trades</a>
-            <a href="#features" className="hover:text-white transition-colors duration-200">Features</a>
+      {/* ── Nav ──────────────────────────────────────────────────────────────── */}
+      <nav className="ti-nav">
+        <div className="ti-nav-inner">
+          <span className="ti-logo">ACT</span>
+          <div className="ti-nav-links">
+            <a href="#capabilities">Capabilities</a>
+            <a href="#trades">Trades</a>
+            <a href="#demo">Demo</a>
           </div>
-          <button onClick={onTry} className="btn-primary text-sm font-semibold px-5 py-2.5">
-            Try ACT free →
-          </button>
+          <div className="ti-nav-right">
+            <button
+              className="ti-theme-toggle"
+              onClick={() => setDark(d => !d)}
+              aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {dark ? '☀' : '☾'}
+            </button>
+            <button onClick={onTry} className="ti-cta-nav">TRY ACT FREE →</button>
+          </div>
         </div>
       </nav>
 
-      {/* ── Hero ────────────────────────────────────────────────────────────── */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-16 overflow-hidden">
-        {/* Subtle grid */}
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:80px_80px]" />
-        {/* Central glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[500px] bg-[#F97316]/8 rounded-full blur-[120px] pointer-events-none" />
-        {/* Top vignette */}
-        <div className="absolute top-0 inset-x-0 h-32 bg-gradient-to-b from-[#060606] to-transparent pointer-events-none" />
-
-        <div className="relative z-10 max-w-5xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2.5 border border-white/[0.08] bg-white/[0.03] rounded-full px-4 py-2 text-[11px] font-mono text-[#555] mb-10 backdrop-blur-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#F97316] animate-pulse shrink-0" />
-            AI AGENT FOR PHYSICAL WORK &nbsp;·&nbsp; ACTOBER.COM
-          </div>
-
-          {/* Headline */}
-          <h1 className="text-[clamp(52px,10vw,108px)] font-black leading-[0.9] tracking-[-0.03em] mb-8">
-            <span className="block text-white/90">The expert</span>
-            <span className="gradient-text block">in your ear.</span>
-          </h1>
-
-          {/* Sub */}
-          <p className="text-[clamp(16px,2vw,20px)] text-[#555] max-w-2xl mx-auto mb-12 leading-relaxed font-light">
-            ACT is an AI agent that <span className="text-white/70">sees what you see</span>, reasons about the job,
-            and guides you through every step — hands-free, trade-calibrated, safety-first.
-          </p>
-
-          {/* CTAs */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={onTry} className="btn-primary px-8 py-4 text-base">
-              Try it free — no signup →
-            </button>
-            <a href="#how" className="border border-white/[0.08] text-[#555] font-semibold px-8 py-4 rounded-xl hover:border-white/20 hover:text-white transition-all text-base">
-              See how it works
-            </a>
-          </div>
-
-          <p className="text-[11px] text-[#2a2a2a] mt-6 font-mono tracking-wider">
-            Works in browser · iOS & Android coming soon
-          </p>
-        </div>
-
-        {/* Scroll indicator */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 opacity-30">
-          <div className="w-px h-12 bg-gradient-to-b from-transparent to-[#F97316]" />
-          <span className="text-[10px] font-mono text-[#555] tracking-widest">SCROLL</span>
+      {/* ── Hero ─────────────────────────────────────────────────────────────── */}
+      <section className="ti-hero">
+        <p className="ti-eyebrow">AI guidance for physical work — actober.com</p>
+        <h1 className="ti-h1">
+          <span className="ti-h1-anim">The expert</span>
+          <span className="ti-h1-anim">in your ear.</span>
+        </h1>
+        <p className="ti-hero-sub">
+          ACT sees what you see, reasons about the job, and guides you through every step — hands-free, trade-calibrated, safety-first.
+        </p>
+        <div className="ti-hero-cta">
+          <button onClick={onTry} className="ti-btn-primary">Try ACT free</button>
+          <a href="#capabilities" className="ti-btn-ghost">See capabilities ↓</a>
         </div>
       </section>
 
-      {/* ── Stats bar ───────────────────────────────────────────────────────── */}
-      <section className="border-y border-white/[0.06] bg-[#080808]">
-        <div className="max-w-4xl mx-auto px-6 py-10 grid grid-cols-3 divide-x divide-white/[0.06]">
-          {[
-            { n: '7',   label: 'Trade domains' },
-            { n: '3',   label: 'Skill levels' },
-            { n: '∞',   label: 'Guided steps' },
-          ].map((s, i) => (
-            <div key={s.label} className={`reveal reveal-delay-${i + 1} flex flex-col items-center gap-2 px-6`}>
-              <span className="text-[clamp(36px,6vw,56px)] font-black text-[#F97316] leading-none">{s.n}</span>
-              <span className="text-[10px] text-[#333] font-mono uppercase tracking-[0.2em]">{s.label}</span>
+      <hr className="ti-rule" />
+
+      {/* ── Stats ────────────────────────────────────────────────────────────── */}
+      <div className="ti-stats">
+        {[
+          { n: '7',  label: 'Trade domains' },
+          { n: '3',  label: 'Skill levels' },
+          { n: '∞',  label: 'Guided steps' },
+          { n: '$0', label: 'To get started' },
+        ].map((s) => (
+          <div key={s.label} className="ti-stat">
+            <span className="ti-stat-n">{s.n}</span>
+            <span className="ti-stat-label">{s.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <hr className="ti-rule" />
+
+      {/* ── Capabilities ─────────────────────────────────────────────────────── */}
+      <section id="capabilities" className="ti-section">
+        <div>
+          <p className="ti-eyebrow">What ACT does</p>
+          <h2 className="ti-h2">Capabilities.</h2>
+        </div>
+        <div className="ti-accordion">
+          {CAPABILITIES.map((c, i) => (
+            <div key={c.n} className={`ti-accordion-row${open === i ? ' open' : ''}`}>
+              <button className="ti-accordion-trigger" onClick={() => setOpen(open === i ? null : i)}>
+                <span className="ti-acc-num">{c.n}</span>
+                <span className="ti-acc-title">{c.title}</span>
+                <span className="ti-acc-tag">{c.tag}</span>
+                <span className="ti-acc-icon">{open === i ? '−' : '+'}</span>
+              </button>
+              {open === i && (
+                <div className="ti-accordion-body">{c.body}</div>
+              )}
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Demo window ─────────────────────────────────────────────────────── */}
-      <section className="max-w-3xl mx-auto px-6 py-28">
-        <div className="reveal text-center mb-12">
-          <span className="text-[10px] font-mono text-[#333] tracking-[0.2em] uppercase">Live demo — plumbing session</span>
-          <h2 className="text-3xl md:text-4xl font-black mt-3 leading-tight">
-            This is what <span className="text-[#F97316]">working with ACT</span> looks like.
-          </h2>
+      <hr className="ti-rule" />
+
+      {/* ── Quote ────────────────────────────────────────────────────────────── */}
+      <section className="ti-quote-section">
+        <div className="ti-quote-wrap">
+          <blockquote className="ti-quote">
+            This isn't about replacing tradespeople. It's about making anyone{' '}
+            <em>significantly more capable</em> on the job, faster.
+          </blockquote>
+          <p className="ti-quote-attr">— The ACT thesis · actober.com</p>
         </div>
+      </section>
 
-        <div className="reveal border border-white/[0.07] rounded-2xl overflow-hidden bg-[#0A0A0A] shadow-2xl shadow-black/50">
-          {/* Window chrome */}
-          <div className="flex items-center gap-3 px-5 py-4 border-b border-white/[0.06] bg-[#0d0d0d]">
-            <div className="flex gap-1.5">
-              <span className="w-3 h-3 rounded-full bg-[#ff5f57]" />
-              <span className="w-3 h-3 rounded-full bg-[#febc2e]" />
-              <span className="w-3 h-3 rounded-full bg-[#28c840]" />
+      <hr className="ti-rule" />
+
+      {/* ── Demo ─────────────────────────────────────────────────────────────── */}
+      <section id="demo" className="ti-section">
+        <div>
+          <p className="ti-eyebrow">Live session</p>
+          <h2 className="ti-h2">ACT in action.</h2>
+        </div>
+        <div className="ti-demo-window">
+          <div className="ti-demo-header">
+            <div className="ti-demo-dots">
+              <span /><span /><span />
             </div>
-            <div className="flex-1 flex justify-center">
-              <span className="text-[11px] font-mono text-[#2a2a2a] bg-[#111] border border-white/[0.06] rounded-md px-3 py-1">
-                act — plumbing session · live
-              </span>
-            </div>
+            <span className="ti-demo-title">act — plumbing session · live</span>
           </div>
-
-          <div className="p-6 flex flex-col gap-4">
+          <div className="ti-demo-body">
             {DEMO.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[82%] rounded-2xl px-4 py-3 ${
-                  msg.role === 'user'
-                    ? 'bg-[#F97316] text-white rounded-br-sm'
-                    : 'bg-[#111] border border-white/[0.06] text-[#bbb] rounded-bl-sm'
-                }`}>
-                  {msg.role === 'act' && (
-                    <p className="text-[9px] font-mono text-[#F97316] tracking-[0.2em] mb-2 uppercase">ACT</p>
-                  )}
-                  <p className="text-[14px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
-                </div>
+              <div key={i} className={`ti-msg ti-msg-${msg.role}`}>
+                {msg.role === 'act' && <p className="ti-msg-label">ACT</p>}
+                <p className="ti-msg-text">{msg.text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── How it works ────────────────────────────────────────────────────── */}
-      <section id="how" className="border-t border-white/[0.06] py-28 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="reveal text-center mb-20">
-            <span className="text-[10px] font-mono text-[#333] tracking-[0.2em] uppercase">How it works</span>
-            <h2 className="text-4xl md:text-5xl font-black mt-3 leading-tight">
-              Not a chatbot.<br /><span className="text-[#F97316]">An agent.</span>
-            </h2>
-            <p className="text-[#444] mt-4 max-w-xl mx-auto text-lg font-light">
-              ACT doesn't just answer questions. It takes you from problem to completion.
-            </p>
-          </div>
+      <hr className="ti-rule" />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {HOW.map((h, i) => (
-              <div key={h.n} className={`reveal reveal-delay-${i + 1} card-hover border border-white/[0.07] rounded-2xl p-8 bg-[#0A0A0A] flex flex-col gap-4`}>
-                <div className="flex items-start justify-between">
-                  <span className="text-6xl font-black text-white/[0.04] font-mono leading-none">{h.n}</span>
-                  <span className="text-[10px] font-mono text-[#F97316] border border-[#F97316]/25 rounded-full px-2.5 py-1 bg-[#F97316]/5">
-                    {h.tag}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-bold text-white text-lg mb-2 leading-snug">{h.title}</h3>
-                  <p className="text-[#484848] leading-relaxed text-sm">{h.body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* ── Trades ───────────────────────────────────────────────────────────── */}
+      <section id="trades" className="ti-section">
+        <div>
+          <p className="ti-eyebrow">Supported trades</p>
+          <h2 className="ti-h2">Every trade.<br />Right vocabulary.</h2>
         </div>
-      </section>
-
-      {/* ── Features ────────────────────────────────────────────────────────── */}
-      <section id="features" className="border-t border-white/[0.06] py-28 px-6 bg-[#080808]">
-        <div className="max-w-6xl mx-auto">
-          <div className="reveal text-center mb-20">
-            <span className="text-[10px] font-mono text-[#333] tracking-[0.2em] uppercase">Built for the job site</span>
-            <h2 className="text-4xl md:text-5xl font-black mt-3 leading-tight">
-              Every feature earns<br /><span className="text-[#F97316]">its place.</span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {FEATURES.map((f, i) => (
-              <div key={f.title} className={`reveal reveal-delay-${(i % 2) + 1} card-hover border border-white/[0.07] rounded-2xl p-8 bg-[#0A0A0A] flex gap-6`}>
-                <div className="w-12 h-12 rounded-xl bg-[#F97316]/10 border border-[#F97316]/15 flex items-center justify-center shrink-0 text-xl">
-                  {f.icon}
-                </div>
-                <div>
-                  <h3 className="font-bold text-white text-lg mb-2">{f.title}</h3>
-                  <p className="text-[#484848] leading-relaxed text-sm">{f.body}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Trades ──────────────────────────────────────────────────────────── */}
-      <section id="trades" className="border-t border-white/[0.06] py-28 px-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="reveal text-center mb-20">
-            <span className="text-[10px] font-mono text-[#333] tracking-[0.2em] uppercase">Supported trades</span>
-            <h2 className="text-4xl md:text-5xl font-black mt-3 leading-tight">
-              Every trade.<br /><span className="text-[#F97316]">Right vocabulary.</span>
-            </h2>
-            <p className="text-[#444] mt-4 max-w-xl mx-auto font-light">
-              ACT knows the terminology, the tools, and the safety rules for each trade.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {TRADES.map((t, i) => (
-              <div key={t.label} className={`reveal reveal-delay-${(i % 3) + 1} card-hover border border-white/[0.07] rounded-xl p-6 bg-[#0A0A0A] group cursor-default`}>
-                <span className="text-3xl block mb-4">{t.emoji}</span>
-                <h3 className="font-bold text-white mb-1.5 group-hover:text-[#F97316] transition-colors duration-200">{t.label}</h3>
-                <p className="text-xs text-[#383838] leading-relaxed">{t.desc}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Thesis ──────────────────────────────────────────────────────────── */}
-      <section className="border-t border-white/[0.06] py-32 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[#F97316]/3 pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[300px] bg-[#F97316]/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="reveal relative z-10 max-w-4xl mx-auto text-center">
-          <div className="text-5xl mb-8 opacity-20">"</div>
-          <p className="text-3xl md:text-4xl lg:text-5xl font-black leading-[1.1] tracking-tight mb-10">
-            This isn't about replacing tradespeople.
-            It's about making anyone{' '}
-            <span className="text-[#F97316]">significantly more capable</span>
-            {' '}on the job, faster.
-          </p>
-          <div className="flex items-center justify-center gap-3">
-            <div className="w-8 h-px bg-[#333]" />
-            <span className="text-[11px] font-mono text-[#333] tracking-[0.2em] uppercase">The ACT thesis — actober.com</span>
-            <div className="w-8 h-px bg-[#333]" />
-          </div>
-        </div>
-      </section>
-
-      {/* ── CTA ─────────────────────────────────────────────────────────────── */}
-      <section className="border-t border-white/[0.06] py-32 px-6 text-center bg-[#080808]">
-        <div className="reveal max-w-2xl mx-auto">
-          <span className="text-[10px] font-mono text-[#333] tracking-[0.2em] uppercase block mb-6">Ready to get started?</span>
-          <h2 className="text-5xl md:text-7xl font-black leading-[0.9] tracking-tight mb-6">
-            Start your<br /><span className="gradient-text">first job.</span>
-          </h2>
-          <p className="text-[#444] mb-12 text-xl font-light">
-            Free. No account. Works on any device right now.
-          </p>
-          <button onClick={onTry} className="btn-primary px-14 py-5 text-lg font-bold">
-            Open ACT →
-          </button>
-          <div className="flex items-center justify-center gap-8 mt-10">
-            <div className="flex items-center gap-2 text-[#2a2a2a]">
-              <span className="text-sm">🍎</span>
-              <span className="text-[11px] font-mono tracking-wide">iOS — Coming soon</span>
+        <div className="ti-trades-grid">
+          {TRADES.map((t) => (
+            <div key={t.label} className="ti-trade-item">
+              <span className="ti-trade-label">{t.label}</span>
+              <span className="ti-trade-sub">{t.sub}</span>
             </div>
-            <div className="w-px h-4 bg-[#1a1a1a]" />
-            <div className="flex items-center gap-2 text-[#2a2a2a]">
-              <span className="text-sm">🤖</span>
-              <span className="text-[11px] font-mono tracking-wide">Android — Coming soon</span>
-            </div>
-          </div>
+          ))}
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer className="border-t border-white/[0.06] py-10 px-6">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <span className="font-black text-[#F97316] tracking-[5px] text-sm">ACT</span>
-            <span className="text-[#1a1a1a]">·</span>
-            <span className="text-xs font-mono text-[#2a2a2a]">by Actober</span>
-          </div>
-          <span className="text-xs font-mono text-[#222]">© 2026 Actober. All rights reserved.</span>
-          <div className="flex gap-6">
-            <a href="https://actober.com" className="text-xs font-mono text-[#2a2a2a] hover:text-white transition-colors duration-200">actober.com</a>
-          </div>
+      <hr className="ti-rule" />
+
+      {/* ── CTA ──────────────────────────────────────────────────────────────── */}
+      <section className="ti-cta-section">
+        <p className="ti-eyebrow">Ready to start?</p>
+        <h2 className="ti-cta-h">Start your<br />first job.</h2>
+        <p className="ti-cta-sub">Free. No account. Works on any device right now.</p>
+        <button onClick={onTry} className="ti-btn-primary ti-btn-lg">Open ACT →</button>
+        <p className="ti-platform-note">iOS & Android coming soon</p>
+      </section>
+
+      {/* ── Footer ───────────────────────────────────────────────────────────── */}
+      <footer className="ti-footer">
+        <div className="ti-footer-inner">
+          <span className="ti-logo">ACT</span>
+          <span className="ti-footer-copy">© 2026 Actober. All rights reserved.</span>
+          <a href="https://actober.com" className="ti-footer-link">actober.com</a>
         </div>
       </footer>
 

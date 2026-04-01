@@ -23,7 +23,8 @@
           "sounds": [],
           "iosDisplayInForeground": true
         }
-      ]
+      ],
+      "@sentry/react-native"
     ],
     "ios": {
       "supportsTablet": true,
