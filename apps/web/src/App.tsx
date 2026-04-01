@@ -47,28 +47,36 @@ function LogoMark({ size = 32 }: { size?: number }) {
       style={{ flexShrink: 0 }}
     >
       {/* ── Silhouette (all #052424, reads as single shape) ── */}
-      <rect x="0" y="16" width="80" height="64" rx="16" fill="#052424"/>
-      <circle cx="20" cy="20" r="18" fill="#052424"/>
-      <circle cx="60" cy="20" r="18" fill="#052424"/>
+      {/* Squircle body starts at y=18. Dome bumps at cy=22 protrude ~14px */}
+      {/* above badge top — frog-head-from-above at any size. */}
+      <rect x="0" y="18" width="80" height="62" rx="16" fill="#052424"/>
+      <circle cx="20" cy="22" r="18" fill="#052424"/>
+      <circle cx="60" cy="22" r="18" fill="#052424"/>
 
-      {/* ── Ladybug abdomen: flat orange arch ── */}
-      <path d="M8 52 Q8 78 40 78 Q72 78 72 52 Z" fill="#F97316"/>
+      {/* ── Ladybug abdomen: flat orange arch, tighter to eyes ── */}
+      <path d="M8 50 Q8 78 40 78 Q72 78 72 50 Z" fill="#F97316"/>
 
-      {/* ── Frog eyes: white iris inside each dome ── */}
-      {/* dome r=18, iris r=13 → 5px teal ring = natural eye socket */}
-      <circle cx="20" cy="20" r="13" fill="#ffffff"/>
-      <circle cx="60" cy="20" r="13" fill="#ffffff"/>
+      {/* ── Frog eyes: white iris, 5px teal socket ring ── */}
+      <circle cx="20" cy="22" r="13" fill="#ffffff"/>
+      <circle cx="60" cy="22" r="13" fill="#ffffff"/>
 
-      {/* ── Pupils: concentric, r = 1/2 iris — geometric precision ── */}
-      <circle cx="20" cy="20" r="6.5" fill="#052424"/>
-      <circle cx="60" cy="20" r="6.5" fill="#052424"/>
+      {/* ── Pupils: r = 1/2 iris ── */}
+      <circle cx="20" cy="22" r="6.5" fill="#052424"/>
+      <circle cx="60" cy="22" r="6.5" fill="#052424"/>
 
-      {/* ── Ladybug wing-split: only through body area ── */}
-      <line x1="40" y1="52" x2="40" y2="76" stroke="#052424" strokeWidth="2"/>
+      {/* ── Eye shines: the single detail that makes it remarkable. */}
+      {/* One specular dot per eye — flat white circle, upper-left quadrant */}
+      {/* of each pupil. Still geometric. Still flat. Just alive. */}
+      <circle cx="16" cy="18" r="2.5" fill="#ffffff"/>
+      <circle cx="56" cy="18" r="2.5" fill="#ffffff"/>
 
-      {/* ── Ladybug spots: symmetric pair ── */}
-      <circle cx="25" cy="65" r="4" fill="#052424"/>
-      <circle cx="55" cy="65" r="4" fill="#052424"/>
+      {/* ── Ladybug wing-split ── */}
+      <line x1="40" y1="50" x2="40" y2="76" stroke="#052424" strokeWidth="2"/>
+
+      {/* ── Ladybug spots: golden ratio placement within body ── */}
+      {/* Body runs y=50→78 (28px). Golden ratio point: 50 + 28×0.382 = 60.7 ≈ 61 */}
+      <circle cx="25" cy="63" r="4" fill="#052424"/>
+      <circle cx="55" cy="63" r="4" fill="#052424"/>
     </svg>
   )
 }
