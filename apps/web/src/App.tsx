@@ -118,7 +118,10 @@ function useReveal() {
 
 function LandingPage({ onTry }: { onTry: () => void }) {
   const [open, setOpen] = useState<number | null>(0)
-  const [dark, setDark] = useState(true)
+  const [dark, setDark] = useState(() => {
+    const saved = localStorage.getItem('act_theme')
+    return saved ? saved === 'dark' : true
+  })
 
   const CAPABILITIES = [
     {
@@ -181,7 +184,7 @@ function LandingPage({ onTry }: { onTry: () => void }) {
           <div className="ti-nav-right">
             <button
               className="ti-theme-toggle"
-              onClick={() => setDark(d => !d)}
+              onClick={() => setDark(d => { const next = !d; localStorage.setItem('act_theme', next ? 'dark' : 'light'); return next })}
               aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
             >
               {dark ? '☀' : '☾'}
@@ -521,12 +524,14 @@ function ChatView({
   activeProject: ReturnType<typeof useAct>['activeProject']
   isTyping: boolean
   onKickoff: () => void
-  onSend: (text: string) => void
+  onSend: (text: string, silent?: boolean, imageBase64?: string, imageMimeType?: string) => void
   onPickSuggestion: (s: ProjectSuggestion) => void
   onResumeProject: () => void
   onNew: () => void
 }) {
   const [input, setInput] = useState('')
+  const [image, setImage] = useState<{ base64: string; mime: string; preview: string } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const started = useRef(false)
 
@@ -543,9 +548,27 @@ function ChatView({
 
   function handleSend() {
     const t = input.trim()
-    if (!t || isTyping) return
+    if ((!t && !image) || isTyping) return
     setInput('')
-    onSend(t)
+    if (image) {
+      onSend(t || 'Here is a photo of the problem.', false, image.base64, image.mime)
+      setImage(null)
+    } else {
+      onSend(t)
+    }
+  }
+
+  function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      const base64 = dataUrl.split(',')[1]
+      setImage({ base64, mime: file.type, preview: dataUrl })
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
   }
 
   const visible = messages.filter(m => !(m.role === 'USER' && m.content === 'Hello'))
@@ -637,22 +660,45 @@ function ChatView({
         </div>
       )}
 
-      <div className="bg-white border-t border-gray-200 px-3 py-3 flex gap-2 items-end">
-        <textarea
-          className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-2.5 text-[15px] outline-none focus:border-[#F97316]/60 bg-gray-50 max-h-28 min-h-[44px]"
-          placeholder="Describe the job or ask a question..."
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-          rows={1}
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || isTyping}
-          className="w-11 h-11 rounded-full bg-[#F97316] text-white text-xl font-bold flex items-center justify-center disabled:opacity-40 transition-opacity shrink-0"
-        >
-          →
-        </button>
+      <div className="bg-white border-t border-gray-200 px-3 pt-2 pb-3">
+        {image && (
+          <div className="relative mb-2 inline-block">
+            <img src={image.preview} alt="Attached" className="h-20 rounded-xl object-cover border border-gray-200" />
+            <button
+              onClick={() => setImage(null)}
+              className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-800 text-white text-xs flex items-center justify-center leading-none"
+            >×</button>
+          </div>
+        )}
+        <div className="flex gap-2 items-end">
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImagePick} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={isTyping}
+            className="w-11 h-11 rounded-full border border-gray-200 text-gray-400 flex items-center justify-center hover:border-[#F97316]/40 hover:text-[#F97316] transition-colors disabled:opacity-40 shrink-0"
+            aria-label="Attach photo"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </button>
+          <textarea
+            className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-2.5 text-[15px] outline-none focus:border-[#F97316]/60 bg-gray-50 max-h-28 min-h-[44px]"
+            placeholder={image ? 'Add a note or just send the photo...' : 'Describe the job or ask a question...'}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            rows={1}
+          />
+          <button
+            onClick={handleSend}
+            disabled={(!input.trim() && !image) || isTyping}
+            className="w-11 h-11 rounded-full bg-[#F97316] text-white text-xl font-bold flex items-center justify-center disabled:opacity-40 transition-opacity shrink-0"
+          >
+            →
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -696,7 +742,7 @@ function ProjectView({
   project: Project
   messages: ReturnType<typeof useAct>['messages']
   isTyping: boolean
-  onSend: (text: string) => void
+  onSend: (text: string, silent?: boolean, imageBase64?: string, imageMimeType?: string) => void
   onStepDone: (i: number) => void
   onComplete: () => void
   onAbandon: () => void
@@ -704,6 +750,8 @@ function ProjectView({
   onNew: () => void
 }) {
   const [input, setInput] = useState('')
+  const [image, setImage] = useState<{ base64: string; mime: string; preview: string } | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const [showAbandon, setShowAbandon] = useState(false)
   const [showComplete, setShowComplete] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -720,11 +768,28 @@ function ProjectView({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isTyping])
 
+  function handleImagePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = reader.result as string
+      setImage({ base64: dataUrl.split(',')[1], mime: file.type, preview: dataUrl })
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
   function handleSend() {
     const t = input.trim()
-    if (!t || isTyping) return
+    if ((!t && !image) || isTyping) return
     setInput('')
-    onSend(t)
+    if (image) {
+      onSend(t || 'Here is a photo of the job.', false, image.base64, image.mime)
+      setImage(null)
+    } else {
+      onSend(t)
+    }
   }
 
   return (
@@ -815,22 +880,42 @@ function ProjectView({
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t border-gray-200 px-3 py-3 flex gap-2 items-end">
-        <textarea
-          className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-2.5 text-[15px] outline-none focus:border-[#F97316]/60 bg-gray-50 max-h-28 min-h-[44px]"
-          placeholder="Ask ACT anything about this job..."
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
-          rows={1}
-        />
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || isTyping}
-          className="w-11 h-11 rounded-full bg-[#F97316] text-white text-xl font-bold flex items-center justify-center disabled:opacity-40 transition-opacity shrink-0"
-        >
-          →
-        </button>
+      <div className="bg-white border-t border-gray-200 px-3 pt-2 pb-3">
+        {image && (
+          <div className="relative mb-2 inline-block">
+            <img src={image.preview} alt="Attached" className="h-20 rounded-xl object-cover border border-gray-200" />
+            <button onClick={() => setImage(null)} className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-800 text-white text-xs flex items-center justify-center leading-none">×</button>
+          </div>
+        )}
+        <div className="flex gap-2 items-end">
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleImagePick} />
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={isTyping}
+            className="w-11 h-11 rounded-full border border-gray-200 text-gray-400 flex items-center justify-center hover:border-[#F97316]/40 hover:text-[#F97316] transition-colors disabled:opacity-40 shrink-0"
+            aria-label="Attach photo"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </button>
+          <textarea
+            className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-2.5 text-[15px] outline-none focus:border-[#F97316]/60 bg-gray-50 max-h-28 min-h-[44px]"
+            placeholder={image ? 'Add a note or just send the photo...' : 'Ask ACT anything about this job...'}
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }}
+            rows={1}
+          />
+          <button
+            onClick={handleSend}
+            disabled={(!input.trim() && !image) || isTyping}
+            className="w-11 h-11 rounded-full bg-[#F97316] text-white text-xl font-bold flex items-center justify-center disabled:opacity-40 transition-opacity shrink-0"
+          >
+            →
+          </button>
+        </div>
       </div>
 
       {showComplete && project.status === 'COMPLETED' && (
