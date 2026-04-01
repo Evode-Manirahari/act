@@ -26,8 +26,9 @@ export default function App() {
 }
 
 // ─── Actober AI Logo mark ────────────────────────────────────────────────────
-// Geometric, flat, readable at 24px.
-// 8 core shapes: squircle + orange body + 2 eyes + 2 pupils + spine + 2 spots.
+// Frog + ladybug hybrid. Flat, no gradients, no opacity tricks.
+// Badge → orange body (ladybug abdomen) → white eyes (frog) → teal pupils
+// → spine line (ladybug wing-split) → two spots (ladybug).
 
 function LogoMark({ size = 32 }: { size?: number }) {
   return (
@@ -38,48 +39,40 @@ function LogoMark({ size = 32 }: { size?: number }) {
       aria-hidden="true"
       style={{ flexShrink: 0 }}
     >
-      {/* 1 — Badge: dark teal squircle */}
-      <rect width="80" height="80" rx="20" fill="#052424"/>
+      {/* 1 — Badge */}
+      <rect width="80" height="80" rx="16" fill="#052424"/>
 
-      {/* 2 — Body: orange rounded shape, fills lower 45% of badge.
-               Ladybug abdomen. Frog torso. */}
-      <path
-        d="M12 52 Q12 78 40 78 Q68 78 68 52 Z"
-        fill="#F97316"
-      />
+      {/* 2 — Body: orange ladybug abdomen, flat arch */}
+      <path d="M10 52 Q10 78 40 78 Q70 78 70 52 Z" fill="#F97316"/>
 
-      {/* 3 & 4 — Eyes: two large white circles, dominant element.
-                 At 24px they read as two bright dots — instantly frog. */}
-      <circle cx="24" cy="36" r="15" fill="#ffffff"/>
-      <circle cx="56" cy="36" r="15" fill="#ffffff"/>
+      {/* 3 & 4 — Eyes: white frog eyes, wide-set */}
+      <circle cx="23" cy="36" r="14" fill="#ffffff"/>
+      <circle cx="57" cy="36" r="14" fill="#ffffff"/>
 
-      {/* 5 & 6 — Pupils: dark teal circles, inset.
-                 Slightly forward-facing gaze (trustworthy). */}
-      <circle cx="27" cy="39" r="7.5" fill="#052424"/>
-      <circle cx="53" cy="39" r="7.5" fill="#052424"/>
+      {/* 5 & 6 — Pupils: teal, centered — cookie-cutter precision */}
+      <circle cx="23" cy="36" r="7" fill="#052424"/>
+      <circle cx="57" cy="36" r="7" fill="#052424"/>
 
-      {/* 7 — Spine: single 1.5px vertical line through center.
-               The ladybug wing-split DNA. Disappears below 32px — that's fine. */}
-      <line x1="40" y1="24" x2="40" y2="76"
-            stroke="#052424" strokeWidth="1.5" strokeOpacity="0.22"/>
+      {/* 7 — Spine: ladybug wing-split, solid */}
+      <line x1="40" y1="50" x2="40" y2="76" stroke="#052424" strokeWidth="2"/>
 
-      {/* 8 — Spots: two symmetric dots on orange body. */}
-      <circle cx="27" cy="62" r="4.5" fill="#052424" fillOpacity="0.28"/>
-      <circle cx="53" cy="62" r="4.5" fill="#052424" fillOpacity="0.28"/>
+      {/* 8 & 9 — Spots: two symmetric ladybug spots, solid */}
+      <circle cx="26" cy="63" r="4" fill="#052424"/>
+      <circle cx="54" cy="63" r="4" fill="#052424"/>
     </svg>
   )
 }
 
 function LogoWordmark({ dark: isDark }: { dark: boolean }) {
-  const wordColor = isDark ? 'rgba(255,255,255,0.90)' : '#111111'
+  const wordColor = isDark ? 'rgba(255,255,255,0.92)' : '#0d0d0d'
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-      <LogoMark size={32} />
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <LogoMark size={30} />
       <span style={{
         fontFamily: 'Inter, -apple-system, sans-serif',
         fontWeight: 700,
-        fontSize: 18,
-        letterSpacing: '-0.3px',
+        fontSize: 17,
+        letterSpacing: '-0.5px',
         lineHeight: 1,
       }}>
         <span style={{ color: '#F97316' }}>Act</span>
