@@ -264,6 +264,7 @@ body {
   z-index: 0;
 }
 .ti-hero > * { position: relative; z-index: 1; }
+.ti-hero > svg:first-child { margin-bottom: 28px; display: block; }
 .ti-eyebrow {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
