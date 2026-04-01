@@ -26,9 +26,16 @@ export default function App() {
 }
 
 // ─── Actober AI Logo mark ────────────────────────────────────────────────────
-// Frog + ladybug hybrid. Flat, no gradients, no opacity tricks.
-// Badge → orange body (ladybug abdomen) → white eyes (frog) → teal pupils
-// → spine line (ladybug wing-split) → two spots (ladybug).
+// The OUTLINE is the brand — two dome bumps at top = frog head silhouette.
+// Inside: orange ladybug body, white eyes, teal pupils, spine, two spots.
+// Built on 8-unit grid. No gradients, no opacity, no mascot softness.
+//
+// Silhouette construction (all teal, merges into one shape):
+//   • Squircle body: rect y=16, rx=16
+//   • Left dome: circle cx=20 cy=20 r=18  ← protrudes 14px above badge top
+//   • Right dome: circle cx=60 cy=20 r=18 ← same
+// Combined: a squircle with two circular bumps at top-left/right corners.
+// That IS the frog-head-from-above. Nothing else looks like this.
 
 function LogoMark({ size = 32 }: { size?: number }) {
   return (
@@ -39,26 +46,29 @@ function LogoMark({ size = 32 }: { size?: number }) {
       aria-hidden="true"
       style={{ flexShrink: 0 }}
     >
-      {/* 1 — Badge */}
-      <rect width="80" height="80" rx="16" fill="#052424"/>
+      {/* ── Silhouette (all #052424, reads as single shape) ── */}
+      <rect x="0" y="16" width="80" height="64" rx="16" fill="#052424"/>
+      <circle cx="20" cy="20" r="18" fill="#052424"/>
+      <circle cx="60" cy="20" r="18" fill="#052424"/>
 
-      {/* 2 — Body: orange ladybug abdomen, flat arch */}
-      <path d="M10 52 Q10 78 40 78 Q70 78 70 52 Z" fill="#F97316"/>
+      {/* ── Ladybug abdomen: flat orange arch ── */}
+      <path d="M8 52 Q8 78 40 78 Q72 78 72 52 Z" fill="#F97316"/>
 
-      {/* 3 & 4 — Eyes: white frog eyes, wide-set */}
-      <circle cx="23" cy="36" r="14" fill="#ffffff"/>
-      <circle cx="57" cy="36" r="14" fill="#ffffff"/>
+      {/* ── Frog eyes: white iris inside each dome ── */}
+      {/* dome r=18, iris r=13 → 5px teal ring = natural eye socket */}
+      <circle cx="20" cy="20" r="13" fill="#ffffff"/>
+      <circle cx="60" cy="20" r="13" fill="#ffffff"/>
 
-      {/* 5 & 6 — Pupils: teal, centered — cookie-cutter precision */}
-      <circle cx="23" cy="36" r="7" fill="#052424"/>
-      <circle cx="57" cy="36" r="7" fill="#052424"/>
+      {/* ── Pupils: concentric, r = 1/2 iris — geometric precision ── */}
+      <circle cx="20" cy="20" r="6.5" fill="#052424"/>
+      <circle cx="60" cy="20" r="6.5" fill="#052424"/>
 
-      {/* 7 — Spine: ladybug wing-split, solid */}
-      <line x1="40" y1="50" x2="40" y2="76" stroke="#052424" strokeWidth="2"/>
+      {/* ── Ladybug wing-split: only through body area ── */}
+      <line x1="40" y1="52" x2="40" y2="76" stroke="#052424" strokeWidth="2"/>
 
-      {/* 8 & 9 — Spots: two symmetric ladybug spots, solid */}
-      <circle cx="26" cy="63" r="4" fill="#052424"/>
-      <circle cx="54" cy="63" r="4" fill="#052424"/>
+      {/* ── Ladybug spots: symmetric pair ── */}
+      <circle cx="25" cy="65" r="4" fill="#052424"/>
+      <circle cx="55" cy="65" r="4" fill="#052424"/>
     </svg>
   )
 }
