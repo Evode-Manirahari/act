@@ -194,10 +194,10 @@ function LandingPage({ onTry }: { onTry: () => void }) {
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <section className="ti-hero">
         <LogoMark size={64} />
-        <p className="ti-eyebrow">Act on what you see · actober.com</p>
+        <p className="ti-eyebrow">AI guidance for field workers · actober.com</p>
         <h1 className="ti-h1">
-          <span className="ti-h1-anim">The expert</span>
-          <span className="ti-h1-anim">in your ear.</span>
+          <span className="ti-h1-anim">Act on</span>
+          <span className="ti-h1-anim">what you see.</span>
         </h1>
         <p className="ti-hero-sub">
           ACT sees what you see, reasons about the job, and guides you through every step. Hands-free, trade-calibrated, safety-first.
