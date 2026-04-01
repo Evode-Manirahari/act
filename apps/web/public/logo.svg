@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" fill="none" role="img" aria-label="Actober AI">
+  <defs>
+    <!-- Body gradient: warm orange top-left → deep amber bottom-right -->
+    <radialGradient id="bodyG" cx="38%" cy="28%" r="70%" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#FF9035"/>
+      <stop offset="55%"  stop-color="#F97316"/>
+      <stop offset="100%" stop-color="#C85C08"/>
+    </radialGradient>
+
+    <!-- Eye gradient: bright white center → soft grey edge -->
+    <radialGradient id="eyeG" cx="38%" cy="32%" r="62%" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#dde8e8"/>
+    </radialGradient>
+
+    <!-- Pupil gradient: deep teal center → near-black edge -->
+    <radialGradient id="pupilG" cx="35%" cy="30%" r="65%" gradientUnits="objectBoundingBox">
+      <stop offset="0%"   stop-color="#0e4040"/>
+      <stop offset="100%" stop-color="#020e0e"/>
+    </radialGradient>
+
+    <!-- Badge outer glow -->
+    <filter id="badgeShadow" x="-8%" y="-8%" width="116%" height="116%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#F97316" flood-opacity="0.18"/>
+    </filter>
+
+    <!-- Eye subtle shadow for depth -->
+    <filter id="eyeShadow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="2" flood-color="#052424" flood-opacity="0.25"/>
+    </filter>
+
+    <!-- Body inner shadow for roundness -->
+    <filter id="bodyShadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#7A2E00" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!--  ICON MARK  (80 × 80 squircle)                     -->
+  <!-- ═══════════════════════════════════════════════════ -->
+
+  <!-- Outer badge — dark teal squircle -->
+  <rect x="2" y="2" width="76" height="76" rx="20" fill="#052424" filter="url(#badgeShadow)"/>
+
+  <!-- Inner subtle border ring (premium glass feel) -->
+  <rect x="3.5" y="3.5" width="73" height="73" rx="18.5"
+        fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="1.5"/>
+
+  <!-- Ambient teal-to-black vignette inside badge -->
+  <rect x="2" y="2" width="76" height="76" rx="20"
+        fill="url(#vignette)" opacity="0.6"/>
+
+  <!-- ── Frog-ladybug main body ─────────────────────── -->
+  <!-- The body is a wide oval centered low — reads as ladybug abdomen -->
+  <ellipse cx="40" cy="56" rx="26" ry="22" fill="url(#bodyG)" filter="url(#bodyShadow)"/>
+
+  <!-- Body edge highlight (top rim light) -->
+  <ellipse cx="40" cy="50" rx="24" ry="8"
+           fill="none" stroke="rgba(255,200,120,0.22)" stroke-width="1.5"/>
+
+  <!-- ── Left eye (frog eye = raised dome above body) ── -->
+  <circle cx="27" cy="38" r="13" fill="url(#eyeG)" filter="url(#eyeShadow)"/>
+  <!-- Eye socket edge — thin ring for definition -->
+  <circle cx="27" cy="38" r="13"
+          fill="none" stroke="rgba(5,36,36,0.12)" stroke-width="1.2"/>
+  <!-- Left pupil -->
+  <circle cx="29" cy="40" r="6.5" fill="url(#pupilG)"/>
+  <!-- Left primary shine -->
+  <circle cx="25" cy="35" r="2.8" fill="white"/>
+  <!-- Left secondary micro-shine -->
+  <circle cx="31" cy="43" r="1.1" fill="rgba(255,255,255,0.55)"/>
+
+  <!-- ── Right eye ─────────────────────────────────── -->
+  <circle cx="53" cy="38" r="13" fill="url(#eyeG)" filter="url(#eyeShadow)"/>
+  <circle cx="53" cy="38" r="13"
+          fill="none" stroke="rgba(5,36,36,0.12)" stroke-width="1.2"/>
+  <!-- Right pupil -->
+  <circle cx="51" cy="40" r="6.5" fill="url(#pupilG)"/>
+  <!-- Right primary shine -->
+  <circle cx="49" cy="35" r="2.8" fill="white"/>
+  <circle cx="55" cy="43" r="1.1" fill="rgba(255,255,255,0.55)"/>
+
+  <!-- ── Nose dots (frog nostrils, very subtle) ─────── -->
+  <circle cx="37" cy="50" r="1.8" fill="rgba(5,36,36,0.28)"/>
+  <circle cx="43" cy="50" r="1.8" fill="rgba(5,36,36,0.28)"/>
+
+  <!-- ── Mouth — gentle upward arc ─────────────────── -->
+  <path d="M31 54 Q40 60 49 54"
+        stroke="rgba(5,36,36,0.38)" stroke-width="1.8"
+        stroke-linecap="round"/>
+
+  <!-- ── Ladybug spine / wing-split line ───────────── -->
+  <line x1="40" y1="34" x2="40" y2="76"
+        stroke="#052424" stroke-width="1.4" stroke-opacity="0.28"/>
+
+  <!-- ── Ladybug spots (2 symmetric pairs) ────────── -->
+  <!-- Upper spots -->
+  <circle cx="28" cy="58" r="5"   fill="#052424" fill-opacity="0.30"/>
+  <circle cx="52" cy="58" r="5"   fill="#052424" fill-opacity="0.30"/>
+  <!-- Lower spots -->
+  <circle cx="30" cy="69" r="3.5" fill="#052424" fill-opacity="0.20"/>
+  <circle cx="50" cy="69" r="3.5" fill="#052424" fill-opacity="0.20"/>
+
+  <!-- ── Compass tick marks (subtle, at badge edges) ── -->
+  <!-- Top tick -->
+  <line x1="40" y1="5"  x2="40" y2="9"
+        stroke="#F97316" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.55"/>
+  <!-- Bottom tick -->
+  <line x1="40" y1="71" x2="40" y2="75"
+        stroke="#F97316" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.40"/>
+  <!-- Left tick -->
+  <line x1="5"  y1="40" x2="9"  y2="40"
+        stroke="#F97316" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.40"/>
+  <!-- Right tick -->
+  <line x1="71" y1="40" x2="75" y2="40"
+        stroke="#F97316" stroke-width="1.5" stroke-linecap="round" stroke-opacity="0.40"/>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!--  WORDMARK  (starts at x = 96)                      -->
+  <!-- ═══════════════════════════════════════════════════ -->
+
+  <!-- "Act" in orange (brand pop) -->
+  <text x="96" y="52"
+        font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+        font-weight="700"
+        font-size="36"
+        letter-spacing="-0.5"
+        fill="#F97316">Act</text>
+
+  <!-- "ober" in dark teal -->
+  <text x="155" y="52"
+        font-family="Inter, -apple-system, BlinkMacSystemFont, sans-serif"
+        font-weight="700"
+        font-size="36"
+        letter-spacing="-0.5"
+        fill="#052424">ober</text>
+
+  <!-- "AI" tag — small, spaced, orange mono beneath -->
+  <text x="98" y="68"
+        font-family="'JetBrains Mono', 'Courier New', monospace"
+        font-weight="400"
+        font-size="11"
+        letter-spacing="4.5"
+        fill="#F97316"
+        fill-opacity="0.75">AI GUIDANCE</text>
+</svg>
