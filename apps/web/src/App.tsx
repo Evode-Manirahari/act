@@ -832,6 +832,7 @@ function ChatView({
               <circle cx="12" cy="13" r="4"/>
             </svg>
           </button>
+          <VoiceButton disabled={isTyping} onTranscribed={text => { setInput(text); }} />
           <textarea
             className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-2.5 text-[15px] outline-none focus:border-[#F97316]/60 bg-gray-50 max-h-28 min-h-[44px]"
             placeholder={image ? 'Add a note or just send the photo...' : 'Describe the job or ask a question...'}
@@ -849,6 +850,105 @@ function ChatView({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Voice Button ─────────────────────────────────────────────────────────────
+// Press-and-hold mic. Records audio, sends to Whisper, fills the input.
+// Works on mobile (touch) and desktop (mouse) via pointer events.
+
+type VoiceState = 'idle' | 'recording' | 'transcribing' | 'error'
+
+function VoiceButton({ onTranscribed, disabled }: {
+  onTranscribed: (text: string) => void
+  disabled: boolean
+}) {
+  const [state, setState] = useState<VoiceState>('idle')
+  const recorderRef = useRef<MediaRecorder | null>(null)
+  const chunksRef = useRef<BlobPart[]>([])
+
+  function getBestMimeType() {
+    const types = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']
+    return types.find(t => MediaRecorder.isTypeSupported(t)) ?? ''
+  }
+
+  async function startRecording() {
+    if (disabled || state !== 'idle') return
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const mimeType = getBestMimeType()
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+      chunksRef.current = []
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data) }
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop())
+        const blob = new Blob(chunksRef.current, { type: mimeType || 'audio/webm' })
+        setState('transcribing')
+        try {
+          const { transcribeAudio } = await import('./api/act')
+          const text = await transcribeAudio(blob)
+          if (text.trim()) onTranscribed(text.trim())
+          setState('idle')
+        } catch {
+          setState('error')
+          setTimeout(() => setState('idle'), 2000)
+        }
+      }
+      recorder.start()
+      recorderRef.current = recorder
+      setState('recording')
+    } catch {
+      setState('error')
+      setTimeout(() => setState('idle'), 2000)
+    }
+  }
+
+  function stopRecording() {
+    if (recorderRef.current?.state === 'recording') {
+      recorderRef.current.stop()
+      recorderRef.current = null
+    }
+  }
+
+  const label = state === 'recording' ? 'Release to send'
+    : state === 'transcribing' ? 'Transcribing...'
+    : state === 'error' ? 'Mic unavailable'
+    : 'Hold to talk'
+
+  const btnColor = state === 'recording'
+    ? 'border-red-400 text-red-500 bg-red-50'
+    : state === 'error'
+    ? 'border-red-300 text-red-400'
+    : 'border-gray-200 text-gray-400 hover:border-[#F97316]/40 hover:text-[#F97316]'
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <button
+        onPointerDown={e => { e.preventDefault(); startRecording() }}
+        onPointerUp={stopRecording}
+        onPointerLeave={stopRecording}
+        disabled={disabled || state === 'transcribing'}
+        className={`w-11 h-11 rounded-full border flex items-center justify-center transition-colors disabled:opacity-40 shrink-0 select-none touch-none ${btnColor} ${state === 'recording' ? 'animate-pulse' : ''}`}
+        aria-label={label}
+      >
+        {state === 'transcribing' ? (
+          <div className="w-4 h-4 border-2 border-gray-300 border-t-[#F97316] rounded-full animate-spin" />
+        ) : (
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={state === 'recording' ? 'currentColor' : 'none'}
+               stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="9" y="2" width="6" height="11" rx="3"/>
+            <path d="M5 10a7 7 0 0 0 14 0"/>
+            <line x1="12" y1="19" x2="12" y2="22"/>
+            <line x1="8" y1="22" x2="16" y2="22"/>
+          </svg>
+        )}
+      </button>
+      {state !== 'idle' && (
+        <span className={`text-[9px] font-semibold leading-none whitespace-nowrap ${state === 'recording' ? 'text-red-500' : state === 'error' ? 'text-red-400' : 'text-gray-400'}`}>
+          {label}
+        </span>
+      )}
     </div>
   )
 }
@@ -1049,6 +1149,7 @@ function ProjectView({
               <circle cx="12" cy="13" r="4"/>
             </svg>
           </button>
+          <VoiceButton disabled={isTyping} onTranscribed={text => { setInput(text); }} />
           <textarea
             className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-2.5 text-[15px] outline-none focus:border-[#F97316]/60 bg-gray-50 max-h-28 min-h-[44px]"
             placeholder={image ? 'Add a note or just send the photo...' : 'Ask ACT anything about this job...'}
