@@ -5,7 +5,7 @@ ACT is real-time AI guidance for physical workers.
 A small camera and earpiece become your expert — seeing what you see, reasoning about the task, and talking you through each step.
 
 **AI Persona**: ACT — direct, safety-first, trade-calibrated. The best tradesperson you know in your ear.
-**Tagline**: AI guidance for physical work.
+**Tagline**: Act on what you see.
 **Target user**: Tradespeople, DIYers, and anyone doing hands-on physical work — plumbers, electricians, carpenters, HVAC techs, painters, tilers.
 
 ## Trade Domains (JobDomain)
