@@ -194,7 +194,7 @@ function LandingPage({ onTry }: { onTry: () => void }) {
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <section className="ti-hero">
         <LogoMark size={64} />
-        <p className="ti-eyebrow">AI guidance for physical work — actober.com</p>
+        <p className="ti-eyebrow">Act on what you see — actober.com</p>
         <h1 className="ti-h1">
           <span className="ti-h1-anim">The expert</span>
           <span className="ti-h1-anim">in your ear.</span>
