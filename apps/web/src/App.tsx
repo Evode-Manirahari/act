@@ -124,7 +124,7 @@ function LandingPage({ onTry }: { onTry: () => void }) {
     {
       n: '01',
       title: 'Sees what you see',
-      body: 'Point your camera at the problem. ACT reads the image in real time — crack in the P-trap, wiring fault, moisture damage. No guessing required.',
+      body: 'Point your camera at the problem. ACT reads the image in real time: crack in the P-trap, wiring fault, moisture damage. No guessing required.',
       tag: 'Vision AI',
     },
     {
@@ -136,13 +136,13 @@ function LandingPage({ onTry }: { onTry: () => void }) {
     {
       n: '03',
       title: 'Calibrated to your trade',
-      body: 'Plumber gets pipe specs and fitting types. Electrician gets wiring standards and breaker logic. The vocabulary, the safety rules, the tool list — all trade-specific.',
+      body: 'Plumber gets pipe specs and fitting types. Electrician gets wiring standards and breaker logic. The vocabulary, the safety rules, the tool list, all trade-specific.',
       tag: 'Trade Intelligence',
     },
     {
       n: '04',
       title: 'Safety-first, always',
-      body: "ACT never skips the breaker shutoff, the water valve, the PPE check. Every job starts with safety. It's not optional — it's built in.",
+      body: "ACT never skips the breaker shutoff, the water valve, the PPE check. Every job starts with safety. Not optional. Built in.",
       tag: 'Safety Protocol',
     },
   ]
@@ -159,9 +159,9 @@ function LandingPage({ onTry }: { onTry: () => void }) {
 
   const DEMO = [
     { role: 'user', text: '📷 [photo of pipe under sink]' },
-    { role: 'act',  text: "Hairline crack on the P-trap elbow — that's your leak.\n\nFirst: shutoff valve under the sink, clockwise until it stops.\n\nYou'll need a replacement P-trap (1.5\" standard) and a bucket. Ready when you are." },
+    { role: 'act',  text: "Hairline crack on the P-trap elbow. That's your leak.\n\nFirst: shutoff valve under the sink, clockwise until it stops.\n\nYou'll need a replacement P-trap (1.5\" standard) and a bucket. Ready when you are." },
     { role: 'user', text: 'Do I need thread tape?' },
-    { role: 'act',  text: "No. Plastic P-traps use compression washers, not tape. Hand-tighten the slip joints, then a quarter turn with channel-locks. Don't overtighten — it'll crack." },
+    { role: 'act',  text: "No. Plastic P-traps use compression washers, not tape. Hand-tighten the slip joints, then a quarter turn with channel-locks. Don't overtighten. It'll crack." },
     { role: 'user', text: 'Done. No drips.' },
     { role: 'act',  text: "Good work. Run the water for 30 seconds and check underneath. If it's dry, you're done." },
   ]
@@ -194,13 +194,13 @@ function LandingPage({ onTry }: { onTry: () => void }) {
       {/* ── Hero ─────────────────────────────────────────────────────────────── */}
       <section className="ti-hero">
         <LogoMark size={64} />
-        <p className="ti-eyebrow">Act on what you see — actober.com</p>
+        <p className="ti-eyebrow">Act on what you see · actober.com</p>
         <h1 className="ti-h1">
           <span className="ti-h1-anim">The expert</span>
           <span className="ti-h1-anim">in your ear.</span>
         </h1>
         <p className="ti-hero-sub">
-          ACT sees what you see, reasons about the job, and guides you through every step — hands-free, trade-calibrated, safety-first.
+          ACT sees what you see, reasons about the job, and guides you through every step. Hands-free, trade-calibrated, safety-first.
         </p>
         <div className="ti-hero-cta">
           <button onClick={onTry} className="ti-btn-primary">Try ACT free</button>
@@ -259,7 +259,7 @@ function LandingPage({ onTry }: { onTry: () => void }) {
             This isn't about replacing tradespeople. It's about making anyone{' '}
             <em>significantly more capable</em> on the job, faster.
           </blockquote>
-          <p className="ti-quote-attr">— The ACT thesis · actober.com</p>
+          <p className="ti-quote-attr">The ACT thesis · actober.com</p>
         </div>
       </section>
 
@@ -276,7 +276,7 @@ function LandingPage({ onTry }: { onTry: () => void }) {
             <div className="ti-demo-dots">
               <span /><span /><span />
             </div>
-            <span className="ti-demo-title">act — plumbing session · live</span>
+            <span className="ti-demo-title">act / plumbing session · live</span>
           </div>
           <div className="ti-demo-body">
             {DEMO.map((msg, i) => (
@@ -415,7 +415,7 @@ function Onboarding({ onDone }: { onDone: (name: string, level: 'BEGINNER' | 'IN
         {step === 'name' && (
           <>
             <h2 className="text-2xl font-black mb-2">What should ACT call you?</h2>
-            <p className="text-gray-500 mb-6">Optional — skip if you want.</p>
+            <p className="text-gray-500 mb-6">Optional, skip if you want.</p>
             <input
               autoFocus
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-lg bg-white mb-4 outline-none focus:border-[#F97316]"
