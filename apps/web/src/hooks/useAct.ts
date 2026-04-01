@@ -14,7 +14,7 @@ function getOrCreateDeviceId(): string {
   return id
 }
 
-export type Screen = 'boot' | 'onboarding' | 'chat' | 'project'
+export type Screen = 'boot' | 'onboarding' | 'home' | 'chat' | 'project'
 
 export function useAct() {
   const [screen, setScreen] = useState<Screen>('boot')
@@ -27,6 +27,7 @@ export function useAct() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isTyping, setIsTyping] = useState(false)
   const [sessionKey, setSessionKey] = useState(0)
+  const [limitReached, setLimitReached] = useState(false)
   const sessionRef = useRef<Session | null>(null)
 
   useEffect(() => { sessionRef.current = session }, [session])
@@ -39,6 +40,9 @@ export function useAct() {
       const u = await api.registerUser(deviceId)
       setUser(u)
 
+      // Load past projects in background — powers the home screen
+      api.getUserProjects(u.id).then(data => setProjects(data)).catch(() => {})
+
       const savedId = localStorage.getItem(SESSION_KEY)
       if (savedId) {
         try {
@@ -47,17 +51,22 @@ export function useAct() {
             setSession(s)
             setMessages(s.messages ?? [])
             setPhase(s.phase)
-            if (s.project?.status === 'IN_PROGRESS') setActiveProject(s.project)
-            setScreen(u.name ? 'chat' : 'onboarding')
+            if (s.project?.status === 'IN_PROGRESS') {
+              setActiveProject(s.project)
+              // Resume directly into project if one is active
+              setScreen(u.name ? 'project' : 'onboarding')
+              return
+            }
+            setScreen(u.name ? 'home' : 'onboarding')
             return
           }
         } catch { /* session gone */ }
       }
 
-      setScreen(u.name ? 'chat' : 'onboarding')
+      setScreen(u.name ? 'home' : 'onboarding')
     } catch (err) {
       console.error('Boot error:', err)
-      setScreen('chat')
+      setScreen('home')
     }
   }
 
@@ -152,8 +161,12 @@ export function useAct() {
       setProjects(prev => [project, ...prev])
       await sendMessage(`Let's do this: ${suggestion.title}`)
       setScreen('project')
-    } catch (err) {
-      console.error('Pick suggestion error:', err)
+    } catch (err: any) {
+      if (err?.status === 402 || err?.message?.includes('402')) {
+        setLimitReached(true)
+      } else {
+        console.error('Pick suggestion error:', err)
+      }
     }
   }
 
@@ -197,7 +210,7 @@ export function useAct() {
     setSession(null)
     setMessages([])
     setPhase('DISCOVERY')
-    setScreen('chat')
+    setScreen('home')
   }
 
   async function newSession() {
@@ -222,8 +235,9 @@ export function useAct() {
   return {
     screen, setScreen,
     user, session, messages, phase, suggestions, activeProject, projects,
-    isTyping, sessionKey,
+    isTyping, sessionKey, limitReached,
     finishOnboarding, kickoff, sendMessage, pickSuggestion,
     markStepDone, completeProject, abandonProject, newSession, loadProjects,
+    clearLimitReached: () => setLimitReached(false),
   }
 }
