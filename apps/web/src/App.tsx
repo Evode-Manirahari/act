@@ -28,82 +28,132 @@ export default function App() {
 // ─── Landing Page ────────────────────────────────────────────────────────────
 
 function LandingPage({ onTry }: { onTry: () => void }) {
-  const FEATURES = [
-    { icon: '📷', title: 'Show it the job', body: 'Point your camera at the problem. ACT sees what you see and tells you exactly what\'s wrong.' },
-    { icon: '⚡', title: 'Instant answers', body: 'No search results. No forum threads. A direct answer, calibrated to your experience level.' },
-    { icon: '🔊', title: 'Hands-free guidance', body: 'Works through your earpiece while your hands are on the job. Ask questions, get answers.' },
-    { icon: '🔧', title: 'Every trade', body: 'Plumbing, electrical, carpentry, HVAC, painting, tiling — ACT knows the vocabulary and the safety rules.' },
+  const TRADES = [
+    { emoji: '🔧', label: 'Plumbing',    desc: 'Pipes, fixtures, drains' },
+    { emoji: '⚡', label: 'Electrical',  desc: 'Wiring, outlets, panels' },
+    { emoji: '🪵', label: 'Carpentry',   desc: 'Framing, trim, cabinets' },
+    { emoji: '❄️', label: 'HVAC',        desc: 'Heating, cooling, vents' },
+    { emoji: '🖌️', label: 'Painting',    desc: 'Prep, prime, finish' },
+    { emoji: '🧱', label: 'Tiling',      desc: 'Floor, wall, grout' },
+    { emoji: '🔩', label: 'General',     desc: 'Maintenance & repairs' },
+  ]
+
+  const HOW = [
+    { n: '01', title: 'Describe or show the job', body: "Tell ACT what you're working on. Show it a photo. It sees what you see and identifies what needs to be done." },
+    { n: '02', title: 'Get a calibrated plan',     body: 'ACT proposes step-by-step jobs with materials, time estimates, and safety guidance for your trade and experience level.' },
+    { n: '03', title: 'Work through it together',  body: 'ACT coaches you step by step. Ask questions mid-job. Send photos when stuck. It talks you through to completion.' },
   ]
 
   const DEMO = [
     { role: 'user', text: '📷 [photo of pipe under sink]' },
-    { role: 'act', text: 'I can see the issue — the P-trap elbow has a hairline crack, that\'s where your leak is coming from.\n\nBefore anything: turn off the shutoff valve under the sink. Clockwise until it stops.\n\nYou\'ll need a replacement P-trap (standard 1.5" should fit) and a bucket for the water still in the trap.' },
-    { role: 'user', text: 'Water\'s off. Do I need thread tape?' },
-    { role: 'act', text: 'For plastic P-trap fittings — no. They use compression washers, not tape. Just hand-tighten the slip joints, then a quarter turn with channel-lock pliers. Don\'t overtighten or the plastic will crack.' },
+    { role: 'act',  text: "I can see the issue — the P-trap elbow has a hairline crack, that's where your leak is coming from.\n\nBefore anything: turn off the shutoff valve under the sink. Clockwise until it stops.\n\nYou'll need a replacement P-trap (standard 1.5\" should fit) and a bucket for the water still in the trap." },
+    { role: 'user', text: "Do I need thread tape for the fittings?" },
+    { role: 'act',  text: "For plastic P-trap fittings — no. They use compression washers, not tape. Hand-tighten the slip joints, then a quarter turn with channel-locks. Don't overtighten." },
   ]
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
-      {/* Nav */}
-      <nav className="bg-white border-b border-gray-100 sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="text-2xl font-black text-[#F97316] tracking-[6px]">ACT</span>
+    <div className="bg-[#050505] text-white min-h-screen">
+
+      {/* ── Nav ── */}
+      <nav className="fixed top-0 left-0 right-0 z-50 border-b border-[#141414] backdrop-blur-md bg-[#050505]/90">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <span className="font-black text-xl tracking-[6px] text-[#F97316]">ACT</span>
+          <div className="hidden md:flex items-center gap-8 text-sm text-[#555]">
+            <a href="#how"    className="hover:text-white transition-colors duration-200">How it works</a>
+            <a href="#trades" className="hover:text-white transition-colors duration-200">Trades</a>
+            <a href="https://actober.com" className="hover:text-white transition-colors duration-200">actober.com</a>
+          </div>
           <button
             onClick={onTry}
-            className="bg-[#F97316] text-white font-bold px-5 py-2.5 rounded-xl hover:bg-orange-500 transition-colors text-sm"
+            className="bg-[#F97316] text-white font-bold px-5 py-2.5 rounded-lg text-sm hover:bg-[#ea6c10] transition-colors"
           >
-            Try it now →
+            Try ACT →
           </button>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center">
-        <div className="inline-block bg-[#F97316]/10 text-[#F97316] text-xs font-black tracking-widest px-4 py-2 rounded-full mb-6">
-          AI GUIDANCE FOR PHYSICAL WORK
+      {/* ── Hero ── */}
+      <section className="min-h-screen flex flex-col items-center justify-center px-6 pt-20 pb-16 text-center relative overflow-hidden">
+        {/* Grid */}
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(249,115,22,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(249,115,22,0.03)_1px,transparent_1px)] bg-[size:64px_64px]" />
+        {/* Glow */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#F97316]/5 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2.5 border border-[#1a1a1a] rounded-full px-4 py-2 text-xs font-mono text-[#555] mb-10">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#F97316] animate-pulse shrink-0" />
+            AI AGENT FOR PHYSICAL WORK — actober.com
+          </div>
+
+          <h1 className="text-6xl md:text-8xl font-black leading-[0.92] tracking-tight mb-8">
+            The expert<br />
+            <span className="text-[#F97316]">in your ear.</span>
+          </h1>
+
+          <p className="text-lg md:text-xl text-[#666] max-w-2xl mx-auto mb-12 leading-relaxed font-light">
+            ACT is an AI agent that sees what you see, reasons about the job,
+            and guides you through it — step by step, trade by trade.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={onTry}
+              className="bg-[#F97316] text-white font-bold px-8 py-4 rounded-xl hover:bg-[#ea6c10] transition-all text-base"
+            >
+              Try it free →
+            </button>
+            <a
+              href="#how"
+              className="border border-[#1a1a1a] text-[#666] font-bold px-8 py-4 rounded-xl hover:border-[#2a2a2a] hover:text-white transition-all text-base"
+            >
+              How it works
+            </a>
+          </div>
+
+          <p className="text-xs text-[#333] mt-6 font-mono tracking-wide">No account. No download. Works now.</p>
         </div>
-        <h1 className="text-5xl md:text-6xl font-black text-gray-900 leading-[1.1] mb-6">
-          Your AI expert<br />
-          <span className="text-[#F97316]">on the job.</span>
-        </h1>
-        <p className="text-xl text-gray-500 max-w-2xl mx-auto mb-10 leading-relaxed">
-          As multimodal AI, affordable wearables, and a shrinking skilled labor pool converge —
-          a small camera and earpiece become your expert. Seeing what you see. Reasoning about the task.
-          Talking you through every step.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
-            onClick={onTry}
-            className="bg-[#F97316] text-white font-bold px-8 py-4 rounded-xl hover:bg-orange-500 transition-colors text-base"
-          >
-            Try it in browser →
-          </button>
-          <a
-            href="#"
-            className="border-2 border-gray-200 text-gray-700 font-bold px-8 py-4 rounded-xl hover:border-gray-300 transition-colors text-base"
-          >
-            Download for iOS
-          </a>
-        </div>
-        <p className="text-xs text-gray-400 mt-4">Free to start. No signup required.</p>
       </section>
 
-      {/* Demo conversation */}
-      <section className="bg-white border-y border-gray-100 py-16">
-        <div className="max-w-2xl mx-auto px-6">
-          <p className="text-[10px] font-black text-gray-400 tracking-widest uppercase mb-6 text-center">LIVE EXAMPLE</p>
-          <div className="flex flex-col gap-3">
+      {/* ── Stats ── */}
+      <section className="border-y border-[#141414]">
+        <div className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-3 divide-x divide-[#141414]">
+          {[
+            { n: '7',  label: 'trade domains' },
+            { n: '3',  label: 'skill levels' },
+            { n: '∞',  label: 'jobs guided' },
+          ].map(s => (
+            <div key={s.label} className="flex flex-col items-center gap-1.5 px-4">
+              <span className="text-4xl md:text-5xl font-black text-[#F97316]">{s.n}</span>
+              <span className="text-[10px] text-[#333] font-mono uppercase tracking-widest">{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Demo ── */}
+      <section className="max-w-3xl mx-auto px-6 py-24">
+        <p className="text-[10px] font-mono text-[#333] tracking-widest uppercase mb-8 text-center">LIVE EXAMPLE — PLUMBING SESSION</p>
+        <div className="border border-[#141414] rounded-2xl overflow-hidden bg-[#0A0A0A]">
+          <div className="flex items-center gap-2 px-5 py-3.5 border-b border-[#141414]">
+            <div className="flex gap-1.5">
+              <span className="w-3 h-3 rounded-full bg-[#1a1a1a]" />
+              <span className="w-3 h-3 rounded-full bg-[#1a1a1a]" />
+              <span className="w-3 h-3 rounded-full bg-[#1a1a1a]" />
+            </div>
+            <span className="text-xs font-mono text-[#333] ml-2">act — plumbing session</span>
+          </div>
+          <div className="p-6 flex flex-col gap-4">
             {DEMO.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                <div className={`max-w-[85%] rounded-xl px-4 py-3 ${
                   msg.role === 'user'
-                    ? 'bg-[#F97316] text-white rounded-br-sm'
-                    : 'bg-gray-50 border border-gray-200 text-gray-900 rounded-bl-sm'
+                    ? 'bg-[#F97316] text-white'
+                    : 'bg-[#111] border border-[#1a1a1a] text-[#bbb]'
                 }`}>
                   {msg.role === 'act' && (
-                    <p className="text-[10px] font-black text-[#F97316] tracking-widest mb-1.5">ACT</p>
+                    <p className="text-[10px] font-mono text-[#F97316] tracking-widest mb-2">ACT</p>
                   )}
-                  <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.text}</p>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.text}</p>
                 </div>
               </div>
             ))}
@@ -111,51 +161,86 @@ function LandingPage({ onTry }: { onTry: () => void }) {
         </div>
       </section>
 
-      {/* Features */}
-      <section className="max-w-5xl mx-auto px-6 py-20">
-        <h2 className="text-3xl font-black text-center text-gray-900 mb-12">Not a chatbot. An expert in your ear.</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {FEATURES.map(f => (
-            <div key={f.title} className="bg-white border border-gray-200 rounded-2xl p-6">
-              <div className="text-3xl mb-4">{f.icon}</div>
-              <h3 className="font-black text-gray-900 text-lg mb-2">{f.title}</h3>
-              <p className="text-gray-500 leading-relaxed">{f.body}</p>
-            </div>
-          ))}
+      {/* ── How it works ── */}
+      <section id="how" className="border-t border-[#141414] py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <p className="text-[10px] font-mono text-[#333] tracking-widest uppercase mb-4 text-center">HOW IT WORKS</p>
+          <h2 className="text-4xl md:text-5xl font-black text-center mb-16 leading-tight">
+            Not a chatbot.<br /><span className="text-[#F97316]">An agent.</span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {HOW.map(h => (
+              <div key={h.n} className="border border-[#141414] rounded-2xl p-7 bg-[#0A0A0A] hover:border-[#F97316]/20 transition-colors duration-300">
+                <span className="text-5xl font-black text-[#1a1a1a] font-mono block mb-6">{h.n}</span>
+                <h3 className="font-bold text-white text-lg mb-3">{h.title}</h3>
+                <p className="text-[#555] leading-relaxed text-sm">{h.body}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* Thesis */}
-      <section className="bg-gray-900 text-white py-20">
-        <div className="max-w-3xl mx-auto px-6 text-center">
-          <p className="text-3xl font-black leading-snug mb-6">
-            "This isn't about replacing tradespeople.<br />
-            It's about making anyone significantly<br />
-            more capable on the job, faster."
+      {/* ── Trades ── */}
+      <section id="trades" className="border-t border-[#141414] py-24 px-6">
+        <div className="max-w-6xl mx-auto">
+          <p className="text-[10px] font-mono text-[#333] tracking-widest uppercase mb-4 text-center">SUPPORTED TRADES</p>
+          <h2 className="text-4xl font-black text-center mb-16 leading-tight">
+            Every trade.<br /><span className="text-[#F97316]">Right vocabulary.</span>
+          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {TRADES.map(t => (
+              <div key={t.label} className="border border-[#141414] rounded-xl p-5 bg-[#0A0A0A] hover:border-[#F97316]/25 transition-colors duration-300 group cursor-default">
+                <span className="text-3xl block mb-3">{t.emoji}</span>
+                <h3 className="font-bold text-white mb-1 group-hover:text-[#F97316] transition-colors">{t.label}</h3>
+                <p className="text-xs text-[#444]">{t.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Thesis ── */}
+      <section className="border-t border-[#141414] py-28 px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <p className="text-3xl md:text-4xl font-black leading-snug mb-8">
+            "This isn't about replacing tradespeople. It's about making anyone{' '}
+            <span className="text-[#F97316]">significantly more capable</span>{' '}
+            on the job, faster."
           </p>
-          <p className="text-gray-400">The ACT thesis</p>
+          <p className="text-[10px] font-mono text-[#333] tracking-widest uppercase">The ACT thesis — actober.com</p>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="max-w-2xl mx-auto px-6 py-20 text-center">
-        <h2 className="text-3xl font-black text-gray-900 mb-4">Start your first job.</h2>
-        <p className="text-gray-500 mb-8">Free to try. No account needed. Works on any device.</p>
-        <button
-          onClick={onTry}
-          className="bg-[#F97316] text-white font-bold px-10 py-4 rounded-xl hover:bg-orange-500 transition-colors text-base"
-        >
-          Open ACT →
-        </button>
+      {/* ── CTA ── */}
+      <section className="border-t border-[#141414] py-28 px-6 text-center">
+        <div className="max-w-xl mx-auto">
+          <h2 className="text-5xl md:text-6xl font-black mb-5 leading-tight">
+            Start your<br /><span className="text-[#F97316]">first job.</span>
+          </h2>
+          <p className="text-[#555] mb-10 text-lg">Free. No account. Works on any device.</p>
+          <button
+            onClick={onTry}
+            className="bg-[#F97316] text-white font-black px-12 py-5 rounded-xl hover:bg-[#ea6c10] transition-all text-lg"
+          >
+            Open ACT →
+          </button>
+          <div className="flex items-center justify-center gap-6 mt-8">
+            <span className="text-xs font-mono text-[#2a2a2a]">iOS App — Coming soon</span>
+            <span className="text-[#1a1a1a]">·</span>
+            <span className="text-xs font-mono text-[#2a2a2a]">Android — Coming soon</span>
+          </div>
+        </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 py-8">
-        <div className="max-w-5xl mx-auto px-6 flex items-center justify-between text-sm text-gray-400">
-          <span className="font-black text-[#F97316] tracking-widest text-xs">ACT</span>
-          <span>© 2026 ACT. AI guidance for physical work.</span>
+      {/* ── Footer ── */}
+      <footer className="border-t border-[#141414] py-8 px-6">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          <span className="font-black text-[#F97316] tracking-[6px] text-sm">ACT</span>
+          <span className="text-xs font-mono text-[#2a2a2a]">© 2026 Actober. AI guidance for physical work.</span>
+          <a href="https://actober.com" className="text-xs font-mono text-[#333] hover:text-white transition-colors">actober.com</a>
         </div>
       </footer>
+
     </div>
   )
 }
