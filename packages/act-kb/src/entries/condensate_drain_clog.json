@@ -1,0 +1,28 @@
+{
+  "id": "condensate-drain-clog",
+  "brand": "Other",
+  "model": "any-split-or-package",
+  "equipment_type": "air-handler",
+  "symptom": "Water pooling under or near the indoor air handler. System may still be cooling but running odd. Customer reports a wet ceiling stain (attic install) or water in a closet (horizontal install). Possible musty smell. Float safety switch may have killed the call for cooling entirely.",
+  "diagnosis": "Clogged primary condensate drain line. Algae or dust buildup in the 3/4in PVC blocks gravity flow. The drain pan overflows through the safety switch port or the side seam of the pan. Float switch, if installed, opens the low-voltage circuit and stops cooling.",
+  "part_number": null,
+  "procedure": [
+    "Thermostat OFF. If there's a condensate pump, unplug it (don't let it run dry).",
+    "Locate the primary drain line — usually 3/4in PVC exiting the cabinet at or near the pan.",
+    "Find the cleanout tee: the capped vertical PVC stub. Usually within 2 feet of the cabinet.",
+    "Option A (fastest): wet/dry shop vac on the outdoor termination for 60-90 seconds. Pulls the clog out 90% of the time.",
+    "Option B (cleanout access): pour 1 cup distilled white vinegar into the tee. Let sit 10 minutes. Flush with water.",
+    "Confirm flow at the outdoor termination. Water should run freely.",
+    "Empty standing water from the drain pan with a sponge or shop vac.",
+    "Reset the float safety switch: the small cylinder inline on the drain. It resets automatically once water level drops; verify the stat has power again.",
+    "Recommend quarterly vinegar maintenance to the customer, or install a condensate pump with integrated safety switch if the gravity run is long or poorly sloped."
+  ],
+  "safety_notes": [
+    "Water plus electricity at the air handler blower motor = shock risk. Confirm power off at the disconnect before reaching into a wet cabinet.",
+    "Attic units: floor joists may be rot-compromised by prolonged leaks. Test load before kneeling on the deck.",
+    "Drain pan mold/bacteria: wear gloves and an N95 if the pan is heavily fouled. Biological aerosols from a neglected drain can trigger respiratory issues.",
+    "If the overflow soaked drywall or insulation below the unit, flag a scope change for remediation — that's outside the HVAC repair and needs documentation."
+  ],
+  "estimated_minutes": 30,
+  "tags": ["condensate", "drain clog", "water leak", "pan overflow", "algae", "float switch", "mold", "attic", "common"]
+}

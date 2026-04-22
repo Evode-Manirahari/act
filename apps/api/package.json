@@ -9,6 +9,7 @@
     "prisma": "prisma"
   },
   "dependencies": {
+    "@actober/act-kb": "workspace:*",
     "@actober/act-prompts": "workspace:*",
     "@actober/shared-types": "workspace:*",
     "@anthropic-ai/sdk": "^0.27.0",
