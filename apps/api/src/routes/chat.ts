@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient, Message as PrismaMessage, Step as PrismaStep } from '@prisma/client';
 import { z } from 'zod';
 import { anthropic, CLAUDE_MODEL } from '../lib/claude';
-import { ACT_SYSTEM_PROMPT } from '@actober/act-prompts';
+import { ACT_SYSTEM_PROMPT, ACT_HVAC_SYSTEM_PROMPT } from '@actober/act-prompts';
+import { getHVACKBStore } from '@actober/act-kb';
 import { chatLimiter } from '../middleware/rateLimiter';
 import { logger } from '../lib/logger';
 import type { ProjectSuggestion, ChatResponse, ConversationPhase } from '@actober/shared-types';
@@ -39,6 +40,20 @@ function parseSuggestions(text: string): { clean: string; suggestions: ProjectSu
     return { clean, suggestions };
   } catch {
     return { clean: text, suggestions: null };
+  }
+}
+
+// Parse [SERVICE_RECORD_JSON]...[/SERVICE_RECORD_JSON] block (HVAC diagnostic close-out)
+function parseServiceRecord(text: string): { clean: string; serviceRecord: Record<string, unknown> | null } {
+  const match = text.match(/\[SERVICE_RECORD_JSON\]([\s\S]*?)\[\/SERVICE_RECORD_JSON\]/);
+  if (!match) return { clean: text, serviceRecord: null };
+
+  try {
+    const serviceRecord = JSON.parse(match[1].trim()) as Record<string, unknown>;
+    const clean = text.replace(match[0], '').trim();
+    return { clean, serviceRecord };
+  } catch {
+    return { clean: text, serviceRecord: null };
   }
 }
 
@@ -109,12 +124,25 @@ router.post('/', chatLimiter, async (req: Request, res: Response) => {
       { role: 'user' as const, content: newUserContent },
     ];
 
-    // Build system prompt with optional domain + project context
-    let systemPrompt = ACT_SYSTEM_PROMPT;
-
+    // Build system prompt — HVAC techs get the diagnostic-first prompt with KB grounding;
+    // all other trades use the general ACT prompt with a domain tailoring suffix.
     const userDomain = (session.user as any)?.domain as string | null;
-    if (userDomain && DOMAIN_LABELS[userDomain]) {
-      systemPrompt += `\n\n---\nUSER DOMAIN: This user primarily works in ${DOMAIN_LABELS[userDomain]}. Tailor your vocabulary, safety warnings, and guidance to this trade.`;
+    let systemPrompt: string;
+    let kbHitIds: string[] = [];
+
+    if (userDomain === 'HVAC') {
+      systemPrompt = ACT_HVAC_SYSTEM_PROMPT;
+      const kbStore = getHVACKBStore();
+      const hits = kbStore.search(message, 3);
+      if (hits.length > 0) {
+        systemPrompt += '\n\n---\n' + kbStore.renderForPrompt(hits);
+        kbHitIds = hits.map((h) => h.id);
+      }
+    } else {
+      systemPrompt = ACT_SYSTEM_PROMPT;
+      if (userDomain && DOMAIN_LABELS[userDomain]) {
+        systemPrompt += `\n\n---\nUSER DOMAIN: This user primarily works in ${DOMAIN_LABELS[userDomain]}. Tailor your vocabulary, safety warnings, and guidance to this trade.`;
+      }
     }
 
     if (session.project) {
@@ -153,8 +181,12 @@ router.post('/', chatLimiter, async (req: Request, res: Response) => {
       return;
     }
 
-    // Parse suggestions from accumulated content
-    const { clean: content, suggestions } = parseSuggestions(fullContent);
+    // Parse structured outputs from accumulated content. SUGGESTIONS_JSON is the
+    // project-planning output for general trades; SERVICE_RECORD_JSON is the HVAC
+    // diagnostic close-out. At most one will be present per turn.
+    const afterSuggestions = parseSuggestions(fullContent);
+    const { clean: content, serviceRecord } = parseServiceRecord(afterSuggestions.clean);
+    const suggestions = afterSuggestions.suggestions;
 
     // Determine new phase
     const newPhase: ConversationPhase = suggestions
@@ -211,7 +243,14 @@ router.post('/', chatLimiter, async (req: Request, res: Response) => {
         : undefined,
     };
 
-    sseEvent(res, { type: 'done', ...donePayload });
+    sseEvent(res, {
+      type: 'done',
+      ...donePayload,
+      // HVAC-specific extras: KB entries retrieved for this turn, and the
+      // structured service record when the session closes out.
+      kbHitIds: kbHitIds.length > 0 ? kbHitIds : undefined,
+      serviceRecord: serviceRecord ?? undefined,
+    });
     res.end();
   } catch (err) {
     logger.error('Chat route error', { err });
