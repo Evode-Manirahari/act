@@ -1,0 +1,12 @@
+{
+  "name": "@actober/act-kb",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc && rm -rf dist/entries && cp -R src/entries dist/entries"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}

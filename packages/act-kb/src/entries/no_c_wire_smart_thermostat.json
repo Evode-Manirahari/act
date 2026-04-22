@@ -1,0 +1,29 @@
+{
+  "id": "no-c-wire-smart-thermostat",
+  "brand": "Other",
+  "model": "any-24v-thermostat",
+  "equipment_type": "thermostat",
+  "symptom": "Newly installed smart thermostat (Nest, Ecobee, Honeywell T-series) won't power on, reboots repeatedly, loses Wi-Fi, or shows low battery despite being hardwired. Older mechanical or battery stat worked fine on the same wiring. HVAC system may short-cycle randomly.",
+  "diagnosis": "Missing or unterminated common (C) wire. Smart thermostats need continuous 24VAC to power the display and Wi-Fi radio. Legacy stats ran on batteries or trickle-charged through the call circuit. Without C, the new stat parasitically pulls current and trips the furnace board safety timers.",
+  "part_number": null,
+  "procedure": [
+    "Kill power to the furnace/air handler at the service switch AND breaker. The stat is 24V but the transformer primary is 120/240V.",
+    "Pull the stat off the wall plate. Photograph and label every conductor before disconnecting.",
+    "Count conductors. 4-wire cable (R, W, Y, G) is the classic no-C install. 5+ wire cable usually has an unused conductor pushed into the wall — look for a blue or black wire.",
+    "Option A (spare wire): land it on C at the furnace board and on C at the stat. Done.",
+    "Option B (no spare, G not needed and stat supports it): repurpose G as C per the manufacturer install guide. Do not guess — read the doc.",
+    "Option C (no spare, all wires used): install a power-extender kit (Ecobee PEK, Nest Power Connector) at the furnace, or pull new 18/5 thermostat cable.",
+    "Restore power. Verify 24VAC between R and C at the baseplate with a multimeter before mounting.",
+    "Mount the stat, run the setup wizard. Run a full heat and cool cycle. No short-cycling in 30 minutes = good.",
+    "Document the wire mapping on the back of the plate so the next tech isn't guessing."
+  ],
+  "safety_notes": [
+    "Kill 120/240V at the breaker, not just the service switch. Some older installs wire the transformer primary continuous.",
+    "Never jumper R to C to 'give it power'. That's a dead short across the 24V transformer secondary and blows the board fuse (typical 3A or 5A ATC blade) in seconds.",
+    "If the existing transformer is a 20VA unit, a smart stat plus Wi-Fi can push it over rating. Upgrade to 40VA if nuisance fuse blows repeat.",
+    "Dual-transformer systems: Rh and Rc must NOT be jumpered if two transformers are present. You'll short them together.",
+    "Heat pump O/B terminal is brand-specific: O = Carrier/Trane cooling-energized, B = Rheem/Ruud heating-energized. Wrong setting = system heats when customer asks for cool."
+  ],
+  "estimated_minutes": 40,
+  "tags": ["c wire", "common wire", "smart thermostat", "nest", "ecobee", "honeywell", "no power", "reboot loop", "short cycling", "24v", "transformer", "retrofit", "common"]
+}

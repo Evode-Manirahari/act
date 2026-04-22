@@ -1,0 +1,30 @@
+{
+  "id": "furnace-pressure-switch-trip",
+  "brand": "Other",
+  "model": "any-80-or-90-pct-gas-furnace",
+  "equipment_type": "furnace",
+  "symptom": "Furnace tries to fire in winter but locks out before the burners light. Inducer motor runs, then shuts off. Thermostat calls for heat, system cycles and fails. Error code on the control board typically flashes 2 or 3 times (brand-dependent) indicating a pressure switch fault. No heat at the vents.",
+  "diagnosis": "Pressure switch is not closing on call for heat. The switch confirms the inducer draft motor is moving enough combustion air before the board lights the burners — a critical safety interlock. Common root causes in order: (1) blocked or water-filled condensate trap on 90%+ furnaces, (2) blocked intake/exhaust vent pipe (bird nest, snow drift, ice), (3) cracked or disconnected rubber sensing tube to the switch, (4) failed switch itself.",
+  "part_number": null,
+  "procedure": [
+    "Kill power at the service switch on the furnace. Confirm with a non-contact tester.",
+    "Open the burner compartment. Identify the pressure switch (round puck with 1-2 rubber tubes running to the inducer housing or venturi).",
+    "Inspect the rubber sensing tube(s): cracks, kinks, disconnect. Replace if damaged. Common failure point.",
+    "Locate the condensate trap on the inducer or secondary heat exchanger (90%+ only). Disconnect and dump. If water gushes out, it was blocked — blow through the trap with compressed air.",
+    "Check the intake and exhaust PVC pipes outside. Clear any blockage: nest, leaves, snow, ice cap.",
+    "If the furnace is horizontal-mount in an attic or crawlspace, check the drain line to the condensate pan isn't holding water in the trap.",
+    "Power back on. Call for heat at the thermostat. Watch the inducer start.",
+    "Meter the pressure switch: with inducer running, the normally-open switch should close. Measure continuity across the switch terminals. Open = switch is bad or not seeing enough negative pressure.",
+    "If all airflow paths are clear and the switch still won't close, replace the switch. Match exact inches-water-column rating on the old switch body (e.g. -0.40 in wc).",
+    "Run 3 full heat cycles after repair. Verify ignition, main flame, and clean shutdown each time."
+  ],
+  "safety_notes": [
+    "Never jumper or bypass the pressure switch to make the furnace run. It exists to prevent CO spillage into the house. Jumping it can kill occupants.",
+    "Any gas smell: stop work, evacuate, call the utility. Do not troubleshoot.",
+    "If combustion gases are leaking into the burner compartment (soot, discoloration, melted wiring), the heat exchanger may be cracked. Red-tag the furnace and escalate for replacement. Do not patch.",
+    "Test for CO in the supply air plenum after repair with a calibrated CO analyzer. Anything above 100 ppm in the supply is a failed repair.",
+    "Condensate from 90%+ furnaces is mildly acidic. Wear gloves; neutralize spills with baking soda."
+  ],
+  "estimated_minutes": 60,
+  "tags": ["pressure switch", "no heat", "furnace lockout", "inducer", "90 percent", "high efficiency", "condensate trap", "vent blockage", "error code", "winter", "common"]
+}

@@ -1,0 +1,28 @@
+{
+  "id": "dirty-filter-frozen-coil",
+  "brand": "Other",
+  "model": "any-split-system",
+  "equipment_type": "air-handler",
+  "symptom": "AC is running but blowing weak, barely-cool air. Customer may report ice on the copper suction line outside, or water dripping from the indoor cabinet. Thermostat is set low but the house won't cool down. In severe cases the evaporator coil is fully encased in ice.",
+  "diagnosis": "Frozen evaporator coil. Airflow across the coil has dropped below ~350-400 CFM per ton, so the refrigerant boils below 32F and ambient moisture freezes onto the fins. Most common root cause is a clogged air filter; secondary causes are dirty evap coil, failing blower, closed registers, or low refrigerant charge.",
+  "part_number": null,
+  "procedure": [
+    "Confirm the diagnosis: check the suction line at the outdoor unit and the coil at the indoor air handler. Ice on either is confirmation.",
+    "Thermostat OFF for cooling, FAN ON. Warm return air over the coil thaws it 3-4x faster than leaving the whole system off.",
+    "Pull the filter. If it's loaded or you can't see light through it, replace with a matching MERV 8-11 (avoid MERV 13+ on residential; it can itself restrict airflow).",
+    "Towels or a pan under the air handler. Thawing ice overflows the condensate pan in most installs.",
+    "Wait for full thaw: 1-4 hours depending on ice thickness. Suction line and coil should be warm to the touch before restart.",
+    "Inspect the coil face for dust matting. Schedule a coil clean as a follow-up if it's dirty.",
+    "Check every supply register is unobstructed. Closed-off basements are a classic trigger.",
+    "Restart cooling. Measure temp split at the vents after 15 minutes: supply should be 15-20F cooler than return.",
+    "If it refreezes within 24 hours on a clean filter: likely low refrigerant (EPA 608) or failing blower. Escalate, do not attempt refrigerant work without certification."
+  ],
+  "safety_notes": [
+    "Never chip, scrape, or pick at the ice with any tool. Evap fins are 0.006in aluminum with refrigerant tubes right behind them. A puncture means a leaking coil.",
+    "No heat guns, hair dryers, or torches. Localized heat stresses brazed joints and can start a cabinet fire.",
+    "Melting ice overflows the pan. Protect flooring, drywall, and electronics below the air handler before starting the thaw.",
+    "Attic air handlers: wet joists may be rot-compromised. Test load before kneeling."
+  ],
+  "estimated_minutes": 45,
+  "tags": ["frozen coil", "iced coil", "weak airflow", "not cooling", "dirty filter", "low airflow", "evaporator", "suction line ice", "temperature split", "common"]
+}
