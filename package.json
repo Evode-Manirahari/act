@@ -3,8 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev:api": "pnpm --filter api dev",
-    "dev:web": "pnpm --filter web dev",
     "dev:mobile": "pnpm --filter mobile start",
     "build": "pnpm --recursive build",
     "test": "pnpm --recursive test",
@@ -12,14 +10,6 @@
   },
   "devDependencies": {
     "typescript": "^5.4.0"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@prisma/client",
-      "@prisma/engines",
-      "prisma",
-      "@sentry/cli"
-    ]
   },
   "dependencies": {
     "hermes-parser": "^0.34.0"
