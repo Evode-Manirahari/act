@@ -1,0 +1,18 @@
+{
+  "name": "Actober AI",
+  "short_name": "Actober",
+  "description": "AI guidance for field workers. Act on what you see.",
+  "start_url": "/#app",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#052424",
+  "theme_color": "#052424",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any maskable"
+    }
+  ]
+}

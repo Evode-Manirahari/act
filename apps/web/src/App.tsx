@@ -636,6 +636,65 @@ function Onboarding({ onDone }: { onDone: (name: string, level: 'BEGINNER' | 'IN
   )
 }
 
+// ─── Markdown renderer ───────────────────────────────────────────────────────
+// Handles the patterns ACT actually produces: numbered steps, bullet lists,
+// **bold** safety warnings. No dependency, no runtime parsing overhead.
+
+function inlineMd(text: string, keyPrefix: string): React.ReactNode[] {
+  const parts = text.split(/(\*\*[^*]+\*\*)/)
+  return parts.map((part, i) =>
+    part.startsWith('**') && part.endsWith('**')
+      ? <strong key={`${keyPrefix}-b${i}`} className="font-semibold">{part.slice(2, -2)}</strong>
+      : part
+  )
+}
+
+function Md({ text, className }: { text: string; className?: string }) {
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+  let listBuf: { type: 'ol' | 'ul'; items: string[] } | null = null
+  let k = 0
+
+  function flush() {
+    if (!listBuf) return
+    const { type, items } = listBuf
+    elements.push(
+      type === 'ol'
+        ? <ol key={k++} className="list-decimal list-outside pl-5 my-2 space-y-1">
+            {items.map((it, i) => <li key={i} className="text-[15px] leading-relaxed">{inlineMd(it, `ol${k}-${i}`)}</li>)}
+          </ol>
+        : <ul key={k++} className="list-disc list-outside pl-5 my-2 space-y-1">
+            {items.map((it, i) => <li key={i} className="text-[15px] leading-relaxed">{inlineMd(it, `ul${k}-${i}`)}</li>)}
+          </ul>
+    )
+    listBuf = null
+  }
+
+  for (const line of lines) {
+    const ol = line.match(/^\d+\.\s+(.+)/)
+    const ul = line.match(/^[-*]\s+(.+)/)
+    if (ol) {
+      if (listBuf?.type === 'ul') flush()
+      if (!listBuf) listBuf = { type: 'ol', items: [] }
+      listBuf.items.push(ol[1])
+    } else if (ul) {
+      if (listBuf?.type === 'ol') flush()
+      if (!listBuf) listBuf = { type: 'ul', items: [] }
+      listBuf.items.push(ul[1])
+    } else {
+      flush()
+      if (line.trim()) {
+        elements.push(<p key={k++} className="text-[15px] leading-relaxed">{inlineMd(line, `p${k}`)}</p>)
+      } else if (elements.length > 0) {
+        elements.push(<div key={k++} className="h-2" />)
+      }
+    }
+  }
+  flush()
+
+  return <div className={className}>{elements}</div>
+}
+
 // ─── Chat View ───────────────────────────────────────────────────────────────
 
 const CHIPS = [
@@ -712,20 +771,19 @@ function ChatView({
   const visible = messages.filter(m => !(m.role === 'USER' && m.content === 'Hello'))
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] flex flex-col max-w-2xl mx-auto">
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
+    <div className="h-[100dvh] bg-[#FAFAF8] flex flex-col max-w-2xl mx-auto overflow-hidden">
+      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-10 shrink-0">
         <div>
-          <span className="font-black text-xl text-[#F97316] tracking-[4px]">ACT</span>
-          {user?.name && <p className="text-xs text-gray-400 leading-none mt-0.5">Hey {user.name}</p>}
+          <LogoWordmark dark={false} />
+          {user?.name && <p className="text-xs text-gray-400 leading-none mt-1">Hey {user.name}</p>}
         </div>
         <div className="flex items-center gap-2">
-          <a
-            href="#"
-            onClick={e => { e.preventDefault(); window.location.hash = ''; window.location.reload() }}
+          <button
+            onClick={onNew}
             className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
           >
             ← Home
-          </a>
+          </button>
           <button onClick={onNew} className="text-xs font-bold text-gray-400 border border-gray-200 rounded-full px-3 py-1.5 hover:border-gray-300 transition-colors">
             New
           </button>
@@ -750,7 +808,7 @@ function ChatView({
           </button>
         )}
 
-        {visible.map(msg => (
+        {visible.map((msg, i) => (
           <div key={msg.id} className={`flex ${msg.role === 'USER' ? 'justify-end' : 'justify-start'}`}>
             <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
               msg.role === 'USER'
@@ -760,13 +818,27 @@ function ChatView({
               {msg.role === 'ASSISTANT' && (
                 <p className="text-[10px] font-black text-[#F97316] tracking-widest mb-1.5">ACT</p>
               )}
-              <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+              {msg.role === 'USER'
+                ? <p className="text-[15px] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                : <Md text={msg.content} />
+              }
               {msg.role === 'ASSISTANT' && msg.content === '' && isTyping && (
                 <div className="flex gap-1 items-center h-5">
                   <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:0ms]" />
                   <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:150ms]" />
                   <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce [animation-delay:300ms]" />
                 </div>
+              )}
+              {msg.role === 'ASSISTANT' && msg.content === "I'm having trouble connecting. Try again in a moment." && (
+                <button
+                  onClick={() => {
+                    const prevUser = visible.slice(0, i).reverse().find(m => m.role === 'USER')
+                    if (prevUser) onSend(prevUser.content)
+                  }}
+                  className="mt-2 text-xs font-bold text-[#F97316] hover:opacity-70 transition-opacity block"
+                >
+                  Retry →
+                </button>
               )}
             </div>
           </div>
@@ -809,7 +881,10 @@ function ChatView({
         </div>
       )}
 
-      <div className="bg-white border-t border-gray-200 px-3 pt-2 pb-3">
+      <div
+        className="bg-white border-t border-gray-200 px-3 pt-2 shrink-0"
+        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+      >
         {image && (
           <div className="relative mb-2 inline-block">
             <img src={image.preview} alt="Attached" className="h-20 rounded-xl object-cover border border-gray-200" />
@@ -832,7 +907,16 @@ function ChatView({
               <circle cx="12" cy="13" r="4"/>
             </svg>
           </button>
-          <VoiceButton disabled={isTyping} onTranscribed={text => { setInput(text); }} />
+          <VoiceButton disabled={isTyping} onTranscribed={text => {
+            if (image) {
+              onSend(text.trim(), false, image.base64, image.mime)
+              setImage(null)
+            } else if (!input.trim()) {
+              onSend(text.trim())
+            } else {
+              setInput(prev => prev + ' ' + text.trim())
+            }
+          }} />
           <textarea
             className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-2.5 text-[15px] outline-none focus:border-[#F97316]/60 bg-gray-50 max-h-28 min-h-[44px]"
             placeholder={image ? 'Add a note or just send the photo...' : 'Describe the job or ask a question...'}
@@ -1042,8 +1126,8 @@ function ProjectView({
   }
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8] flex flex-col max-w-2xl mx-auto">
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10">
+    <div className="h-[100dvh] bg-[#FAFAF8] flex flex-col max-w-2xl mx-auto overflow-hidden">
+      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3 sticky top-0 z-10 shrink-0">
         <button onClick={onBack} className="text-[#F97316] text-sm font-bold">← Back</button>
         <div className="w-2.5 h-2.5 rounded-full bg-[#F97316] shrink-0" />
         <p className="font-bold text-gray-900 truncate flex-1">{project.title}</p>
@@ -1129,7 +1213,10 @@ function ProjectView({
         <div ref={bottomRef} />
       </div>
 
-      <div className="bg-white border-t border-gray-200 px-3 pt-2 pb-3">
+      <div
+        className="bg-white border-t border-gray-200 px-3 pt-2 shrink-0"
+        style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+      >
         {image && (
           <div className="relative mb-2 inline-block">
             <img src={image.preview} alt="Attached" className="h-20 rounded-xl object-cover border border-gray-200" />
@@ -1149,7 +1236,16 @@ function ProjectView({
               <circle cx="12" cy="13" r="4"/>
             </svg>
           </button>
-          <VoiceButton disabled={isTyping} onTranscribed={text => { setInput(text); }} />
+          <VoiceButton disabled={isTyping} onTranscribed={text => {
+            if (image) {
+              onSend(text.trim(), false, image.base64, image.mime)
+              setImage(null)
+            } else if (!input.trim()) {
+              onSend(text.trim())
+            } else {
+              setInput(prev => prev + ' ' + text.trim())
+            }
+          }} />
           <textarea
             className="flex-1 resize-none border border-gray-200 rounded-2xl px-4 py-2.5 text-[15px] outline-none focus:border-[#F97316]/60 bg-gray-50 max-h-28 min-h-[44px]"
             placeholder={image ? 'Add a note or just send the photo...' : 'Ask ACT anything about this job...'}
