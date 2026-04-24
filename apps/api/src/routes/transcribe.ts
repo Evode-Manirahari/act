@@ -5,7 +5,14 @@ import { logger } from '../lib/logger';
 
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+function getOpenAIClient(): OpenAI | null {
+  if (!process.env.OPENAI_API_KEY) {
+    return null;
+  }
+
+  return new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+}
 
 // POST /api/transcribe — multipart audio → Whisper → { text }
 router.post('/', upload.single('audio'), async (req: Request, res: Response) => {
@@ -14,6 +21,11 @@ router.post('/', upload.single('audio'), async (req: Request, res: Response) => 
   }
 
   try {
+    const openai = getOpenAIClient();
+    if (!openai) {
+      return res.status(503).json({ error: 'Transcription service unavailable' });
+    }
+
     const audioFile = new File(
       [req.file.buffer],
       'audio.m4a',
