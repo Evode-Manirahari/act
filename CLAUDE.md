@@ -90,14 +90,21 @@ data: {"type":"error","message":"error text"}
 ```
 Client (web + mobile): ReadableStream reader, split on `\n`, parse `data: ` lines.
 
-## gstack
-Use the /browse skill from gstack for all web browsing tasks.
+## gstack (required helper)
+Use gstack as the default helper workflow for AI-assisted product work in this repo.
 
-Available skills:
-- `/plan-ceo-review` — First-principles founder review: are we solving the right problem?
-- `/plan-eng-review` — Lock in architecture, data flow, diagrams, edge cases before coding
-- `/review` — Paranoid staff engineer code review hunting production-breaking bugs
-- `/ship` — Release engineer: sync, test, resolve reviews, push to production
-- `/browse` — QA engineer: visual feedback via automated browser testing with screenshots
-- `/qa` — QA lead: systematic diff-aware testing of affected pages and routes
-- `/retro` — Engineering manager: retrospectives with per-person metrics and feedback
+- Install once (Codex host):
+  - `git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.codex/skills/gstack && cd ~/.codex/skills/gstack && ./setup --host codex`
+- Team mode in this repo:
+  - `(cd ~/.codex/skills/gstack && ./setup --team --host codex) && ~/.codex/skills/gstack/bin/gstack-team-init required`
+- Browser policy:
+  - Use `/browse` or `/qa` for web browsing, screenshots, and UI verification tasks.
+
+Recommended skill routing:
+- `/office-hours` + `/autoplan` — clarify scope before implementation
+- `/plan-ceo-review` — first-principles founder/product review
+- `/plan-eng-review` — architecture, data flow, and test plan hardening
+- `/review` — production-focused code review and autofixes
+- `/qa` — diff-aware QA with browser validation and screenshots
+- `/ship` — release flow and PR quality gate
+- `/retro` — retrospective and quality feedback loop

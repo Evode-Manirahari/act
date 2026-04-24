@@ -20,6 +20,25 @@ This isn't about replacing tradespeople. It's about making anyone significantly 
 - **API**: Node.js 20, Express, TypeScript, Prisma, PostgreSQL, Redis
 - **AI**: Claude (claude-sonnet-4-6) via Anthropic SDK
 
+## AI workflow helper (gstack)
+
+This repo standardizes on [gstack](https://github.com/garrytan/gstack) for AI-assisted planning, review, QA, and release workflows.
+
+```bash
+# install for Codex
+ git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.codex/skills/gstack
+ cd ~/.codex/skills/gstack && ./setup --host codex
+
+# enable repo team mode (required)
+(cd ~/.codex/skills/gstack && ./setup --team --host codex) && ~/.codex/skills/gstack/bin/gstack-team-init required
+```
+
+Suggested defaults:
+- Plan: `/office-hours` → `/autoplan`
+- Review: `/review`
+- UI/Browser QA: `/browse` or `/qa`
+- Release: `/ship`
+
 ## Setup
 
 ```bash
