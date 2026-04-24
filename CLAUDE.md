@@ -6,51 +6,58 @@ A small camera and earpiece become your expert — seeing what you see, reasonin
 
 **AI Persona**: ACT — direct, safety-first, trade-calibrated. The best tradesperson you know in your ear.
 **Tagline**: Act on what you see.
-**Target user**: Tradespeople, DIYers, and anyone doing hands-on physical work — plumbers, electricians, carpenters, HVAC techs, painters, tilers.
+**Target user**: Tradespeople doing hands-on physical work — plumbers, electricians, carpenters, HVAC techs, painters, tilers.
 
-## Trade Domains (JobDomain)
+## Current Wedge: HVAC field diagnostics
+Build vertically. The first deployed vertical is **HVAC field technicians** doing on-site diagnostic walkthroughs: tech points camera at equipment, asks a question, ACT identifies the component and gives the next concrete step. Other trades come after we have paying HVAC design partners.
+
+## Trade Domains (future)
+- **HVAC** ❄️ — heating, cooling, ventilation, ducts **← current focus**
 - **PLUMBING** 🔧 — pipes, fixtures, drains, water heaters
 - **ELECTRICAL** ⚡ — wiring, outlets, panels, fixtures
 - **CARPENTRY** 🪵 — framing, trim, doors, cabinets
-- **HVAC** ❄️ — heating, cooling, ventilation, ducts
 - **PAINTING** 🖌 — interior/exterior, prep, finishing
 - **TILING** 🧱 — floor, wall, grout, substrate
-- **GENERAL** 🔩 — general maintenance and repairs
+
+## Repo Layout
+This repo (`act/`) now contains only the mobile client. The backend lives in a sibling repo.
+
+- `apps/mobile` — React Native Expo app (the only app after the 2026-04-23 prune)
+- `packages/act-prompts` — shared prompt/conversation scaffolding used by mobile
+- `packages/shared-types` — shared TypeScript types
+- `packages/act-kb` — knowledge-base stubs (retained pending integration)
+- `../act-api/` — Python FastAPI backend (sibling repo, not a workspace member)
+
+Removed 2026-04-23: `apps/api` (Node/Express/Prisma), `apps/web` (React/Vite), `apps/flutter` (untracked, archived to `~/Downloads/act-apps-flutter-backup-2026-04-23.zip`), `railway.toml`.
 
 ## Stack
-- **Mobile**: React Native (Expo SDK 51), TypeScript
-- **API**: Node.js + Express + TypeScript
-- **Database**: PostgreSQL via Prisma ORM
-- **Cache**: Redis (rate limiting)
-- **AI**: Claude (claude-sonnet-4-6) via Anthropic SDK
-- **State**: Zustand
-- **Monorepo**: pnpm workspaces
+- **Mobile**: React Native (Expo SDK 51), TypeScript, Zustand
+- **Backend** (in `../act-api/`): Python 3.13 + FastAPI + async SQLAlchemy 2.0 + Alembic
+- **Database**: PostgreSQL (async via `asyncpg`)
+- **Cache / queue**: Redis
+- **AI**: Claude `claude-sonnet-4-6` via `anthropic` Python SDK, vision + streaming, prompt caching on system prompt
+- **Speech-to-text**: Deepgram (`nova-3`) with stub fallback
+- **TTS**: stub (ElevenLabs wiring pending)
+- **Monorepo (mobile only)**: pnpm workspaces
 
-## Folder Purposes
-- `apps/mobile` — React Native Expo app
-- `apps/api` — Express REST API (AI orchestration, DB, business logic)
-- `packages/act-prompts` — ACT system prompt + conversation scaffolding
-- `packages/shared-types` — TypeScript types shared between mobile and API
+## Backend Data Model (act-api)
+- `accounts` — HVAC company (the buyer)
+- `users` — technician, belongs to an account
+- `jobs` — one field visit
+- `turns` — one voice Q → Claude A exchange within a job (the moat: labeled workflow data)
+- `frames` — image captures attached to a turn
 
-## Current State
-- Full web app (React+Vite): landing page + hash-routed chat app
-- Full mobile app (React Native Expo): boot, onboarding, home, project screens
-- API: Express + Prisma + Claude streaming SSE + vision support
-- Database: PostgreSQL (Prisma schema with User, Session, Message, Project, Step)
-- Cache: Redis (rate limiting, subscription enforcement)
-- Streaming: SSE via `anthropic.messages.stream()` — tokens appear in real-time
-- Vision: `imageBase64` + `imageMimeType` in chat requests → Claude image blocks
-- Trade domains: `JobDomain` on User, injected into system prompt per-request
+## Mobile State
+- Boot, onboarding, home, history, profile, project/session screens exist from the pre-pivot consumer-DIY product.
+- **The mobile app still speaks the old `api.registerUser`, `api.createSession`, `api.updateProject` interface — it does not yet talk to `act-api/`.** Rewiring is the next mobile milestone: replace the old API client with calls to `POST /jobs`, `POST /jobs/:id/turns` (SSE), `GET /jobs/:id`.
 
-## Conversation Phases
-ACT moves through three phases in every session:
-1. **DISCOVERY** — ACT asks what the job is, takes a photo if helpful
-2. **SUGGESTION** — ACT proposes 2-3 job plans with steps, materials, time estimate
-3. **COACHING** — ACT guides step by step; user confirms each step or shares photos
+## Conversation Flow (product concept)
+Historically three phases — DISCOVERY, SUGGESTION, COACHING. For the HVAC wedge the flow collapses to a continuous loop of **turns**: frame + spoken question → diagnostic step + spoken response. Phase state, if we keep it, lives in the mobile app, not the backend.
 
 ## THE RULE
 **DO NOT rebuild anything already working. Extend only.**
 Read a file before touching it. Understand before changing.
+*(Exception taken on 2026-04-23: backend rewritten from Node to Python because the vision/audio pipeline is materially easier in Python. Mobile is being pruned, not rewritten.)*
 
 ## Colors
 - Primary: #F97316 (warm orange)
@@ -70,25 +77,30 @@ Short sentences. Trade vocabulary where appropriate. Never condescending.
 - "Photo helps here. Show me what you're working with."
 - "That's a hairline crack in the P-trap. Needs replacing, not patching."
 
-## API Routes
-- `POST /api/users/register` — register or upsert user by deviceId (accepts `domain`)
-- `GET  /api/users/:deviceId` — fetch user
-- `POST /api/sessions` — create a new chat session
-- `POST /api/chat` — **SSE streaming** chat; accepts `imageBase64` + `imageMimeType`
-- `GET  /api/sessions/:id` — fetch session with messages
-- `POST /api/projects` — save a project when user commits to one
-- `PATCH /api/projects/:id` — update project status / step progress
-- `GET  /api/projects/user/:userId` — list user's projects
-- `GET  /health` — health check
+## API Routes (act-api, Python FastAPI)
+- `GET  /health` — health check, returns `{ok, db}`
+- `POST /jobs` — create a job for a user
+- `GET  /jobs` — list recent jobs
+- `GET  /jobs/{job_id}` — fetch one job
+- `POST /jobs/{job_id}/turns` — **SSE streaming.** Multipart body: `frame` (image), `audio` (audio blob), optional `question` (text override for transcription). Returns events (below).
 
 ## Streaming (SSE)
-`POST /api/chat` returns `Content-Type: text/event-stream`. Events:
+`POST /jobs/{job_id}/turns` streams these events in order:
 ```
-data: {"type":"delta","content":"token text"}
-data: {"type":"done","message":{...},"phase":"COACHING","suggestions":[...]}
-data: {"type":"error","message":"error text"}
+event: transcript
+data: <tech's transcribed question>
+
+event: token
+data: <incremental Claude output token>
+...
+
+event: audio
+data: <synthesized TTS audio URL>
+
+event: done
+data: <turn id>
 ```
-Client (web + mobile): ReadableStream reader, split on `\n`, parse `data: ` lines.
+Client: use `EventSource` (web) or an SSE-capable fetch reader (React Native).
 
 ## gstack
 Use the /browse skill from gstack for all web browsing tasks.
