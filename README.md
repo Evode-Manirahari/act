@@ -20,6 +20,26 @@ This isn't about replacing tradespeople. It's about making anyone significantly 
 - **API**: Node.js 20, Express, TypeScript, Prisma, PostgreSQL, Redis
 - **AI**: Claude (claude-sonnet-4-6) via Anthropic SDK
 
+
+## AI workflow helper (gstack)
+
+This repo standardizes on [garrytan/gstack](https://github.com/garrytan/gstack) as the default AI workflow helper for planning, implementation, review, and QA.
+
+### Local install (one-time)
+```bash
+git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
+cd ~/.claude/skills/gstack && ./setup
+```
+
+### Team usage in this project
+- Start product discovery with `/office-hours` + `/plan-ceo-review`
+- Validate implementation with `/plan-eng-review` before coding
+- Run `/review` before opening a PR
+- Run `/qa` against the changed experience before merge
+- Run `/ship` when ready to push and open PRs
+
+This keeps planning, coding, review, and QA consistent across ACT web, mobile, and API changes.
+
 ## Setup
 
 ```bash

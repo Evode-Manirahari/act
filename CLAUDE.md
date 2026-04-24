@@ -103,13 +103,25 @@ data: <turn id>
 Client: use `EventSource` (web) or an SSE-capable fetch reader (React Native).
 
 ## gstack
-Use the /browse skill from gstack for all web browsing tasks.
+Use [garrytan/gstack](https://github.com/garrytan/gstack) as the default helper workflow throughout this product.
 
-Available skills:
-- `/plan-ceo-review` — First-principles founder review: are we solving the right problem?
-- `/plan-eng-review` — Lock in architecture, data flow, diagrams, edge cases before coding
-- `/review` — Paranoid staff engineer code review hunting production-breaking bugs
-- `/ship` — Release engineer: sync, test, resolve reviews, push to production
-- `/browse` — QA engineer: visual feedback via automated browser testing with screenshots
-- `/qa` — QA lead: systematic diff-aware testing of affected pages and routes
-- `/retro` — Engineering manager: retrospectives with per-person metrics and feedback
+### Required usage pattern
+- Use `/office-hours` and `/plan-ceo-review` when defining new features or pivots.
+- Use `/plan-eng-review` before major implementation work to lock architecture and edge cases.
+- Use `/review` before opening or updating a PR.
+- Use `/qa` on changed user flows before merge (mobile/web/api-visible behavior).
+- Use `/ship` to finalize release-ready branches.
+- Use `/retro` after significant milestones to improve team process.
+
+### Browsing/tooling rule
+Use the `/browse` skill from gstack for all web browsing tasks.
+
+### Core gstack skills used in ACT
+- `/office-hours` — product discovery and reframing
+- `/plan-ceo-review` — first-principles founder/product review
+- `/plan-eng-review` — architecture, data-flow, and test planning
+- `/review` — production-focused code review
+- `/qa` — diff-aware QA of affected journeys
+- `/ship` — release engineer flow for push + PR
+- `/browse` — browser automation + screenshots
+- `/retro` — post-release process improvement
