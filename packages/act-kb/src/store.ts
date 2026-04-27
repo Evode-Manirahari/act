@@ -1,4 +1,4 @@
-import { HVAC_KB_ENTRIES } from './entries';
+import { ELECTRICAL_KB_ENTRIES } from './entries';
 import type { KBEntry, KBSearchHit } from './types';
 
 const TOKEN_SPLIT = /[^a-z0-9]+/;
@@ -40,10 +40,10 @@ function indexEntry(entry: KBEntry): IndexedEntry {
   };
 }
 
-export class HVACKBStore {
+export class ElectricalKBStore {
   private indexed: IndexedEntry[];
 
-  constructor(entries: KBEntry[] = HVAC_KB_ENTRIES) {
+  constructor(entries: KBEntry[] = ELECTRICAL_KB_ENTRIES) {
     this.indexed = entries.map(indexEntry);
   }
 
@@ -93,11 +93,11 @@ export class HVACKBStore {
   }
 }
 
-let globalStore: HVACKBStore | null = null;
+let globalStore: ElectricalKBStore | null = null;
 
-export function getHVACKBStore(): HVACKBStore {
+export function getElectricalKBStore(): ElectricalKBStore {
   if (!globalStore) {
-    globalStore = new HVACKBStore();
+    globalStore = new ElectricalKBStore();
   }
   return globalStore;
 }

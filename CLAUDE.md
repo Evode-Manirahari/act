@@ -6,15 +6,14 @@ A small camera and earpiece become your expert — seeing what you see, reasonin
 
 **AI Persona**: ACT — direct, safety-first, trade-calibrated. The best tradesperson you know in your ear.
 **Tagline**: Act on what you see.
-**Target user**: Tradespeople doing hands-on physical work — plumbers, electricians, carpenters, HVAC techs, painters, tilers.
+**Target user**: Electricians first; broader trades later.
 
-## Current Wedge: HVAC field diagnostics
-Build vertically. The first deployed vertical is **HVAC field technicians** doing on-site diagnostic walkthroughs: tech points camera at equipment, asks a question, ACT identifies the component and gives the next concrete step. Other trades come after we have paying HVAC design partners.
+## Current Wedge: electrician field diagnostics
+Build vertically. The first deployed vertical is **working electricians** doing on-site identification and safety triage: unknown panels, legacy wiring, hacked junctions, mixed old/new systems, and "what do I verify before touching this?" moments. Other trades come after we have paying electrical contractor design partners.
 
 ## Trade Domains (future)
-- **HVAC** ❄️ — heating, cooling, ventilation, ducts **← current focus**
+- **ELECTRICAL** ⚡ — wiring, outlets, panels, fixtures **← current focus**
 - **PLUMBING** 🔧 — pipes, fixtures, drains, water heaters
-- **ELECTRICAL** ⚡ — wiring, outlets, panels, fixtures
 - **CARPENTRY** 🪵 — framing, trim, doors, cabinets
 - **PAINTING** 🖌 — interior/exterior, prep, finishing
 - **TILING** 🧱 — floor, wall, grout, substrate
@@ -25,7 +24,7 @@ This repo (`act/`) now contains only the mobile client. The backend lives in a s
 - `apps/mobile` — React Native Expo app (the only app after the 2026-04-23 prune)
 - `packages/act-prompts` — shared prompt/conversation scaffolding used by mobile
 - `packages/shared-types` — shared TypeScript types
-- `packages/act-kb` — knowledge-base stubs (retained pending integration)
+- `packages/act-kb` — electrical field knowledge-base stubs retained pending integration
 - `../act-api/` — Python FastAPI backend (sibling repo, not a workspace member)
 
 Removed 2026-04-23: `apps/api` (Node/Express/Prisma), `apps/web` (React/Vite), `apps/flutter` (untracked, archived to `~/Downloads/act-apps-flutter-backup-2026-04-23.zip`), `railway.toml`.
@@ -35,14 +34,14 @@ Removed 2026-04-23: `apps/api` (Node/Express/Prisma), `apps/web` (React/Vite), `
 - **Backend** (in `../act-api/`): Python 3.13 + FastAPI + async SQLAlchemy 2.0 + Alembic
 - **Database**: PostgreSQL (async via `asyncpg`)
 - **Cache / queue**: Redis
-- **AI**: Claude `claude-sonnet-4-6` via `anthropic` Python SDK, vision + streaming, prompt caching on system prompt
+- **AI**: Claude `claude-sonnet-4-20250514` via `anthropic` Python SDK, vision + streaming, prompt caching on system prompt
 - **Speech-to-text**: Deepgram (`nova-3`) with stub fallback
 - **TTS**: stub (ElevenLabs wiring pending)
 - **Monorepo (mobile only)**: pnpm workspaces
 
 ## Backend Data Model (act-api)
-- `accounts` — HVAC company (the buyer)
-- `users` — technician, belongs to an account
+- `accounts` — electrical contractor (the buyer)
+- `users` — electrician, belongs to an account
 - `jobs` — one field visit
 - `turns` — one voice Q → Claude A exchange within a job (the moat: labeled workflow data)
 - `frames` — image captures attached to a turn
@@ -52,7 +51,7 @@ Removed 2026-04-23: `apps/api` (Node/Express/Prisma), `apps/web` (React/Vite), `
 - **The mobile app still speaks the old `api.registerUser`, `api.createSession`, `api.updateProject` interface — it does not yet talk to `act-api/`.** Rewiring is the next mobile milestone: replace the old API client with calls to `POST /jobs`, `POST /jobs/:id/turns` (SSE), `GET /jobs/:id`.
 
 ## Conversation Flow (product concept)
-Historically three phases — DISCOVERY, SUGGESTION, COACHING. For the HVAC wedge the flow collapses to a continuous loop of **turns**: frame + spoken question → diagnostic step + spoken response. Phase state, if we keep it, lives in the mobile app, not the backend.
+Historically three phases — DISCOVERY, SUGGESTION, COACHING. For the electrician wedge the flow collapses to a continuous loop of **turns**: frame + spoken question → identification, safety check, next step, spoken response. Phase state, if we keep it, lives in the mobile app, not the backend.
 
 ## THE RULE
 **DO NOT rebuild anything already working. Extend only.**
@@ -72,10 +71,10 @@ Read a file before touching it. Understand before changing.
 ACT speaks like the best tradesperson you know. Direct. Safety-first. No padding.
 Short sentences. Trade vocabulary where appropriate. Never condescending.
 - "Turn off the breaker first. Don't skip this."
-- "That fitting needs thread tape."
-- "Good — now hand-tighten. We'll torque it after."
-- "Photo helps here. Show me what you're working with."
-- "That's a hairline crack in the P-trap. Needs replacing, not patching."
+- "Kill power at the breaker and verify dead before touching conductors."
+- "That looks like BX feeding a newer romex splice. Show me the junction box cover."
+- "Federal Pacific Stab-Lok panel. Treat this as high risk and verify the disconnect."
+- "Photo helps here. Show me the breaker label and the neutral bar."
 
 ## API Routes (act-api, Python FastAPI)
 - `GET  /health` — health check, returns `{ok, db}`

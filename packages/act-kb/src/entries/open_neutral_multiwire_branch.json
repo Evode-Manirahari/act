@@ -1,0 +1,23 @@
+{
+  "id": "open-neutral-multiwire-branch",
+  "brand": "Unknown",
+  "model": "Multiwire branch circuit",
+  "equipment_type": "branch-circuit",
+  "symptom": "Customer reports lights getting bright and dim, odd voltages at receptacles, or two circuits sharing a neutral in a panel or junction box.",
+  "diagnosis": "Possible open neutral on a multiwire branch circuit. Shared-neutral loads can see unstable voltage and damage equipment.",
+  "part_number": null,
+  "procedure": [
+    "Tell the user to stop using affected loads until verified.",
+    "Turn off both ungrounded conductors serving the shared neutral.",
+    "Verify the two breakers have a common trip or handle tie as required.",
+    "Meter hot-to-neutral, hot-to-hot, and neutral continuity before reconnecting loads.",
+    "Locate the loose neutral at the panel, device, or junction before restoring power."
+  ],
+  "safety_notes": [
+    "Do not disconnect a shared neutral under load.",
+    "Do not energize only one leg until the neutral is confirmed solid.",
+    "Unstable neutral voltage can damage appliances and create shock risk."
+  ],
+  "estimated_minutes": 45,
+  "tags": ["open", "neutral", "multiwire", "shared", "mwbc", "voltage", "bright", "dim"]
+}

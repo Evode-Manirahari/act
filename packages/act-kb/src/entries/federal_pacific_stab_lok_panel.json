@@ -1,0 +1,23 @@
+{
+  "id": "federal-pacific-stab-lok-panel",
+  "brand": "Federal Pacific",
+  "model": "Stab-Lok",
+  "equipment_type": "panel",
+  "symptom": "Photo shows a Federal Pacific Stab-Lok residential panel or breakers. The electrician needs to identify the panel and decide whether to proceed.",
+  "diagnosis": "Legacy Federal Pacific Stab-Lok panel. Treat as high risk because breakers have a known failure-to-trip history and replacement parts do not remove the panel-level concern.",
+  "part_number": null,
+  "procedure": [
+    "Identify the deadfront label and breaker type before touching conductors.",
+    "Kill power upstream if work requires removing breakers or landing conductors.",
+    "Verify de-energized with a meter on line and load conductors.",
+    "Document the panel make, visible defects, and any double taps or overheating.",
+    "Recommend evaluation or replacement instead of expanding the panel."
+  ],
+  "safety_notes": [
+    "Do not rely on the branch breaker alone for worker protection.",
+    "Do not add load or new circuits to a known problem panel.",
+    "If bus damage, heat discoloration, or loose breakers are visible, stop and escalate."
+  ],
+  "estimated_minutes": 20,
+  "tags": ["panel", "federal", "pacific", "stab", "lok", "breaker", "legacy", "unsafe"]
+}

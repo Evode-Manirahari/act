@@ -14,9 +14,9 @@ This isn't about replacing tradespeople. It's about making anyone significantly 
 2. **ACT reasons** — about what's in front of you and what needs to happen next
 3. **ACT talks** — clear, step-by-step guidance through your earpiece
 
-## Current wedge: HVAC field diagnostics
+## Current wedge: electrician field diagnostics
 
-First vertical is HVAC field technicians doing on-site diagnostic walkthroughs. Other trades (plumbing, electrical, carpentry, painting, tiling) come after we have paying HVAC design partners.
+First vertical is working electricians doing on-site identification and safety triage: unknown panels, legacy wiring, hacked junctions, mixed old/new systems, and "what do I verify before touching this?" moments. Other trades come after we have paying electrical contractor design partners.
 
 ## Repo layout
 
@@ -25,14 +25,14 @@ This repo contains the **mobile client only**. The backend lives in a sibling re
 - `apps/mobile` — React Native Expo app
   - `src/screens/AskActScreen.tsx` — current vertical slice: photo → question → Claude answer
   - `src/api/actApi.ts` — talks to the deployed backend
-- `packages/act-prompts`, `packages/shared-types`, `packages/act-kb` — shared code
+- `packages/act-prompts`, `packages/shared-types`, `packages/act-kb` — shared code and electrical field knowledge
 - `../act-api/` — Python FastAPI backend, deployed at https://act-api-evode.fly.dev ([sibling repo](https://github.com/Evode-Manirahari/act-api))
 
 ## Stack
 
 - **Mobile**: React Native (Expo SDK 51), TypeScript, Zustand
 - **Backend** (`act-api/`): Python 3.13, FastAPI, async SQLAlchemy 2.0, Alembic, PostgreSQL, Redis
-- **AI**: Claude `claude-sonnet-4-6` via Anthropic Python SDK (vision + streaming, prompt caching)
+- **AI**: Claude `claude-sonnet-4-20250514` via Anthropic Python SDK (vision + streaming, prompt caching)
 - **Speech-to-text**: Deepgram (`nova-3`)
 - **Monorepo (mobile only)**: pnpm workspaces
 

@@ -1,0 +1,23 @@
+{
+  "id": "missing-bond-subpanel",
+  "brand": "Unknown",
+  "model": "Subpanel",
+  "equipment_type": "subpanel",
+  "symptom": "Photo shows a downstream panel where neutral and equipment grounding conductors may be mixed, bonded, or isolated incorrectly.",
+  "diagnosis": "Subpanel bonding issue. In a downstream panel, neutrals must be isolated from the enclosure and equipment grounds must bond to the enclosure.",
+  "part_number": null,
+  "procedure": [
+    "Identify whether this is service equipment or a downstream panel.",
+    "Kill feeder power and verify dead before touching bars or conductors.",
+    "Check whether the neutral bar is isolated from the metal enclosure.",
+    "Check whether the equipment grounding bar is bonded to the enclosure.",
+    "Separate neutral and equipment grounding conductors if this is a downstream panel."
+  ],
+  "safety_notes": [
+    "Do not bond neutral and ground in a downstream panel.",
+    "Do not remove the service bond at service equipment.",
+    "If the feeder lacks an equipment grounding conductor, stop and evaluate the feeder."
+  ],
+  "estimated_minutes": 30,
+  "tags": ["subpanel", "neutral", "ground", "bond", "isolated", "feeder", "bar"]
+}

@@ -29,7 +29,6 @@ const QUICK_CHIPS_BY_DOMAIN: Record<string, string[]> = {
   PLUMBING: ['Leaking pipe under the sink', 'Unblock a drain', 'Replace a faucet', 'Water heater issue', 'Running toilet', 'Low water pressure'],
   ELECTRICAL: ['Outlet not working', 'Replace a light fixture', 'Running new cable', 'Tripped breaker won\'t reset', 'Install a ceiling fan', 'GFCI outlet issue'],
   CARPENTRY: ['Door won\'t close properly', 'Fixing a squeaky floor', 'Install door trim', 'Cabinet door hinge broken', 'Build a shelf', 'Deck board replacement'],
-  HVAC: ['AC not cooling', 'Furnace won\'t ignite', 'Replace air filter', 'Noisy ductwork', 'Thermostat not responding', 'Vent airflow weak'],
   PAINTING: ['Patching drywall', 'Prep walls for painting', 'Fix paint peeling', 'Caulk gaps before painting', 'Touch up scuffs', 'Painting trim'],
   TILING: ['Cracked tile needs replacing', 'Re-grout bathroom floor', 'Tile is coming loose', 'Caulk around tub', 'Lay new floor tile', 'Backsplash install'],
   GENERAL: ['Leaking pipe under the sink', 'Outlet not working', 'Door won\'t close properly', 'Fixing a squeaky floor', 'Patching drywall', 'Replace a light fixture', 'Running new cable', 'Unblock a drain'],

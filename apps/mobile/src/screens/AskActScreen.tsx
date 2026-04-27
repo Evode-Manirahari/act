@@ -60,7 +60,7 @@ export default function AskActScreen() {
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
         <Text style={styles.title}>ACT</Text>
-        <Text style={styles.subtitle}>Point at it. Ask. Get the answer.</Text>
+        <Text style={styles.subtitle}>Point at wiring, panels, or devices. Ask what to verify next.</Text>
 
         {!photoUri ? (
           <TouchableOpacity style={styles.captureBtn} onPress={takePhoto} activeOpacity={0.85}>
@@ -80,7 +80,7 @@ export default function AskActScreen() {
           <>
             <TextInput
               style={styles.input}
-              placeholder="What's your question? e.g. 'what era is this panel?'"
+              placeholder="What's your question? e.g. 'what era is this panel and is it safe to touch?'"
               placeholderTextColor={colors.textLight}
               value={question}
               onChangeText={setQuestion}

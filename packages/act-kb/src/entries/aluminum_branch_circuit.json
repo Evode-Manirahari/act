@@ -1,0 +1,23 @@
+{
+  "id": "aluminum-branch-circuit",
+  "brand": "Unknown",
+  "model": "Solid aluminum branch wiring",
+  "equipment_type": "branch-circuit",
+  "symptom": "Photo shows silver-colored solid branch-circuit conductors on receptacles, switches, wirenuts, or breakers in an older dwelling.",
+  "diagnosis": "Likely solid aluminum branch-circuit wiring. Main risk is heat from oxidation, creep, and devices or splices not rated for aluminum conductors.",
+  "part_number": null,
+  "procedure": [
+    "Confirm conductor material by color, markings, and age of installation.",
+    "Kill power and verify dead before opening or moving the device.",
+    "Check whether devices are marked CO/ALR where aluminum terminates directly.",
+    "Inspect for heat discoloration, brittle insulation, loose screws, or damaged wirenuts.",
+    "Use approved aluminum-to-copper repair connectors or escalate for remediation."
+  ],
+  "safety_notes": [
+    "Do not land aluminum conductors on devices rated copper-only.",
+    "Do not use standard wirenuts as a repair unless the connector is listed for the conductor combination.",
+    "If there are heat marks or melted insulation, stop and treat as a fire-risk repair."
+  ],
+  "estimated_minutes": 35,
+  "tags": ["aluminum", "branch", "circuit", "co", "alr", "wirenut", "overheat", "legacy"]
+}

@@ -1,2 +1,2 @@
 export { ACT_SYSTEM_PROMPT } from './system';
-export { ACT_HVAC_SYSTEM_PROMPT } from './hvac';
+export { ACT_ELECTRICAL_SYSTEM_PROMPT } from './electrical';

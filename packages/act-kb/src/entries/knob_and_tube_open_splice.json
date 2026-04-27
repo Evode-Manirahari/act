@@ -1,0 +1,23 @@
+{
+  "id": "knob-and-tube-open-splice",
+  "brand": "Unknown",
+  "model": "Knob-and-tube",
+  "equipment_type": "legacy-wiring",
+  "symptom": "Photo shows cloth-insulated single conductors on ceramic knobs or tubes, often mixed with newer cable or an open splice.",
+  "diagnosis": "Legacy knob-and-tube wiring with possible uncontained splice or mixed wiring method. Main concern is brittle insulation, unsupported alterations, and lack of grounding conductor.",
+  "part_number": null,
+  "procedure": [
+    "Stop before moving the conductors; old insulation can crack when flexed.",
+    "Identify the source circuit and turn it off at the breaker or fuse.",
+    "Verify dead with a meter on each conductor to ground and conductor to conductor.",
+    "Look for open splices, buried splices, insulation contact, and mixed cable transitions.",
+    "Recommend proper junction-box containment or circuit replacement where needed."
+  ],
+  "safety_notes": [
+    "Do not handle energized cloth-insulated conductors.",
+    "Do not bury knob-and-tube wiring in insulation or finished cavities.",
+    "If insulation crumbles or copper is exposed, stop and repair before proceeding."
+  ],
+  "estimated_minutes": 30,
+  "tags": ["knob", "tube", "cloth", "ceramic", "legacy", "splice", "ungrounded"]
+}

@@ -65,11 +65,6 @@ const DOMAIN: Record<string, string[]> = {
     "Door sticking? Shelf to hang? ACT's your second set of hands.",
     "Good day to make something. Tell ACT what the job is.",
   ],
-  HVAC:       [
-    "System acting up? Filter due? ACT can help diagnose it.",
-    "HVAC issue? Describe the symptoms. ACT will walk you through it.",
-    "Heating or cooling problem? Let ACT help before it gets worse.",
-  ],
   PAINTING:   [
     "Ready to transform a space? ACT's got the prep tips.",
     "Painting job? ACT starts with prep — the part most people skip.",

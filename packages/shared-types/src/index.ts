@@ -1,5 +1,5 @@
 export type ExperienceLevel = 'BEGINNER' | 'INTERMEDIATE' | 'EXPERIENCED';
-export type JobDomain = 'PLUMBING' | 'ELECTRICAL' | 'CARPENTRY' | 'HVAC' | 'PAINTING' | 'TILING' | 'GENERAL';
+export type JobDomain = 'PLUMBING' | 'ELECTRICAL' | 'CARPENTRY' | 'PAINTING' | 'TILING' | 'GENERAL';
 export type ProjectCategory = 'MAKE' | 'IMPROVE' | 'GROW' | 'CREATE';
 export type ProjectStatus = 'SUGGESTED' | 'IN_PROGRESS' | 'COMPLETED' | 'ABANDONED';
 export type MessageRole = 'USER' | 'ASSISTANT';

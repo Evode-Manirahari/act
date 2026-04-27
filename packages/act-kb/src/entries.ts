@@ -1,15 +1,15 @@
-import dirtyFilterFrozenCoil from './entries/dirty_filter_frozen_coil.json';
-import noCWireSmartThermostat from './entries/no_c_wire_smart_thermostat.json';
-import badDualRunCapacitor from './entries/bad_dual_run_capacitor.json';
-import condensateDrainClog from './entries/condensate_drain_clog.json';
-import furnacePressureSwitchTrip from './entries/furnace_pressure_switch_trip.json';
+import federalPacificStabLokPanel from './entries/federal_pacific_stab_lok_panel.json';
+import knobAndTubeOpenSplice from './entries/knob_and_tube_open_splice.json';
+import aluminumBranchCircuit from './entries/aluminum_branch_circuit.json';
+import openNeutralMultiwireBranch from './entries/open_neutral_multiwire_branch.json';
+import missingBondSubpanel from './entries/missing_bond_subpanel.json';
 
 import type { KBEntry } from './types';
 
-export const HVAC_KB_ENTRIES: KBEntry[] = [
-  dirtyFilterFrozenCoil as KBEntry,
-  noCWireSmartThermostat as KBEntry,
-  badDualRunCapacitor as KBEntry,
-  condensateDrainClog as KBEntry,
-  furnacePressureSwitchTrip as KBEntry,
+export const ELECTRICAL_KB_ENTRIES: KBEntry[] = [
+  federalPacificStabLokPanel as KBEntry,
+  knobAndTubeOpenSplice as KBEntry,
+  aluminumBranchCircuit as KBEntry,
+  openNeutralMultiwireBranch as KBEntry,
+  missingBondSubpanel as KBEntry,
 ];

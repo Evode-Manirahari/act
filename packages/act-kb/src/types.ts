@@ -1,11 +1,13 @@
 export type EquipmentType =
-  | 'furnace'
-  | 'air-handler'
-  | 'ac-condenser'
-  | 'heat-pump'
-  | 'mini-split'
-  | 'thermostat'
-  | 'package-unit';
+  | 'panel'
+  | 'breaker'
+  | 'branch-circuit'
+  | 'junction-box'
+  | 'service-equipment'
+  | 'subpanel'
+  | 'device'
+  | 'conduit'
+  | 'legacy-wiring';
 
 export interface KBEntry {
   id: string;

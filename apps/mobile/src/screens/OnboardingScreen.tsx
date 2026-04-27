@@ -23,7 +23,6 @@ const DOMAINS: { value: JobDomain; label: string; emoji: string }[] = [
   { value: 'PLUMBING', label: 'Plumbing', emoji: '🔧' },
   { value: 'ELECTRICAL', label: 'Electrical', emoji: '⚡' },
   { value: 'CARPENTRY', label: 'Carpentry', emoji: '🪵' },
-  { value: 'HVAC', label: 'HVAC', emoji: '❄️' },
   { value: 'PAINTING', label: 'Painting', emoji: '🖌️' },
   { value: 'TILING', label: 'Tiling', emoji: '🧱' },
   { value: 'GENERAL', label: 'General / Mixed', emoji: '🔩' },
