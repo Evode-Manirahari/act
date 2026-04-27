@@ -23,8 +23,10 @@ First vertical is HVAC field technicians doing on-site diagnostic walkthroughs. 
 This repo contains the **mobile client only**. The backend lives in a sibling repo.
 
 - `apps/mobile` — React Native Expo app
+  - `src/screens/AskActScreen.tsx` — current vertical slice: photo → question → Claude answer
+  - `src/api/actApi.ts` — talks to the deployed backend
 - `packages/act-prompts`, `packages/shared-types`, `packages/act-kb` — shared code
-- `../act-api/` — Python FastAPI backend (sibling repo, not a workspace member)
+- `../act-api/` — Python FastAPI backend, deployed at https://act-api-evode.fly.dev ([sibling repo](https://github.com/Evode-Manirahari/act-api))
 
 ## Stack
 
@@ -34,29 +36,32 @@ This repo contains the **mobile client only**. The backend lives in a sibling re
 - **Speech-to-text**: Deepgram (`nova-3`)
 - **Monorepo (mobile only)**: pnpm workspaces
 
-## Setup
+## Run the mobile slice
 
-Mobile:
+The mobile app currently launches directly into `AskActScreen` — a single screen that takes a photo, accepts a typed question, and streams Claude's diagnosis back from the live API at `https://act-api-evode.fly.dev`.
+
 ```bash
 pnpm install
-pnpm dev:mobile
+cd apps/mobile && pnpm start
 ```
 
-Backend (in the sibling `act-api/` repo):
+Then on your phone:
+1. Install **Expo Go** ([iOS](https://apps.apple.com/app/expo-go/id982107779) | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
+2. Make sure phone and Mac are on the **same WiFi**
+3. Scan the QR code in the terminal, or paste `exp://<lan-ip>:8081` via "Enter URL manually"
+
+The legacy multi-screen flow (Boot / Onboarding / Paywall / Home / Project) is preserved in git history. To restore it:
 ```bash
-cd ../act-api
-uv sync                          # or: python -m venv .venv && pip install -e .
-cp .env.example .env             # set ANTHROPIC_API_KEY, DEEPGRAM_API_KEY
-docker compose up -d postgres redis
-uv run alembic upgrade head
-uv run uvicorn app.main:app --reload
+git show HEAD~:apps/mobile/App.tsx > apps/mobile/App.tsx
 ```
 
-The mobile app needs to be rewired to talk to `act-api/` (current screens still speak the old `api.createSession` / `api.updateProject` interface from the pre-pivot codebase).
+## Backend (sibling repo)
+
+See [Evode-Manirahari/act-api](https://github.com/Evode-Manirahari/act-api) for the FastAPI service the mobile slice talks to.
 
 ## Environment
 
-Mobile reads its API base URL from Expo env. Backend env vars live in `act-api/.env` — see `act-api/.env.example`.
+Mobile currently hardcodes the API base URL to `https://act-api-evode.fly.dev` in `apps/mobile/src/api/actApi.ts`. When the slice graduates beyond demo mode, this moves to an Expo env var. Backend env vars live in `act-api/.env` — see `act-api/.env.example`.
 
 ## AI workflow helper (gstack)
 
