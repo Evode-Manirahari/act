@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -13,14 +13,15 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
-import { demoTurn } from '../api/actApi';
+import { streamDemoTurn, StreamHandle } from '../api/actApi';
 
 export default function AskActScreen() {
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [question, setQuestion] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [answer, setAnswer] = useState<string | null>(null);
+  const [streaming, setStreaming] = useState(false);
+  const [answer, setAnswer] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const handleRef = useRef<StreamHandle | null>(null);
 
   async function takePhoto() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -31,30 +32,37 @@ export default function AskActScreen() {
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (result.canceled) return;
     setPhotoUri(result.assets[0].uri);
-    setAnswer(null);
+    setAnswer('');
     setError(null);
   }
 
-  async function handleAsk() {
-    if (!photoUri || !question.trim()) return;
-    setLoading(true);
+  function handleAsk() {
+    if (!photoUri || !question.trim() || streaming) return;
+    setStreaming(true);
     setError(null);
-    try {
-      const result = await demoTurn(photoUri, question.trim());
-      setAnswer(result.answer);
-    } catch (e: any) {
-      setError(e?.message ?? 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
+    setAnswer('');
+
+    handleRef.current = streamDemoTurn(photoUri, question.trim(), {
+      onToken: (chunk) => setAnswer((prev) => prev + chunk),
+      onDone: () => setStreaming(false),
+      onError: (msg) => {
+        setError(msg);
+        setStreaming(false);
+      },
+    });
   }
 
   function reset() {
+    handleRef.current?.abort();
+    handleRef.current = null;
     setPhotoUri(null);
     setQuestion('');
-    setAnswer(null);
+    setAnswer('');
     setError(null);
+    setStreaming(false);
   }
+
+  const showAnswerBox = streaming || answer.length > 0;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -70,13 +78,13 @@ export default function AskActScreen() {
         ) : (
           <>
             <Image source={{ uri: photoUri }} style={styles.preview} />
-            <TouchableOpacity style={styles.linkBtn} onPress={takePhoto}>
-              <Text style={styles.linkText}>Retake</Text>
+            <TouchableOpacity style={styles.linkBtn} onPress={takePhoto} disabled={streaming}>
+              <Text style={[styles.linkText, streaming && styles.linkTextDisabled]}>Retake</Text>
             </TouchableOpacity>
           </>
         )}
 
-        {photoUri && !answer && (
+        {photoUri && !showAnswerBox && (
           <>
             <TextInput
               style={styles.input}
@@ -85,19 +93,15 @@ export default function AskActScreen() {
               value={question}
               onChangeText={setQuestion}
               multiline
-              editable={!loading}
+              editable={!streaming}
             />
             <TouchableOpacity
-              style={[styles.askBtn, (loading || !question.trim()) && styles.askBtnDisabled]}
+              style={[styles.askBtn, (streaming || !question.trim()) && styles.askBtnDisabled]}
               onPress={handleAsk}
-              disabled={loading || !question.trim()}
+              disabled={streaming || !question.trim()}
               activeOpacity={0.85}
             >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={styles.askBtnText}>Ask ACT</Text>
-              )}
+              <Text style={styles.askBtnText}>Ask ACT</Text>
             </TouchableOpacity>
           </>
         )}
@@ -108,13 +112,22 @@ export default function AskActScreen() {
           </View>
         )}
 
-        {answer && (
+        {showAnswerBox && (
           <View style={styles.answerBox}>
-            <Text style={styles.answerLabel}>ACT</Text>
-            <Text style={styles.answerText}>{answer}</Text>
-            <TouchableOpacity style={styles.linkBtn} onPress={reset}>
-              <Text style={styles.linkText}>Ask again</Text>
-            </TouchableOpacity>
+            <View style={styles.answerHeader}>
+              <Text style={styles.answerLabel}>ACT</Text>
+              {streaming && <ActivityIndicator size="small" color={colors.primary} />}
+            </View>
+            {answer.length > 0 ? (
+              <Text style={styles.answerText}>{answer}</Text>
+            ) : (
+              <Text style={styles.answerPlaceholder}>Looking…</Text>
+            )}
+            {!streaming && (
+              <TouchableOpacity style={styles.linkBtn} onPress={reset}>
+                <Text style={styles.linkText}>Ask again</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </ScrollView>
@@ -165,10 +178,13 @@ const styles = StyleSheet.create({
     borderLeftColor: colors.primary,
     gap: 12,
   },
+  answerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   answerLabel: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 1.5 },
   answerText: { fontSize: 16, color: colors.text, lineHeight: 24 },
+  answerPlaceholder: { fontSize: 16, color: colors.textMuted, fontStyle: 'italic' },
   errorBox: { backgroundColor: '#FEE2E2', borderRadius: 8, padding: 12 },
   errorText: { color: colors.error, fontSize: 14 },
   linkBtn: { paddingVertical: 8, alignItems: 'center' },
   linkText: { color: colors.primary, fontSize: 15, fontWeight: '500' },
+  linkTextDisabled: { opacity: 0.4 },
 });
