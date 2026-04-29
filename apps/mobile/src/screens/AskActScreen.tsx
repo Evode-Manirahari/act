@@ -15,13 +15,28 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import { streamDemoTurn, StreamHandle } from '../api/actApi';
 
+type TurnStatus = 'streaming' | 'done' | 'error';
+
+interface Turn {
+  id: string;
+  photoUri: string;
+  question: string;
+  answer: string;
+  status: TurnStatus;
+  error?: string;
+}
+
+function newId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
 export default function AskActScreen() {
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
-  const [question, setQuestion] = useState('');
-  const [streaming, setStreaming] = useState(false);
-  const [answer, setAnswer] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [draftPhotoUri, setDraftPhotoUri] = useState<string | null>(null);
+  const [draftQuestion, setDraftQuestion] = useState('');
   const handleRef = useRef<StreamHandle | null>(null);
+
+  const streaming = turns.length > 0 && turns[0].status === 'streaming';
 
   async function takePhoto() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -31,105 +46,126 @@ export default function AskActScreen() {
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (result.canceled) return;
-    setPhotoUri(result.assets[0].uri);
-    setAnswer('');
-    setError(null);
+    setDraftPhotoUri(result.assets[0].uri);
   }
 
   function handleAsk() {
-    if (!photoUri || !question.trim() || streaming) return;
-    setStreaming(true);
-    setError(null);
-    setAnswer('');
+    if (!draftPhotoUri || !draftQuestion.trim() || streaming) return;
 
-    handleRef.current = streamDemoTurn(photoUri, question.trim(), {
-      onToken: (chunk) => setAnswer((prev) => prev + chunk),
-      onDone: () => setStreaming(false),
-      onError: (msg) => {
-        setError(msg);
-        setStreaming(false);
-      },
+    const id = newId();
+    const turn: Turn = {
+      id,
+      photoUri: draftPhotoUri,
+      question: draftQuestion.trim(),
+      answer: '',
+      status: 'streaming',
+    };
+
+    // Newest at top
+    setTurns((prev) => [turn, ...prev]);
+    setDraftPhotoUri(null);
+    setDraftQuestion('');
+
+    handleRef.current = streamDemoTurn(turn.photoUri, turn.question, {
+      onToken: (chunk) =>
+        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, answer: t.answer + chunk } : t))),
+      onDone: () =>
+        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'done' as const } : t))),
+      onError: (msg) =>
+        setTurns((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, status: 'error' as const, error: msg } : t)),
+        ),
     });
   }
 
-  function reset() {
+  function clearSession() {
     handleRef.current?.abort();
     handleRef.current = null;
-    setPhotoUri(null);
-    setQuestion('');
-    setAnswer('');
-    setError(null);
-    setStreaming(false);
+    setTurns([]);
+    setDraftPhotoUri(null);
+    setDraftQuestion('');
   }
 
-  const showAnswerBox = streaming || answer.length > 0;
+  const composerHidden = streaming;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.title}>ACT</Text>
-        <Text style={styles.subtitle}>Point at wiring, panels, or devices. Ask what to verify next.</Text>
-
-        {!photoUri ? (
-          <TouchableOpacity style={styles.captureBtn} onPress={takePhoto} activeOpacity={0.85}>
-            <Text style={styles.captureBtnIcon}>📷</Text>
-            <Text style={styles.captureBtnText}>Take a photo</Text>
-          </TouchableOpacity>
-        ) : (
-          <>
-            <Image source={{ uri: photoUri }} style={styles.preview} />
-            <TouchableOpacity style={styles.linkBtn} onPress={takePhoto} disabled={streaming}>
-              <Text style={[styles.linkText, streaming && styles.linkTextDisabled]}>Retake</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>ACT</Text>
+          {turns.length > 0 && (
+            <TouchableOpacity onPress={clearSession} hitSlop={8}>
+              <Text style={styles.clearLink}>Clear</Text>
             </TouchableOpacity>
-          </>
-        )}
+          )}
+        </View>
+        <Text style={styles.subtitle}>
+          Point at wiring, panels, or devices. Ask what to verify next.
+        </Text>
 
-        {photoUri && !showAnswerBox && (
-          <>
-            <TextInput
-              style={styles.input}
-              placeholder="What's your question? e.g. 'what era is this panel and is it safe to touch?'"
-              placeholderTextColor={colors.textLight}
-              value={question}
-              onChangeText={setQuestion}
-              multiline
-              editable={!streaming}
-            />
-            <TouchableOpacity
-              style={[styles.askBtn, (streaming || !question.trim()) && styles.askBtnDisabled]}
-              onPress={handleAsk}
-              disabled={streaming || !question.trim()}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.askBtnText}>Ask ACT</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        {showAnswerBox && (
-          <View style={styles.answerBox}>
-            <View style={styles.answerHeader}>
-              <Text style={styles.answerLabel}>ACT</Text>
-              {streaming && <ActivityIndicator size="small" color={colors.primary} />}
-            </View>
-            {answer.length > 0 ? (
-              <Text style={styles.answerText}>{answer}</Text>
-            ) : (
-              <Text style={styles.answerPlaceholder}>Looking…</Text>
-            )}
-            {!streaming && (
-              <TouchableOpacity style={styles.linkBtn} onPress={reset}>
-                <Text style={styles.linkText}>Ask again</Text>
+        {!composerHidden && (
+          <View style={styles.composer}>
+            {!draftPhotoUri ? (
+              <TouchableOpacity style={styles.captureBtn} onPress={takePhoto} activeOpacity={0.85}>
+                <Text style={styles.captureBtnIcon}>📷</Text>
+                <Text style={styles.captureBtnText}>
+                  {turns.length === 0 ? 'Take a photo' : 'Ask another question'}
+                </Text>
               </TouchableOpacity>
+            ) : (
+              <>
+                <Image source={{ uri: draftPhotoUri }} style={styles.preview} />
+                <TouchableOpacity style={styles.linkBtn} onPress={takePhoto}>
+                  <Text style={styles.linkText}>Retake</Text>
+                </TouchableOpacity>
+                <TextInput
+                  style={styles.input}
+                  placeholder="What's your question? e.g. 'what era is this panel and is it safe to touch?'"
+                  placeholderTextColor={colors.textLight}
+                  value={draftQuestion}
+                  onChangeText={setDraftQuestion}
+                  multiline
+                />
+                <TouchableOpacity
+                  style={[styles.askBtn, !draftQuestion.trim() && styles.askBtnDisabled]}
+                  onPress={handleAsk}
+                  disabled={!draftQuestion.trim()}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.askBtnText}>Ask ACT</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         )}
+
+        {turns.map((turn) => (
+          <View key={turn.id} style={styles.turnCard}>
+            <View style={styles.turnHeader}>
+              <Image source={{ uri: turn.photoUri }} style={styles.turnThumb} />
+              <Text style={styles.turnQuestion} numberOfLines={4}>
+                {turn.question}
+              </Text>
+            </View>
+
+            <View style={styles.turnAnswerWrap}>
+              <View style={styles.answerHeader}>
+                <Text style={styles.answerLabel}>ACT</Text>
+                {turn.status === 'streaming' && (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                )}
+              </View>
+
+              {turn.status === 'error' ? (
+                <Text style={styles.errorText}>{turn.error ?? 'Something went wrong'}</Text>
+              ) : turn.answer.length > 0 ? (
+                <Text style={styles.answerText}>{turn.answer}</Text>
+              ) : (
+                <Text style={styles.answerPlaceholder}>Looking…</Text>
+              )}
+            </View>
+          </View>
+        ))}
       </ScrollView>
     </SafeAreaView>
   );
@@ -138,18 +174,22 @@ export default function AskActScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   container: { padding: 24, gap: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   title: { fontSize: 40, fontWeight: '800', color: colors.text, letterSpacing: -1 },
+  clearLink: { color: colors.textMuted, fontSize: 14, fontWeight: '500' },
   subtitle: { fontSize: 16, color: colors.textMuted, marginBottom: 8 },
+
+  composer: { gap: 12 },
   captureBtn: {
     backgroundColor: colors.primary,
-    paddingVertical: 36,
+    paddingVertical: 32,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
   },
   captureBtnIcon: { fontSize: 36 },
-  captureBtnText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  captureBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
   preview: { width: '100%', aspectRatio: 1, borderRadius: 16, backgroundColor: colors.surfaceAlt },
   input: {
     backgroundColor: colors.surface,
@@ -170,21 +210,34 @@ const styles = StyleSheet.create({
   },
   askBtnDisabled: { opacity: 0.4 },
   askBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
-  answerBox: {
+
+  turnCard: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: 18,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
+    borderRadius: 14,
+    padding: 14,
     gap: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  turnHeader: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  turnThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceAlt,
+  },
+  turnQuestion: { flex: 1, fontSize: 15, color: colors.text, lineHeight: 21 },
+  turnAnswerWrap: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    paddingLeft: 12,
+    gap: 8,
   },
   answerHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   answerLabel: { fontSize: 11, fontWeight: '700', color: colors.primary, letterSpacing: 1.5 },
-  answerText: { fontSize: 16, color: colors.text, lineHeight: 24 },
-  answerPlaceholder: { fontSize: 16, color: colors.textMuted, fontStyle: 'italic' },
-  errorBox: { backgroundColor: '#FEE2E2', borderRadius: 8, padding: 12 },
+  answerText: { fontSize: 15, color: colors.text, lineHeight: 22 },
+  answerPlaceholder: { fontSize: 15, color: colors.textMuted, fontStyle: 'italic' },
   errorText: { color: colors.error, fontSize: 14 },
-  linkBtn: { paddingVertical: 8, alignItems: 'center' },
+  linkBtn: { paddingVertical: 6, alignItems: 'center' },
   linkText: { color: colors.primary, fontSize: 15, fontWeight: '500' },
-  linkTextDisabled: { opacity: 0.4 },
 });
