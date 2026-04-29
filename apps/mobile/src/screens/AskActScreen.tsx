@@ -13,7 +13,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
-import { streamDemoTurn, StreamHandle } from '../api/actApi';
+import { createDemoSession, streamJobTurn, StreamHandle } from '../api/actApi';
 
 type TurnStatus = 'streaming' | 'done' | 'error';
 
@@ -24,6 +24,7 @@ interface Turn {
   answer: string;
   status: TurnStatus;
   error?: string;
+  serverTurnId?: string;
 }
 
 function newId(): string {
@@ -31,6 +32,7 @@ function newId(): string {
 }
 
 export default function AskActScreen() {
+  const [jobId, setJobId] = useState<string | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draftPhotoUri, setDraftPhotoUri] = useState<string | null>(null);
   const [draftQuestion, setDraftQuestion] = useState('');
@@ -49,26 +51,55 @@ export default function AskActScreen() {
     setDraftPhotoUri(result.assets[0].uri);
   }
 
-  function handleAsk() {
+  async function ensureSession(): Promise<string> {
+    if (jobId) return jobId;
+    const session = await createDemoSession();
+    setJobId(session.job_id);
+    return session.job_id;
+  }
+
+  async function handleAsk() {
     if (!draftPhotoUri || !draftQuestion.trim() || streaming) return;
 
     const id = newId();
-    const turn: Turn = {
-      id,
-      photoUri: draftPhotoUri,
-      question: draftQuestion.trim(),
-      answer: '',
-      status: 'streaming',
-    };
+    const photoUri = draftPhotoUri;
+    const question = draftQuestion.trim();
 
-    // Newest at top
-    setTurns((prev) => [turn, ...prev]);
     setDraftPhotoUri(null);
     setDraftQuestion('');
 
-    handleRef.current = streamDemoTurn(turn.photoUri, turn.question, {
+    const turn: Turn = {
+      id,
+      photoUri,
+      question,
+      answer: '',
+      status: 'streaming',
+    };
+    setTurns((prev) => [turn, ...prev]);
+
+    let activeJobId: string;
+    try {
+      activeJobId = await ensureSession();
+    } catch (e: any) {
+      setTurns((prev) =>
+        prev.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                status: 'error' as const,
+                error: `Couldn't start session: ${e?.message ?? 'unknown'}`,
+              }
+            : t,
+        ),
+      );
+      return;
+    }
+
+    handleRef.current = streamJobTurn(activeJobId, photoUri, question, {
       onToken: (chunk) =>
         setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, answer: t.answer + chunk } : t))),
+      onTurnId: (serverTurnId) =>
+        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, serverTurnId } : t))),
       onDone: () =>
         setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'done' as const } : t))),
       onError: (msg) =>
@@ -82,6 +113,7 @@ export default function AskActScreen() {
     handleRef.current?.abort();
     handleRef.current = null;
     setTurns([]);
+    setJobId(null);
     setDraftPhotoUri(null);
     setDraftQuestion('');
   }

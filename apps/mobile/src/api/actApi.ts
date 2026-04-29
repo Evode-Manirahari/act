@@ -17,9 +17,26 @@ function parseEventBlock(block: string): SSEEvent | null {
   return { event, data: dataLines.join('\n') };
 }
 
+export interface DemoSession {
+  job_id: string;
+  user_id: string;
+  account_id: string;
+}
+
+export async function createDemoSession(): Promise<DemoSession> {
+  const response = await fetch(`${API_BASE}/demo/session`, { method: 'POST' });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Session ${response.status}: ${body.slice(0, 200)}`);
+  }
+  return response.json();
+}
+
 export interface StreamCallbacks {
   onTranscript?: (text: string) => void;
   onToken: (chunk: string) => void;
+  onAudio?: (url: string) => void;
+  onTurnId?: (turnId: string) => void;
   onDone?: () => void;
   onError: (message: string) => void;
 }
@@ -28,15 +45,7 @@ export interface StreamHandle {
   abort: () => void;
 }
 
-export function streamDemoTurn(
-  photoUri: string,
-  question: string,
-  callbacks: StreamCallbacks,
-): StreamHandle {
-  const formData = new FormData();
-  formData.append('frame', { uri: photoUri, name: 'frame.jpg', type: 'image/jpeg' } as any);
-  formData.append('question', question);
-
+function streamSSE(url: string, formData: FormData, callbacks: StreamCallbacks): StreamHandle {
   const xhr = new XMLHttpRequest();
   let lastReadIndex = 0;
   let buffer = '';
@@ -51,16 +60,20 @@ export function streamDemoTurn(
       if (ev) {
         if (ev.event === 'transcript') callbacks.onTranscript?.(ev.data);
         else if (ev.event === 'token') callbacks.onToken(ev.data);
-        else if (ev.event === 'done' && !doneFired) {
-          doneFired = true;
-          callbacks.onDone?.();
+        else if (ev.event === 'audio') callbacks.onAudio?.(ev.data);
+        else if (ev.event === 'done') {
+          callbacks.onTurnId?.(ev.data);
+          if (!doneFired) {
+            doneFired = true;
+            callbacks.onDone?.();
+          }
         }
       }
       boundary = buffer.indexOf('\n\n');
     }
   }
 
-  xhr.open('POST', `${API_BASE}/demo/turn`, true);
+  xhr.open('POST', url, true);
   xhr.setRequestHeader('Accept', 'text/event-stream');
 
   xhr.onprogress = () => {
@@ -89,4 +102,16 @@ export function streamDemoTurn(
   xhr.send(formData as any);
 
   return { abort: () => xhr.abort() };
+}
+
+export function streamJobTurn(
+  jobId: string,
+  photoUri: string,
+  question: string,
+  callbacks: StreamCallbacks,
+): StreamHandle {
+  const formData = new FormData();
+  formData.append('frame', { uri: photoUri, name: 'frame.jpg', type: 'image/jpeg' } as any);
+  formData.append('question', question);
+  return streamSSE(`${API_BASE}/jobs/${jobId}/turns`, formData, callbacks);
 }
