@@ -32,7 +32,7 @@ This repo contains the **mobile client only**. The backend lives in a sibling re
 
 - **Mobile**: React Native (Expo SDK 51), TypeScript, Zustand
 - **Backend** (`act-api/`): Python 3.13, FastAPI, async SQLAlchemy 2.0, Alembic, PostgreSQL, Redis
-- **AI**: Claude `claude-sonnet-4-20250514` via Anthropic Python SDK (vision + streaming, prompt caching)
+- **AI**: Claude `claude-sonnet-4-6` via Anthropic Python SDK (vision + streaming, prompt caching)
 - **Speech-to-text**: Deepgram (`nova-3`)
 - **Monorepo (mobile only)**: pnpm workspaces
 
