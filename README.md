@@ -1,6 +1,7 @@
 # ACT
 
 **AI guidance for physical work.**
+*Short-form for technical channels: **"Claude Code for electricians."** (Don't use this with electricians or shop owners — see the customer pitch in `act-discovery-week-1.md`.)*
 
 As multimodal AI, affordable wearable hardware, and a shrinking skilled labor pool converge, the opportunity is to put real-time AI intelligence in the hands of the person doing the physical work.
 
