@@ -13,7 +13,14 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
-import { createDemoSession, streamJobTurn, StreamHandle } from '../api/actApi';
+import {
+  createDemoSession,
+  extractNeedsPhotoHint,
+  Hazard,
+  Intent,
+  streamJobTurn,
+  StreamHandle,
+} from '../api/actApi';
 
 type TurnStatus = 'streaming' | 'done' | 'error';
 
@@ -24,12 +31,26 @@ interface Turn {
   answer: string;
   status: TurnStatus;
   error?: string;
-  serverTurnId?: string;
+  hazards?: Hazard[];
+  intent?: Intent;
+  needsPhotoHint?: string | null;
 }
 
 function newId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
+
+const SEVERITY_COLOR: Record<Hazard['severity'], string> = {
+  critical: '#DC2626',
+  elevated: '#F97316',
+  watch: '#CA8A04',
+};
+
+const SEVERITY_LABEL: Record<Hazard['severity'], string> = {
+  critical: 'CRITICAL HAZARD',
+  elevated: 'ELEVATED HAZARD',
+  watch: 'WATCH',
+};
 
 export default function AskActScreen() {
   const [jobId, setJobId] = useState<string | null>(null);
@@ -68,13 +89,7 @@ export default function AskActScreen() {
     setDraftPhotoUri(null);
     setDraftQuestion('');
 
-    const turn: Turn = {
-      id,
-      photoUri,
-      question,
-      answer: '',
-      status: 'streaming',
-    };
+    const turn: Turn = { id, photoUri, question, answer: '', status: 'streaming' };
     setTurns((prev) => [turn, ...prev]);
 
     let activeJobId: string;
@@ -84,11 +99,7 @@ export default function AskActScreen() {
       setTurns((prev) =>
         prev.map((t) =>
           t.id === id
-            ? {
-                ...t,
-                status: 'error' as const,
-                error: `Couldn't start session: ${e?.message ?? 'unknown'}`,
-              }
+            ? { ...t, status: 'error' as const, error: `Couldn't start session: ${e?.message ?? 'unknown'}` }
             : t,
         ),
       );
@@ -97,16 +108,44 @@ export default function AskActScreen() {
 
     handleRef.current = streamJobTurn(activeJobId, photoUri, question, {
       onToken: (chunk) =>
-        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, answer: t.answer + chunk } : t))),
-      onTurnId: (serverTurnId) =>
-        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, serverTurnId } : t))),
+        setTurns((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, answer: t.answer + chunk } : t)),
+        ),
+      onHazards: (hazards) =>
+        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, hazards } : t))),
+      onIntent: (intent) =>
+        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, intent } : t))),
+      onTurnId: () => {
+        // post-process the final answer once streaming completes
+        setTurns((prev) =>
+          prev.map((t) => {
+            if (t.id !== id) return t;
+            const { cleaned, hint } = extractNeedsPhotoHint(t.answer);
+            return { ...t, answer: cleaned, needsPhotoHint: hint };
+          }),
+        );
+      },
       onDone: () =>
-        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'done' as const } : t))),
+        setTurns((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, status: 'done' as const } : t)),
+        ),
       onError: (msg) =>
         setTurns((prev) =>
           prev.map((t) => (t.id === id ? { ...t, status: 'error' as const, error: msg } : t)),
         ),
     });
+  }
+
+  async function followUpFromHint(hint: string) {
+    const perm = await ImagePicker.requestCameraPermissionsAsync();
+    if (perm.status !== 'granted') {
+      Alert.alert('Camera permission needed');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
+    if (result.canceled) return;
+    setDraftPhotoUri(result.assets[0].uri);
+    setDraftQuestion(`Follow-up: ${hint}`);
   }
 
   function clearSession() {
@@ -196,6 +235,32 @@ export default function AskActScreen() {
                 <Text style={styles.answerPlaceholder}>Looking…</Text>
               )}
             </View>
+
+            {turn.hazards?.map((h, i) => (
+              <View
+                key={i}
+                style={[styles.hazardBox, { borderLeftColor: SEVERITY_COLOR[h.severity] }]}
+              >
+                <Text style={[styles.hazardLabel, { color: SEVERITY_COLOR[h.severity] }]}>
+                  ⚠ {SEVERITY_LABEL[h.severity]} — {h.brand}
+                </Text>
+                <Text style={styles.hazardText}>{h.issue}</Text>
+                <Text style={styles.hazardMeta}>Era: {h.year_range}</Text>
+                <Text style={styles.hazardAction}>{h.action}</Text>
+              </View>
+            ))}
+
+            {turn.needsPhotoHint && (
+              <TouchableOpacity
+                style={styles.needsPhotoBox}
+                onPress={() => followUpFromHint(turn.needsPhotoHint!)}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.needsPhotoLabel}>📷 ACT wants a closer shot</Text>
+                <Text style={styles.needsPhotoText}>{turn.needsPhotoHint}</Text>
+                <Text style={styles.needsPhotoCta}>Tap to take it →</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ))}
       </ScrollView>
@@ -252,12 +317,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   turnHeader: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  turnThumb: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
-    backgroundColor: colors.surfaceAlt,
-  },
+  turnThumb: { width: 56, height: 56, borderRadius: 8, backgroundColor: colors.surfaceAlt },
   turnQuestion: { flex: 1, fontSize: 15, color: colors.text, lineHeight: 21 },
   turnAnswerWrap: {
     borderLeftWidth: 3,
@@ -272,4 +332,28 @@ const styles = StyleSheet.create({
   errorText: { color: colors.error, fontSize: 14 },
   linkBtn: { paddingVertical: 6, alignItems: 'center' },
   linkText: { color: colors.primary, fontSize: 15, fontWeight: '500' },
+
+  hazardBox: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    padding: 12,
+    gap: 4,
+  },
+  hazardLabel: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
+  hazardText: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  hazardMeta: { fontSize: 12, color: colors.textMuted },
+  hazardAction: { fontSize: 13, color: colors.text, fontWeight: '600', marginTop: 4 },
+
+  needsPhotoBox: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 10,
+    padding: 12,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+  },
+  needsPhotoLabel: { fontSize: 12, fontWeight: '700', color: '#92400E', letterSpacing: 0.5 },
+  needsPhotoText: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  needsPhotoCta: { fontSize: 13, color: colors.primary, fontWeight: '600', marginTop: 4 },
 });
