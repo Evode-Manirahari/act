@@ -71,18 +71,30 @@ export function extractNeedsPhotoHint(text: string): { cleaned: string; hint: st
 }
 
 function streamSSE(url: string, formData: FormData, callbacks: StreamCallbacks): StreamHandle {
-  const xhr = new XMLHttpRequest();
-  let lastReadIndex = 0;
-  let buffer = '';
-  let doneFired = false;
+  const controller = new AbortController();
 
-  function flushBuffer() {
-    let boundary = buffer.indexOf('\n\n');
-    while (boundary !== -1) {
-      const block = buffer.slice(0, boundary);
-      buffer = buffer.slice(boundary + 2);
-      const ev = parseEventBlock(block);
-      if (ev) {
+  (async () => {
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData as any,
+        headers: { Accept: 'text/event-stream' },
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const body = await response.text().catch(() => '');
+        callbacks.onError(`Server ${response.status}: ${body.slice(0, 200)}`);
+        return;
+      }
+
+      const text = await response.text();
+      let doneFired = false;
+
+      for (const block of text.split('\n\n')) {
+        if (!block.trim()) continue;
+        const ev = parseEventBlock(block);
+        if (!ev) continue;
         if (ev.event === 'transcript') callbacks.onTranscript?.(ev.data);
         else if (ev.event === 'token') callbacks.onToken(ev.data);
         else if (ev.event === 'hazards') {
@@ -96,45 +108,19 @@ function streamSSE(url: string, formData: FormData, callbacks: StreamCallbacks):
         } else if (ev.event === 'audio') callbacks.onAudio?.(ev.data);
         else if (ev.event === 'done') {
           callbacks.onTurnId?.(ev.data);
-          if (!doneFired) {
-            doneFired = true;
-            callbacks.onDone?.();
-          }
+          doneFired = true;
         }
       }
-      boundary = buffer.indexOf('\n\n');
+
+      if (!doneFired) callbacks.onDone?.();
+      else callbacks.onDone?.();
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      callbacks.onError(e?.message ?? 'Network error');
     }
-  }
+  })();
 
-  xhr.open('POST', url, true);
-  xhr.setRequestHeader('Accept', 'text/event-stream');
-
-  xhr.onprogress = () => {
-    if (xhr.readyState < 3) return;
-    const fresh = xhr.responseText.slice(lastReadIndex);
-    lastReadIndex = xhr.responseText.length;
-    buffer += fresh;
-    flushBuffer();
-  };
-
-  xhr.onload = () => {
-    flushBuffer();
-    if (xhr.status >= 200 && xhr.status < 300) {
-      if (!doneFired) {
-        doneFired = true;
-        callbacks.onDone?.();
-      }
-    } else {
-      callbacks.onError(`Server ${xhr.status}: ${xhr.responseText.slice(0, 200)}`);
-    }
-  };
-
-  xhr.onerror = () => callbacks.onError('Network error');
-  xhr.ontimeout = () => callbacks.onError('Request timed out');
-
-  xhr.send(formData as any);
-
-  return { abort: () => xhr.abort() };
+  return { abort: () => controller.abort() };
 }
 
 export interface JobTurnInput {
