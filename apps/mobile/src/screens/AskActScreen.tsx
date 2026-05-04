@@ -1,8 +1,9 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Image,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Audio } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 import {
@@ -34,6 +36,7 @@ interface Turn {
   hazards?: Hazard[];
   intent?: Intent;
   needsPhotoHint?: string | null;
+  audioUrl?: string;
 }
 
 function newId(): string {
@@ -57,9 +60,23 @@ export default function AskActScreen() {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draftPhotoUri, setDraftPhotoUri] = useState<string | null>(null);
   const [draftQuestion, setDraftQuestion] = useState('');
+  const [useTyping, setUseTyping] = useState(false);
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [recordingMs, setRecordingMs] = useState(0);
   const handleRef = useRef<StreamHandle | null>(null);
+  const recordingStartRef = useRef<number>(0);
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const playbackRef = useRef<Audio.Sound | null>(null);
 
   const streaming = turns.length > 0 && turns[0].status === 'streaming';
+
+  useEffect(() => {
+    Audio.requestPermissionsAsync().catch(() => {});
+    return () => {
+      playbackRef.current?.unloadAsync().catch(() => {});
+      recordingTimerRef.current && clearInterval(recordingTimerRef.current);
+    };
+  }, []);
 
   async function takePhoto() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -79,61 +96,145 @@ export default function AskActScreen() {
     return session.job_id;
   }
 
-  async function handleAsk() {
-    if (!draftPhotoUri || !draftQuestion.trim() || streaming) return;
-
-    const id = newId();
-    const photoUri = draftPhotoUri;
-    const question = draftQuestion.trim();
-
-    setDraftPhotoUri(null);
-    setDraftQuestion('');
-
-    const turn: Turn = { id, photoUri, question, answer: '', status: 'streaming' };
-    setTurns((prev) => [turn, ...prev]);
-
-    let activeJobId: string;
+  async function playAudio(url: string) {
+    if (!url || url.startsWith('stub://') || url.startsWith('local://')) return;
     try {
-      activeJobId = await ensureSession();
+      if (playbackRef.current) {
+        await playbackRef.current.unloadAsync();
+      }
+      const { sound } = await Audio.Sound.createAsync({ uri: url }, { shouldPlay: true });
+      playbackRef.current = sound;
+    } catch (e) {
+      // playback failure is non-fatal — text answer is already on screen
+    }
+  }
+
+  async function startRecording() {
+    if (recording) return;
+    const perm = await Audio.requestPermissionsAsync();
+    if (perm.status !== 'granted') {
+      Alert.alert('Microphone permission needed', 'Enable mic access to talk to ACT.');
+      return;
+    }
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const rec = new Audio.Recording();
+      await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await rec.startAsync();
+      setRecording(rec);
+      recordingStartRef.current = Date.now();
+      setRecordingMs(0);
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingMs(Date.now() - recordingStartRef.current);
+      }, 100);
     } catch (e: any) {
-      setTurns((prev) =>
-        prev.map((t) =>
-          t.id === id
-            ? { ...t, status: 'error' as const, error: `Couldn't start session: ${e?.message ?? 'unknown'}` }
-            : t,
-        ),
-      );
+      Alert.alert('Mic error', e?.message ?? 'Could not start recording');
+    }
+  }
+
+  async function stopRecordingAndSend() {
+    if (!recording) return;
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    const elapsedMs = Date.now() - recordingStartRef.current;
+    let uri: string | null = null;
+    try {
+      await recording.stopAndUnloadAsync();
+      uri = recording.getURI();
+    } catch (e) {
+      // ignore
+    }
+    setRecording(null);
+    setRecordingMs(0);
+
+    if (!uri || elapsedMs < 400) {
+      // too short — treat as cancel
       return;
     }
 
-    handleRef.current = streamJobTurn(activeJobId, photoUri, question, {
-      onToken: (chunk) =>
+    if (!draftPhotoUri) return;
+    sendTurn({ photoUri: draftPhotoUri, audioUri: uri });
+    setDraftPhotoUri(null);
+  }
+
+  function handleAskTyped() {
+    if (!draftPhotoUri || !draftQuestion.trim() || streaming) return;
+    const photoUri = draftPhotoUri;
+    const question = draftQuestion.trim();
+    setDraftPhotoUri(null);
+    setDraftQuestion('');
+    sendTurn({ photoUri, question });
+  }
+
+  function sendTurn(args: { photoUri: string; question?: string; audioUri?: string }) {
+    const id = newId();
+    const turn: Turn = {
+      id,
+      photoUri: args.photoUri,
+      question: args.question ?? '🎤 (recording…)',
+      answer: '',
+      status: 'streaming',
+    };
+    setTurns((prev) => [turn, ...prev]);
+
+    (async () => {
+      let activeJobId: string;
+      try {
+        activeJobId = await ensureSession();
+      } catch (e: any) {
         setTurns((prev) =>
-          prev.map((t) => (t.id === id ? { ...t, answer: t.answer + chunk } : t)),
-        ),
-      onHazards: (hazards) =>
-        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, hazards } : t))),
-      onIntent: (intent) =>
-        setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, intent } : t))),
-      onTurnId: () => {
-        // post-process the final answer once streaming completes
-        setTurns((prev) =>
-          prev.map((t) => {
-            if (t.id !== id) return t;
-            const { cleaned, hint } = extractNeedsPhotoHint(t.answer);
-            return { ...t, answer: cleaned, needsPhotoHint: hint };
-          }),
+          prev.map((t) =>
+            t.id === id
+              ? { ...t, status: 'error' as const, error: `Couldn't start session: ${e?.message ?? 'unknown'}` }
+              : t,
+          ),
         );
-      },
-      onDone: () =>
-        setTurns((prev) =>
-          prev.map((t) => (t.id === id ? { ...t, status: 'done' as const } : t)),
-        ),
-      onError: (msg) =>
-        setTurns((prev) =>
-          prev.map((t) => (t.id === id ? { ...t, status: 'error' as const, error: msg } : t)),
-        ),
-    });
+        return;
+      }
+
+      handleRef.current = streamJobTurn(
+        activeJobId,
+        { photoUri: args.photoUri, question: args.question, audioUri: args.audioUri },
+        {
+          onTranscript: (text) =>
+            setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, question: text } : t))),
+          onToken: (chunk) =>
+            setTurns((prev) =>
+              prev.map((t) => (t.id === id ? { ...t, answer: t.answer + chunk } : t)),
+            ),
+          onHazards: (hazards) =>
+            setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, hazards } : t))),
+          onIntent: (intent) =>
+            setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, intent } : t))),
+          onAudio: (url) => {
+            setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, audioUrl: url } : t)));
+            playAudio(url);
+          },
+          onTurnId: () => {
+            setTurns((prev) =>
+              prev.map((t) => {
+                if (t.id !== id) return t;
+                const { cleaned, hint } = extractNeedsPhotoHint(t.answer);
+                return { ...t, answer: cleaned, needsPhotoHint: hint };
+              }),
+            );
+          },
+          onDone: () =>
+            setTurns((prev) =>
+              prev.map((t) => (t.id === id ? { ...t, status: 'done' as const } : t)),
+            ),
+          onError: (msg) =>
+            setTurns((prev) =>
+              prev.map((t) => (t.id === id ? { ...t, status: 'error' as const, error: msg } : t)),
+            ),
+        },
+      );
+    })();
   }
 
   async function followUpFromHint(hint: string) {
@@ -146,18 +247,23 @@ export default function AskActScreen() {
     if (result.canceled) return;
     setDraftPhotoUri(result.assets[0].uri);
     setDraftQuestion(`Follow-up: ${hint}`);
+    setUseTyping(true);
   }
 
   function clearSession() {
     handleRef.current?.abort();
     handleRef.current = null;
+    playbackRef.current?.unloadAsync().catch(() => {});
+    playbackRef.current = null;
     setTurns([]);
     setJobId(null);
     setDraftPhotoUri(null);
     setDraftQuestion('');
+    setUseTyping(false);
   }
 
-  const composerHidden = streaming;
+  const composerHidden = streaming || !!recording;
+  const recordingSeconds = (recordingMs / 1000).toFixed(1);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -174,6 +280,14 @@ export default function AskActScreen() {
           Point at wiring, panels, or devices. Ask what to verify next.
         </Text>
 
+        {recording && (
+          <View style={styles.recordingBanner}>
+            <View style={styles.recDot} />
+            <Text style={styles.recordingText}>Listening — {recordingSeconds}s</Text>
+            <Text style={styles.recordingHint}>Release to send</Text>
+          </View>
+        )}
+
         {!composerHidden && (
           <View style={styles.composer}>
             {!draftPhotoUri ? (
@@ -189,22 +303,52 @@ export default function AskActScreen() {
                 <TouchableOpacity style={styles.linkBtn} onPress={takePhoto}>
                   <Text style={styles.linkText}>Retake</Text>
                 </TouchableOpacity>
-                <TextInput
-                  style={styles.input}
-                  placeholder="What's your question? e.g. 'what era is this panel and is it safe to touch?'"
-                  placeholderTextColor={colors.textLight}
-                  value={draftQuestion}
-                  onChangeText={setDraftQuestion}
-                  multiline
-                />
-                <TouchableOpacity
-                  style={[styles.askBtn, !draftQuestion.trim() && styles.askBtnDisabled]}
-                  onPress={handleAsk}
-                  disabled={!draftQuestion.trim()}
-                  activeOpacity={0.85}
-                >
-                  <Text style={styles.askBtnText}>Ask ACT</Text>
-                </TouchableOpacity>
+
+                {!useTyping ? (
+                  <>
+                    <Pressable
+                      style={({ pressed }) => [styles.talkBtn, pressed && styles.talkBtnPressed]}
+                      onPressIn={startRecording}
+                      onPressOut={stopRecordingAndSend}
+                    >
+                      <Text style={styles.talkBtnIcon}>🎤</Text>
+                      <Text style={styles.talkBtnText}>Hold to talk</Text>
+                    </Pressable>
+                    <TouchableOpacity
+                      onPress={() => setUseTyping(true)}
+                      style={styles.linkBtn}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.linkText}>or type instead</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <TextInput
+                      style={styles.input}
+                      placeholder="What's your question? e.g. 'what era is this panel?'"
+                      placeholderTextColor={colors.textLight}
+                      value={draftQuestion}
+                      onChangeText={setDraftQuestion}
+                      multiline
+                    />
+                    <TouchableOpacity
+                      style={[styles.askBtn, !draftQuestion.trim() && styles.askBtnDisabled]}
+                      onPress={handleAskTyped}
+                      disabled={!draftQuestion.trim()}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={styles.askBtnText}>Ask ACT</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => setUseTyping(false)}
+                      style={styles.linkBtn}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.linkText}>back to voice</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
               </>
             )}
           </View>
@@ -261,6 +405,12 @@ export default function AskActScreen() {
                 <Text style={styles.needsPhotoCta}>Tap to take it →</Text>
               </TouchableOpacity>
             )}
+
+            {turn.audioUrl && !turn.audioUrl.startsWith('stub://') && !turn.audioUrl.startsWith('local://') && (
+              <TouchableOpacity onPress={() => playAudio(turn.audioUrl!)} style={styles.replayBtn}>
+                <Text style={styles.replayText}>🔊 Replay</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ))}
       </ScrollView>
@@ -307,6 +457,29 @@ const styles = StyleSheet.create({
   },
   askBtnDisabled: { opacity: 0.4 },
   askBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
+
+  talkBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 28,
+    borderRadius: 18,
+    alignItems: 'center',
+    gap: 4,
+  },
+  talkBtnPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
+  talkBtnIcon: { fontSize: 36 },
+  talkBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+
+  recordingBanner: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: 12,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  recDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#DC2626' },
+  recordingText: { color: '#991B1B', fontSize: 15, fontWeight: '700', flex: 1 },
+  recordingHint: { color: '#991B1B', fontSize: 13 },
 
   turnCard: {
     backgroundColor: colors.surface,
@@ -356,4 +529,13 @@ const styles = StyleSheet.create({
   needsPhotoLabel: { fontSize: 12, fontWeight: '700', color: '#92400E', letterSpacing: 0.5 },
   needsPhotoText: { fontSize: 14, color: colors.text, lineHeight: 20 },
   needsPhotoCta: { fontSize: 13, color: colors.primary, fontWeight: '600', marginTop: 4 },
+
+  replayBtn: {
+    paddingVertical: 8,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceAlt,
+  },
+  replayText: { fontSize: 13, color: colors.text, fontWeight: '600' },
 });

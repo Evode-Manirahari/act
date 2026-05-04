@@ -137,14 +137,29 @@ function streamSSE(url: string, formData: FormData, callbacks: StreamCallbacks):
   return { abort: () => xhr.abort() };
 }
 
+export interface JobTurnInput {
+  photoUri: string;
+  question?: string;        // text question (used if no audio)
+  audioUri?: string;        // recorded audio file URI
+  audioMime?: string;       // e.g. 'audio/m4a'
+}
+
 export function streamJobTurn(
   jobId: string,
-  photoUri: string,
-  question: string,
+  input: JobTurnInput,
   callbacks: StreamCallbacks,
 ): StreamHandle {
   const formData = new FormData();
-  formData.append('frame', { uri: photoUri, name: 'frame.jpg', type: 'image/jpeg' } as any);
-  formData.append('question', question);
+  formData.append('frame', { uri: input.photoUri, name: 'frame.jpg', type: 'image/jpeg' } as any);
+  if (input.question) {
+    formData.append('question', input.question);
+  }
+  if (input.audioUri) {
+    formData.append('audio', {
+      uri: input.audioUri,
+      name: 'voice.m4a',
+      type: input.audioMime ?? 'audio/m4a',
+    } as any);
+  }
   return streamSSE(`${API_BASE}/jobs/${jobId}/turns`, formData, callbacks);
 }
