@@ -61,8 +61,9 @@ export default function AskActScreen() {
   const [draftPhotoUri, setDraftPhotoUri] = useState<string | null>(null);
   const [draftQuestion, setDraftQuestion] = useState('');
   const [useTyping, setUseTyping] = useState(false);
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
   const [recordingMs, setRecordingMs] = useState(0);
+  const recordingRef = useRef<Audio.Recording | null>(null);
   const handleRef = useRef<StreamHandle | null>(null);
   const recordingStartRef = useRef<number>(0);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -110,10 +111,10 @@ export default function AskActScreen() {
   }
 
   async function startRecording() {
-    if (recording) return;
+    if (recordingRef.current || isRecording) return;
     const perm = await Audio.requestPermissionsAsync();
     if (perm.status !== 'granted') {
-      Alert.alert('Microphone permission needed', 'Enable mic access to talk to ACT.');
+      Alert.alert('Microphone permission needed', 'Enable mic access in Settings → Apps → Expo Go.');
       return;
     }
     try {
@@ -124,7 +125,8 @@ export default function AskActScreen() {
       const rec = new Audio.Recording();
       await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await rec.startAsync();
-      setRecording(rec);
+      recordingRef.current = rec;
+      setIsRecording(true);
       recordingStartRef.current = Date.now();
       setRecordingMs(0);
       recordingTimerRef.current = setInterval(() => {
@@ -136,30 +138,50 @@ export default function AskActScreen() {
   }
 
   async function stopRecordingAndSend() {
-    if (!recording) return;
+    const rec = recordingRef.current;
+    if (!rec) return;
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
       recordingTimerRef.current = null;
     }
-    const elapsedMs = Date.now() - recordingStartRef.current;
     let uri: string | null = null;
     try {
-      await recording.stopAndUnloadAsync();
-      uri = recording.getURI();
+      await rec.stopAndUnloadAsync();
+      uri = rec.getURI();
     } catch (e) {
       // ignore
     }
-    setRecording(null);
+    recordingRef.current = null;
+    setIsRecording(false);
     setRecordingMs(0);
 
-    if (!uri || elapsedMs < 400) {
-      // too short — treat as cancel
+    if (!uri) {
+      Alert.alert('No audio captured', 'Try again — make sure you spoke before tapping send.');
+      return;
+    }
+    if (!draftPhotoUri) {
+      Alert.alert('No photo', 'Take a photo first, then record.');
       return;
     }
 
-    if (!draftPhotoUri) return;
     sendTurn({ photoUri: draftPhotoUri, audioUri: uri });
     setDraftPhotoUri(null);
+  }
+
+  async function cancelRecording() {
+    const rec = recordingRef.current;
+    if (recordingTimerRef.current) {
+      clearInterval(recordingTimerRef.current);
+      recordingTimerRef.current = null;
+    }
+    if (rec) {
+      try {
+        await rec.stopAndUnloadAsync();
+      } catch {}
+    }
+    recordingRef.current = null;
+    setIsRecording(false);
+    setRecordingMs(0);
   }
 
   function handleAskTyped() {
@@ -262,7 +284,7 @@ export default function AskActScreen() {
     setUseTyping(false);
   }
 
-  const composerHidden = streaming || !!recording;
+  const composerHidden = streaming;
   const recordingSeconds = (recordingMs / 1000).toFixed(1);
 
   return (
@@ -280,14 +302,6 @@ export default function AskActScreen() {
           Point at wiring, panels, or devices. Ask what to verify next.
         </Text>
 
-        {recording && (
-          <View style={styles.recordingBanner}>
-            <View style={styles.recDot} />
-            <Text style={styles.recordingText}>Listening — {recordingSeconds}s</Text>
-            <Text style={styles.recordingHint}>Release to send</Text>
-          </View>
-        )}
-
         {!composerHidden && (
           <View style={styles.composer}>
             {!draftPhotoUri ? (
@@ -300,27 +314,48 @@ export default function AskActScreen() {
             ) : (
               <>
                 <Image source={{ uri: draftPhotoUri }} style={styles.preview} />
-                <TouchableOpacity style={styles.linkBtn} onPress={takePhoto}>
-                  <Text style={styles.linkText}>Retake</Text>
+                <TouchableOpacity style={styles.linkBtn} onPress={takePhoto} disabled={isRecording}>
+                  <Text style={[styles.linkText, isRecording && styles.linkTextDisabled]}>Retake</Text>
                 </TouchableOpacity>
 
                 {!useTyping ? (
                   <>
-                    <Pressable
-                      style={({ pressed }) => [styles.talkBtn, pressed && styles.talkBtnPressed]}
-                      onPressIn={startRecording}
-                      onPressOut={stopRecordingAndSend}
-                    >
-                      <Text style={styles.talkBtnIcon}>🎤</Text>
-                      <Text style={styles.talkBtnText}>Hold to talk</Text>
-                    </Pressable>
-                    <TouchableOpacity
-                      onPress={() => setUseTyping(true)}
-                      style={styles.linkBtn}
-                      hitSlop={8}
-                    >
-                      <Text style={styles.linkText}>or type instead</Text>
-                    </TouchableOpacity>
+                    {!isRecording ? (
+                      <TouchableOpacity
+                        style={styles.talkBtn}
+                        onPress={startRecording}
+                        activeOpacity={0.85}
+                      >
+                        <Text style={styles.talkBtnIcon}>🎤</Text>
+                        <Text style={styles.talkBtnText}>Tap to talk</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <>
+                        <View style={styles.recordingBanner}>
+                          <View style={styles.recDot} />
+                          <Text style={styles.recordingText}>Listening — {recordingSeconds}s</Text>
+                        </View>
+                        <TouchableOpacity
+                          style={styles.sendBtn}
+                          onPress={stopRecordingAndSend}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={styles.sendBtnText}>Send →</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={cancelRecording} style={styles.linkBtn} hitSlop={8}>
+                          <Text style={styles.linkText}>Cancel</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                    {!isRecording && (
+                      <TouchableOpacity
+                        onPress={() => setUseTyping(true)}
+                        style={styles.linkBtn}
+                        hitSlop={8}
+                      >
+                        <Text style={styles.linkText}>or type instead</Text>
+                      </TouchableOpacity>
+                    )}
                   </>
                 ) : (
                   <>
@@ -465,9 +500,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
   },
-  talkBtnPressed: { opacity: 0.85, transform: [{ scale: 0.98 }] },
   talkBtnIcon: { fontSize: 36 },
   talkBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  sendBtn: {
+    backgroundColor: '#10B981',
+    paddingVertical: 18,
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  sendBtnText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  linkTextDisabled: { opacity: 0.4 },
 
   recordingBanner: {
     backgroundColor: '#FEE2E2',
@@ -479,7 +521,6 @@ const styles = StyleSheet.create({
   },
   recDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#DC2626' },
   recordingText: { color: '#991B1B', fontSize: 15, fontWeight: '700', flex: 1 },
-  recordingHint: { color: '#991B1B', fontSize: 13 },
 
   turnCard: {
     backgroundColor: colors.surface,
