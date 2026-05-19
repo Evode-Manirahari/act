@@ -11,6 +11,7 @@ import ProjectScreen from '../screens/ProjectScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import ProjectDetailScreen from '../screens/ProjectDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import CaptureJobScreen from '../screens/CaptureJobScreen';
 import { usePaywall } from '../hooks/usePaywall';
 
 export type RootStackParamList = {
@@ -18,6 +19,7 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Paywall: undefined;
   Main: undefined;
+  CaptureJob: undefined;
 };
 
 export type HomeStackParamList = {
@@ -105,6 +107,7 @@ export default function RootNavigator() {
         children={() => <PaywallScreen onUpgrade={activatePlus} />}
       />
       <RootStack.Screen name="Main" component={MainTabs} />
+      <RootStack.Screen name="CaptureJob" component={CaptureJobScreen} />
     </RootStack.Navigator>
   );
 }

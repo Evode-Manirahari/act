@@ -293,6 +293,12 @@ export default function HomeScreen() {
           >
             <Text style={styles.voiceBtnText}>{prefs.enabled ? '🔔' : '🔕'}</Text>
           </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.newBtn, { backgroundColor: colors.primary, borderColor: colors.primary }]}
+            onPress={() => navigation.navigate('CaptureJob' as any)}
+          >
+            <Text style={[styles.newBtnText, { color: '#fff' }]}>Capture</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.newBtn} onPress={handleNewSession}>
             <Text style={styles.newBtnText}>New</Text>
           </TouchableOpacity>
