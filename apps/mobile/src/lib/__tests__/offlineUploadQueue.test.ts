@@ -31,11 +31,13 @@ function makeHandlers(overrides: Partial<{
   postMark: jest.Mock;
   uploadRecordingFile: jest.Mock;
   completeRecording: jest.Mock;
+  startProcessing: jest.Mock;
 }> = {}) {
   return {
     postMark: overrides.postMark ?? jest.fn().mockResolvedValue({ id: 'm-1' }),
     uploadRecordingFile: overrides.uploadRecordingFile ?? jest.fn().mockResolvedValue(123456),
     completeRecording: overrides.completeRecording ?? jest.fn().mockResolvedValue({ id: 'r-1' }),
+    startProcessing: overrides.startProcessing ?? jest.fn().mockResolvedValue({ recording_id: 'r-1', status: 'queued' }),
   };
 }
 
@@ -152,6 +154,34 @@ describe('OfflineUploadQueue', () => {
     // Second flush -> attempts 1 -> 2 (>= max), item is dropped.
     await q.flush();
     expect(await q.items()).toHaveLength(0);
+  });
+
+  it('enqueueProcess + flush calls startProcessing exactly once', async () => {
+    const storage = new MemoryStorage();
+    const handlers = makeHandlers();
+    const q = new OfflineUploadQueue({ storage, handlers });
+
+    await q.enqueueProcess({ recordingId: 'r-7' });
+    const result = await q.flush();
+    expect(result.succeeded).toBe(1);
+    expect(result.remaining).toBe(0);
+    expect(handlers.startProcessing).toHaveBeenCalledTimes(1);
+    expect(handlers.startProcessing).toHaveBeenCalledWith('r-7');
+  });
+
+  it('treats a 409 on process as success (server already advanced)', async () => {
+    const storage = new MemoryStorage();
+    const handlers = makeHandlers({
+      startProcessing: jest.fn().mockRejectedValue(
+        new Error('POST /recordings/r-8/process -> 409: status processing'),
+      ),
+    });
+    const q = new OfflineUploadQueue({ storage, handlers });
+
+    await q.enqueueProcess({ recordingId: 'r-8' });
+    const result = await q.flush();
+    expect(result.succeeded).toBe(1);
+    expect(result.remaining).toBe(0);
   });
 
   it('subscribers receive queue snapshots', async () => {

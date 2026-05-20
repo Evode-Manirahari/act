@@ -12,6 +12,7 @@ import HistoryScreen from '../screens/HistoryScreen';
 import ProjectDetailScreen from '../screens/ProjectDetailScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import CaptureJobScreen from '../screens/CaptureJobScreen';
+import LearnScreen from '../screens/LearnScreen';
 import { usePaywall } from '../hooks/usePaywall';
 
 export type RootStackParamList = {
@@ -34,6 +35,7 @@ export type HistoryStackParamList = {
 
 export type MainTabParamList = {
   Today: undefined;
+  Learn: undefined;
   History: undefined;
   Profile: undefined;
 };
@@ -80,6 +82,11 @@ function MainTabs() {
         name="Today"
         component={HomeStackNavigator}
         options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>⚡</Text> }}
+      />
+      <Tabs.Screen
+        name="Learn"
+        component={LearnScreen}
+        options={{ tabBarIcon: ({ color }) => <Text style={{ fontSize: 20, color }}>🎓</Text> }}
       />
       <Tabs.Screen
         name="History"
