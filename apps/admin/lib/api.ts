@@ -150,6 +150,35 @@ export const api = {
       `/knowledge-objects/${knowledgeObjectId}/publish`,
       { method: 'POST' },
     ),
+  editQuestion: (
+    questionId: string,
+    body: { question?: string; reason?: string; status?: string },
+  ) =>
+    json<ElicitationQuestionOut>(`/questions/${questionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  editKnowledgeObject: (
+    knowledgeObjectId: string,
+    body: Partial<{
+      title: string;
+      trade: string;
+      situation: string;
+      observable_cue: string;
+      expert_reasoning: string;
+      decision: string;
+      novice_trap: string;
+      safety_boundary: string;
+      verification: string;
+      quiz_json: { question: string; choices: string[]; answer: string };
+      tags_json: string[];
+      status: string;
+    }>,
+  ) =>
+    json<KnowledgeObjectOut>(`/knowledge-objects/${knowledgeObjectId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
   library: (q = '', trade = '') => {
     const params = new URLSearchParams();
     if (q) params.set('q', q);
