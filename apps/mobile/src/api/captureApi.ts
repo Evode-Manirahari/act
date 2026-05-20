@@ -168,6 +168,23 @@ export async function getRecording(recordingId: string): Promise<{
 }
 
 
+export interface ProcessResponse {
+  recording_id: string;
+  status: string;
+}
+
+/**
+ * Kick the act-api pipeline (ffmpeg + Deepgram + frame sample + moment
+ * detect). Returns 202 + a status sentinel; the actual work runs in a
+ * server-side background task. Poll getRecording for the final state.
+ */
+export async function startProcessing(recordingId: string): Promise<ProcessResponse> {
+  return jsonFetch<ProcessResponse>(`/recordings/${recordingId}/process`, {
+    method: 'POST',
+  });
+}
+
+
 /**
  * Upload a local file to the storage backend. Uses a presigned PUT when the
  * server returned one (production path against R2/S3); falls back to a

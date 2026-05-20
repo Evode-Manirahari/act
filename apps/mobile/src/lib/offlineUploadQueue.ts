@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   completeRecording,
   postMark,
+  startProcessing,
   uploadRecordingFile,
 } from '../api/captureApi';
 
@@ -53,6 +54,13 @@ export type QueueItem =
       endedAt?: string;
       enqueuedAt: number;
       attempts: number;
+    }
+  | {
+      kind: 'process';
+      id: string;
+      recordingId: string;
+      enqueuedAt: number;
+      attempts: number;
     };
 
 export interface QueueStorage {
@@ -64,6 +72,7 @@ export interface QueueHandlers {
   postMark: typeof postMark;
   uploadRecordingFile: typeof uploadRecordingFile;
   completeRecording: typeof completeRecording;
+  startProcessing: typeof startProcessing;
 }
 
 export interface QueueOptions {
@@ -76,6 +85,7 @@ const defaultHandlers: QueueHandlers = {
   postMark,
   uploadRecordingFile,
   completeRecording,
+  startProcessing,
 };
 
 
@@ -172,6 +182,18 @@ export class OfflineUploadQueue {
     return item;
   }
 
+  async enqueueProcess(input: { recordingId: string }): Promise<QueueItem> {
+    const item: QueueItem = {
+      kind: 'process',
+      id: generateId(),
+      recordingId: input.recordingId,
+      enqueuedAt: Date.now(),
+      attempts: 0,
+    };
+    await this.append(item);
+    return item;
+  }
+
   /** Process pending items in FIFO order. Safe to call repeatedly. */
   async flush(): Promise<{ succeeded: number; failed: number; remaining: number }> {
     if (this.flushing) return { succeeded: 0, failed: 0, remaining: (await this.items()).length };
@@ -247,6 +269,19 @@ export class OfflineUploadQueue {
             err instanceof Error &&
             err.message.includes('409')
           ) {
+            return;
+          }
+          throw err;
+        }
+        return;
+      case 'process':
+        try {
+          await this.handlers.startProcessing(item.recordingId);
+        } catch (err) {
+          // 409 means the server already advanced past 'uploaded' — either
+          // we already triggered processing or the recording was processed
+          // out-of-band. Treat as success so the queue moves on.
+          if (err instanceof Error && err.message.includes('409')) {
             return;
           }
           throw err;

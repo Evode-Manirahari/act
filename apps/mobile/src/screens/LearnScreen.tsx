@@ -1,0 +1,467 @@
+/**
+ * Learn — apprentice library on mobile.
+ *
+ * Lists published knowledge objects from the act-api library endpoint
+ * and lets the apprentice take a quiz against any card. Quiz attempts
+ * are logged via /training-events so the manager dashboard can see
+ * who's learning what.
+ */
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+
+import { colors } from '../theme/colors';
+import {
+  KnowledgeObject,
+  logTrainingEvent,
+  searchLibrary,
+} from '../api/libraryApi';
+import { createDemoSession, DemoSession } from '../api/actApi';
+
+
+export default function LearnScreen() {
+  const [session, setSession] = useState<DemoSession | null>(null);
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<KnowledgeObject[]>([]);
+  const [selected, setSelected] = useState<KnowledgeObject | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const s = await createDemoSession();
+        if (!cancelled) setSession(s);
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'session error');
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const cards = await searchLibrary({ q: query, limit: 50 });
+      setResults(cards);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'search failed');
+    } finally {
+      setLoading(false);
+    }
+  }, [query]);
+
+  // Refresh whenever the tab is focused so newly published cards show
+  // up without a manual reload.
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+
+  if (selected) {
+    return (
+      <CardDetail
+        card={selected}
+        userId={session?.user_id}
+        onBack={() => setSelected(null)}
+      />
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Learn</Text>
+        <Text style={styles.headerSub}>
+          Reviewed lessons from the master techs.
+        </Text>
+      </View>
+
+      <View style={styles.searchRow}>
+        <TextInput
+          style={styles.searchInput}
+          value={query}
+          onChangeText={setQuery}
+          placeholder="search by symptom, equipment, or hazard"
+          placeholderTextColor={colors.textLight}
+          returnKeyType="search"
+          onSubmitEditing={refresh}
+        />
+      </View>
+
+      {error && (
+        <View style={[styles.notice, styles.noticeError]}>
+          <Text style={styles.noticeText}>{error}</Text>
+        </View>
+      )}
+
+      {loading ? (
+        <ActivityIndicator style={styles.loading} color={colors.primary} />
+      ) : results.length === 0 ? (
+        <View style={styles.empty}>
+          <Text style={styles.emptyTitle}>No published lessons yet</Text>
+          <Text style={styles.emptyBody}>
+            Once a trainer approves a moment, drafts a question, captures the
+            expert&apos;s answer, and publishes a card — it appears here.
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={results}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => {
+                setSelected(item);
+                if (session) {
+                  void logTrainingEvent({
+                    knowledgeObjectId: item.id,
+                    userId: session.user_id,
+                    eventType: 'viewed',
+                  });
+                }
+              }}
+              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+            >
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <View style={styles.cardMeta}>
+                <View style={styles.pill}>
+                  <Text style={styles.pillText}>{item.trade}</Text>
+                </View>
+                {item.tags_json?.slice(0, 3).map((tag) => (
+                  <View key={tag} style={styles.pillLight}>
+                    <Text style={styles.pillLightText}>{tag}</Text>
+                  </View>
+                ))}
+              </View>
+              {item.novice_trap && (
+                <Text numberOfLines={2} style={styles.cardBody}>
+                  ⚠ {item.novice_trap}
+                </Text>
+              )}
+            </Pressable>
+          )}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
+    </View>
+  );
+}
+
+
+function CardDetail({
+  card,
+  userId,
+  onBack,
+}: {
+  card: KnowledgeObject;
+  userId: string | undefined;
+  onBack: () => void;
+}) {
+  const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
+
+  const quiz = card.quiz_json;
+  const isCorrect = useMemo(
+    () => quiz != null && selectedChoice === quiz.answer,
+    [quiz, selectedChoice],
+  );
+
+  async function submit() {
+    if (!selectedChoice || !quiz) return;
+    setSubmitted(true);
+    // Log the attempt and the outcome. Two events on purpose — the
+    // attempt count and the correct count are useful separately on the
+    // dashboard.
+    if (userId) {
+      void logTrainingEvent({
+        knowledgeObjectId: card.id,
+        userId,
+        eventType: 'quiz_attempted',
+      });
+      void logTrainingEvent({
+        knowledgeObjectId: card.id,
+        userId,
+        eventType: isCorrect ? 'quiz_correct' : 'quiz_wrong',
+        score: isCorrect ? 1.0 : 0.0,
+      });
+    }
+  }
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.detailHeader}>
+        <Pressable onPress={onBack} hitSlop={12}>
+          <Text style={styles.backText}>‹ Back</Text>
+        </Pressable>
+      </View>
+
+      <FlatList
+        data={[0]}
+        keyExtractor={() => 'detail'}
+        renderItem={() => (
+          <View style={styles.detailBody}>
+            <Text style={styles.detailTitle}>{card.title}</Text>
+
+            <View style={styles.cardMeta}>
+              <View style={styles.pill}>
+                <Text style={styles.pillText}>{card.trade}</Text>
+              </View>
+              {card.tags_json?.map((tag) => (
+                <View key={tag} style={styles.pillLight}>
+                  <Text style={styles.pillLightText}>{tag}</Text>
+                </View>
+              ))}
+            </View>
+
+            <Section label="Situation" body={card.situation} />
+            <Section label="What the master noticed" body={card.observable_cue} />
+            <Section label="Why" body={card.expert_reasoning} />
+            <Section label="What they did" body={card.decision} />
+            <Section
+              label="Novice trap"
+              body={card.novice_trap}
+              tone="warn"
+            />
+            <Section
+              label="Safety"
+              body={card.safety_boundary}
+              tone="error"
+            />
+            <Section label="Verification" body={card.verification} />
+
+            {quiz && (
+              <View style={styles.quizCard}>
+                <Text style={styles.quizLabel}>Quick check</Text>
+                <Text style={styles.quizQuestion}>{quiz.question}</Text>
+                {quiz.choices.map((choice) => {
+                  const isSelected = selectedChoice === choice;
+                  const isAnswer = quiz.answer === choice;
+                  const showFeedback = submitted;
+                  return (
+                    <Pressable
+                      key={choice}
+                      onPress={() => !submitted && setSelectedChoice(choice)}
+                      style={[
+                        styles.choice,
+                        isSelected && styles.choiceSelected,
+                        showFeedback && isAnswer && styles.choiceCorrect,
+                        showFeedback && isSelected && !isAnswer && styles.choiceWrong,
+                      ]}
+                    >
+                      <Text style={styles.choiceText}>{choice}</Text>
+                      {showFeedback && isAnswer && (
+                        <Text style={styles.choiceTag}>correct</Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+                {!submitted ? (
+                  <Pressable
+                    style={[
+                      styles.submit,
+                      !selectedChoice && styles.submitDisabled,
+                    ]}
+                    disabled={!selectedChoice}
+                    onPress={submit}
+                  >
+                    <Text style={styles.submitText}>Submit answer</Text>
+                  </Pressable>
+                ) : (
+                  <View
+                    style={[
+                      styles.resultBanner,
+                      isCorrect ? styles.resultRight : styles.resultWrong,
+                    ]}
+                  >
+                    <Text style={styles.resultText}>
+                      {isCorrect ? 'Right.' : `Not quite. ${quiz.answer}.`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+      />
+    </View>
+  );
+}
+
+
+function Section({
+  label,
+  body,
+  tone,
+}: {
+  label: string;
+  body: string | null;
+  tone?: 'warn' | 'error';
+}) {
+  if (!body) return null;
+  return (
+    <View
+      style={[
+        styles.section,
+        tone === 'warn' && styles.sectionWarn,
+        tone === 'error' && styles.sectionError,
+      ]}
+    >
+      <Text style={styles.sectionLabel}>{label}</Text>
+      <Text style={styles.sectionBody}>{body}</Text>
+    </View>
+  );
+}
+
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background },
+  header: {
+    paddingHorizontal: 16,
+    paddingTop: 56,
+    paddingBottom: 12,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  headerTitle: { fontSize: 22, fontWeight: '900', color: colors.primary, letterSpacing: 3 },
+  headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
+  searchRow: { padding: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  searchInput: {
+    backgroundColor: colors.surfaceAlt,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.text,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  loading: { marginTop: 32 },
+  notice: { padding: 12, margin: 12, borderRadius: 8 },
+  noticeError: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5' },
+  noticeText: { fontSize: 13, color: colors.error },
+  empty: { padding: 32, alignItems: 'center' },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 },
+  emptyBody: { fontSize: 13, color: colors.textMuted, textAlign: 'center', lineHeight: 18 },
+  listContent: { padding: 12, gap: 10 },
+  card: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 8,
+  },
+  cardPressed: { opacity: 0.6 },
+  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
+  cardMeta: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  cardBody: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  pill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: colors.primaryLight,
+  },
+  pillText: { fontSize: 11, fontWeight: '800', color: colors.primary, textTransform: 'uppercase' },
+  pillLight: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pillLightText: { fontSize: 11, fontWeight: '600', color: colors.textMuted },
+  detailHeader: { paddingTop: 56, paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  backText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  detailBody: { padding: 16, gap: 12 },
+  detailTitle: { fontSize: 20, fontWeight: '800', color: colors.text, lineHeight: 26 },
+  section: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 4,
+  },
+  sectionWarn: { borderColor: '#FCD34D', backgroundColor: '#FEF3C7' },
+  sectionError: { borderColor: '#FCA5A5', backgroundColor: '#FEE2E2' },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+  },
+  sectionBody: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  quizCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 10,
+  },
+  quizLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  quizQuestion: { fontSize: 15, fontWeight: '600', color: colors.text, lineHeight: 22 },
+  choice: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+  },
+  choiceSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight + '60' },
+  choiceCorrect: { borderColor: colors.success, backgroundColor: colors.successLight },
+  choiceWrong: { borderColor: colors.error, backgroundColor: '#FEE2E2' },
+  choiceText: { fontSize: 14, color: colors.text, flex: 1 },
+  choiceTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.success,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  submit: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    borderRadius: 24,
+    alignItems: 'center',
+  },
+  submitDisabled: { opacity: 0.4 },
+  submitText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  resultBanner: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+  },
+  resultRight: { backgroundColor: colors.successLight },
+  resultWrong: { backgroundColor: '#FEE2E2' },
+  resultText: { fontSize: 14, fontWeight: '700', color: colors.text, textAlign: 'center' },
+});

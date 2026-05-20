@@ -29,7 +29,12 @@ import * as Haptics from 'expo-haptics';
 import { colors } from '../theme/colors';
 import MarkButton, { MarkType } from '../components/MarkButton';
 import UploadStatusPill, { UploadStatus } from '../components/UploadStatusPill';
-import { createRecording, RecordingOut } from '../api/captureApi';
+import {
+  createRecording,
+  getRecording,
+  RecordingOut,
+  RecordingStatus,
+} from '../api/captureApi';
 import { captureQueue, QueueItem } from '../lib/offlineUploadQueue';
 import { createDemoSession, DemoSession } from '../api/actApi';
 import type { RootStackParamList } from '../navigation/RootNavigator';
@@ -51,6 +56,7 @@ export default function CaptureJobScreen() {
   const cameraRef = useRef<CameraView>(null);
   const recordingStartRef = useRef<number>(0);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollAbortRef = useRef<{ aborted: boolean } | null>(null);
 
   const [session, setSession] = useState<DemoSession | null>(null);
   const [recording, setRecording] = useState<RecordingOut | null>(null);
@@ -181,13 +187,60 @@ export default function CaptureJobScreen() {
       durationSeconds: duration,
       endedAt: new Date().toISOString(),
     });
+    // Auto-kick the server pipeline as soon as the upload + complete
+    // land. The queue treats a 409 as success, so re-trying is safe.
+    await captureQueue.enqueueProcess({ recordingId: rec.id });
 
     const result = await captureQueue.flush();
     if (result.remaining === 0) {
       setStatus({ kind: 'uploaded' });
+      // Start polling the server status — the BG pipeline runs in act-api
+      // and will move us through processing → ready (or failed).
+      startStatusPolling(rec.id);
     } else {
       setStatus({ kind: 'uploading', remaining: result.remaining });
     }
+  }
+
+  function startStatusPolling(recordingId: string) {
+    // Cancel any prior poll so the latest recording wins.
+    if (pollAbortRef.current) pollAbortRef.current.aborted = true;
+    const controller = { aborted: false };
+    pollAbortRef.current = controller;
+    void (async () => {
+      const start = Date.now();
+      while (!controller.aborted) {
+        try {
+          const detail = await getRecording(recordingId);
+          if (controller.aborted) return;
+          const remoteStatus: RecordingStatus = detail.recording.status;
+          if (remoteStatus === 'processing') {
+            setStatus({ kind: 'processing' });
+          } else if (remoteStatus === 'ready') {
+            setStatus({ kind: 'ready' });
+            return;
+          } else if (remoteStatus === 'failed') {
+            setStatus({
+              kind: 'failed',
+              reason: 'server pipeline failed — check fly logs',
+            });
+            return;
+          }
+        } catch (err) {
+          // Transient network errors shouldn't kill the poll; just retry.
+        }
+        // Stop polling after 10 minutes regardless — that's well beyond
+        // the worst-case processing time and lets the UI recover.
+        if (Date.now() - start > 10 * 60 * 1000) {
+          setStatus({
+            kind: 'failed',
+            reason: 'timed out waiting for the server to finish',
+          });
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+      }
+    })();
   }
 
   async function handleMark(kind: MarkType) {
