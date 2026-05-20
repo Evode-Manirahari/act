@@ -197,22 +197,101 @@ export default function AudioAnswerRecorder({ questionId, onAnswered }: Props) {
       )}
 
       {state.kind === 'transcribed' && (
-        <div className="col gap-8">
-          <div className="evidence-key">Transcript (Deepgram)</div>
+        <TranscriptCorrection
+          answer={state.answer}
+          onUpdated={(updated) => setState({ kind: 'transcribed', answer: updated })}
+        />
+      )}
+    </div>
+  );
+}
+
+
+function TranscriptCorrection({
+  answer,
+  onUpdated,
+}: {
+  answer: ExpertAnswerOut;
+  onUpdated: (updated: ExpertAnswerOut) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(answer.transcript ?? '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setError(null);
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/answers/${answer.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ transcript: draft }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (!response.ok) {
+        setError(await response.text());
+        return;
+      }
+      const updated = (await response.json()) as ExpertAnswerOut;
+      onUpdated(updated);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancel() {
+    setDraft(answer.transcript ?? '');
+    setEditing(false);
+    setError(null);
+  }
+
+  return (
+    <div className="col gap-8">
+      <div className="evidence-key">Transcript (Deepgram)</div>
+      {editing ? (
+        <>
+          <textarea value={draft} onChange={(e) => setDraft(e.target.value)} rows={4} />
+          <div className="row gap-8">
+            <button
+              type="button"
+              className="primary"
+              onClick={save}
+              disabled={!draft.trim() || saving}
+            >
+              {saving ? 'Saving…' : 'Save correction'}
+            </button>
+            <button type="button" className="ghost" onClick={cancel} disabled={saving}>
+              Cancel
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
           <div className="card" style={{ background: 'var(--surface-alt)' }}>
-            {state.answer.transcript || (
+            {answer.transcript || (
               <span className="muted">
                 Deepgram returned no transcript. Audio was saved at{' '}
-                <span className="mono">{state.answer.audio_key}</span> — re-record or type below.
+                <span className="mono">{answer.audio_key}</span> — re-record or type below.
               </span>
             )}
           </div>
-          <div className="muted" style={{ fontSize: 12 }}>
-            Recorded answer saved as an answered question. Re-record to overwrite,
-            or type below for a manual override.
+          <div className="row gap-8">
+            <button type="button" className="ghost" onClick={() => setEditing(true)}>
+              Fix transcript
+            </button>
           </div>
+        </>
+      )}
+      {error && (
+        <div className="notice" style={{ color: 'var(--error)' }}>
+          {error}
         </div>
       )}
+      <div className="muted" style={{ fontSize: 12 }}>
+        Recorded answer saved as an answered question. Fix transcript inline,
+        or re-record to overwrite with a new audio file.
+      </div>
     </div>
   );
 }

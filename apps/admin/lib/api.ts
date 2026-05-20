@@ -190,6 +190,14 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
+  editAnswer: (
+    answerId: string,
+    body: { transcript?: string; approved_by_expert?: boolean },
+  ) =>
+    json<ExpertAnswerOut>(`/answers/${answerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
   editKnowledgeObject: (
     knowledgeObjectId: string,
     body: Partial<{
