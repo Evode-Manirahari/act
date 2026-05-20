@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 
-import type { ElicitationQuestionOut, KnowledgeObjectOut } from '@/lib/api';
+import type { ElicitationQuestionOut, ExpertAnswerOut, KnowledgeObjectOut } from '@/lib/api';
+import AudioAnswerRecorder from './AudioAnswerRecorder';
 
 
 interface Props {
@@ -130,15 +131,37 @@ export default function QuestionPanel({
 
       {activeQuestion && activeQuestion.status !== 'answered' && (
         <div className="card col gap-8">
-          <strong>Record the expert&apos;s answer (transcript)</strong>
+          <strong>Capture the expert&apos;s answer</strong>
+          <div className="muted" style={{ fontSize: 12 }}>
+            Record the expert speaking, or paste a written transcript.
+          </div>
+
+          <AudioAnswerRecorder
+            questionId={activeQuestion.id}
+            onAnswered={(savedAnswer: ExpertAnswerOut) => {
+              // Audio path persisted the answer + flipped status on the
+              // server. Mirror that in local state so compile lights up.
+              setQuestions((prev) =>
+                prev.map((q) =>
+                  q.id === activeQuestion.id ? { ...q, status: 'answered' } : q,
+                ),
+              );
+              if (savedAnswer.transcript) {
+                setAnswer(savedAnswer.transcript);
+              }
+              router.refresh();
+            }}
+          />
+
+          <div className="evidence-key">Typed transcript (override)</div>
           <textarea
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Paste the transcribed answer here, or type what the expert said."
+            placeholder="…or paste / type a transcript here and click Save."
           />
           <div className="row gap-8">
             <button className="primary" onClick={submitAnswer} disabled={!answer.trim() || isPending}>
-              Save answer
+              Save typed answer
             </button>
           </div>
         </div>

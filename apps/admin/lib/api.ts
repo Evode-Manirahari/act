@@ -6,6 +6,27 @@
  */
 import { ACT_API_BASE } from './config';
 
+
+/**
+ * Multipart form forward to act-api. Used by the audio-answer flow —
+ * the Next route handler can't reuse jsonFetch because it needs to
+ * stream a Blob without re-encoding.
+ */
+export async function forwardMultipart<T>(path: string, form: FormData): Promise<T> {
+  const response = await fetch(`${ACT_API_BASE}${path}`, {
+    method: 'POST',
+    body: form,
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(
+      `POST ${path} -> ${response.status}: ${body.slice(0, 300)}`,
+    );
+  }
+  return (await response.json()) as T;
+}
+
 export interface MomentOut {
   id: string;
   recording_id: string;
@@ -43,6 +64,17 @@ export interface ExtractedFrameOut {
   source: string;
   created_at: string;
 }
+
+export interface ExpertAnswerOut {
+  id: string;
+  question_id: string;
+  transcript: string | null;
+  audio_key: string | null;
+  approved_by_expert: boolean;
+  expert_user_id: string | null;
+  created_at: string;
+}
+
 
 export interface ElicitationQuestionOut {
   id: string;
