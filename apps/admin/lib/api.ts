@@ -6,6 +6,27 @@
  */
 import { ACT_API_BASE } from './config';
 
+
+/**
+ * Multipart form forward to act-api. Used by the audio-answer flow —
+ * the Next route handler can't reuse jsonFetch because it needs to
+ * stream a Blob without re-encoding.
+ */
+export async function forwardMultipart<T>(path: string, form: FormData): Promise<T> {
+  const response = await fetch(`${ACT_API_BASE}${path}`, {
+    method: 'POST',
+    body: form,
+    cache: 'no-store',
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(
+      `POST ${path} -> ${response.status}: ${body.slice(0, 300)}`,
+    );
+  }
+  return (await response.json()) as T;
+}
+
 export interface MomentOut {
   id: string;
   recording_id: string;
@@ -43,6 +64,17 @@ export interface ExtractedFrameOut {
   source: string;
   created_at: string;
 }
+
+export interface ExpertAnswerOut {
+  id: string;
+  question_id: string;
+  transcript: string | null;
+  audio_key: string | null;
+  approved_by_expert: boolean;
+  expert_user_id: string | null;
+  created_at: string;
+}
+
 
 export interface ElicitationQuestionOut {
   id: string;
@@ -150,6 +182,43 @@ export const api = {
       `/knowledge-objects/${knowledgeObjectId}/publish`,
       { method: 'POST' },
     ),
+  editQuestion: (
+    questionId: string,
+    body: { question?: string; reason?: string; status?: string },
+  ) =>
+    json<ElicitationQuestionOut>(`/questions/${questionId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  editAnswer: (
+    answerId: string,
+    body: { transcript?: string; approved_by_expert?: boolean },
+  ) =>
+    json<ExpertAnswerOut>(`/answers/${answerId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  editKnowledgeObject: (
+    knowledgeObjectId: string,
+    body: Partial<{
+      title: string;
+      trade: string;
+      situation: string;
+      observable_cue: string;
+      expert_reasoning: string;
+      decision: string;
+      novice_trap: string;
+      safety_boundary: string;
+      verification: string;
+      quiz_json: { question: string; choices: string[]; answer: string };
+      tags_json: string[];
+      status: string;
+    }>,
+  ) =>
+    json<KnowledgeObjectOut>(`/knowledge-objects/${knowledgeObjectId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
   library: (q = '', trade = '') => {
     const params = new URLSearchParams();
     if (q) params.set('q', q);

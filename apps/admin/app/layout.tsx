@@ -15,9 +15,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="topbar">
           <div className="topbar-inner">
             <Link href="/" className="brand">ACT CAPTURE</Link>
-            <nav className="navlinks">
+            <nav className="navlinks" style={{ alignItems: 'center' }}>
               <Link href="/">Review queue</Link>
               <Link href="/library">Library</Link>
+              <form action="/api/sign-out" method="POST" style={{ marginLeft: 8 }}>
+                <button type="submit" className="ghost" style={{ padding: '4px 10px', fontSize: 12 }}>
+                  Sign out
+                </button>
+              </form>
             </nav>
           </div>
         </div>

@@ -1,33 +1,46 @@
 # ACT
 
-**AI guidance for physical work.**
-*Short-form for technical channels: **"Claude Code for electricians."***
+**Your best HVAC techs train the next generation without writing documentation.**
 
-As multimodal AI, affordable wearable hardware, and a shrinking skilled labor pool converge, the opportunity is to put real-time AI intelligence in the hands of the person doing the physical work.
+ACT Capture turns ride-alongs and senior service calls into reviewed training objects — short clips of a teachable moment, paired with the expert's reasoning, the novice traps to avoid, the safety boundaries, and a quick quiz to check transfer.
 
-A small camera and earpiece become your expert — seeing what you see, reasoning about the task, and talking you through each step.
+The core invention is not a live AI copilot telling techs what to do. It's a moment-capture system: detect teachable events in the field, ask the expert the right question at a safe time *after* the job, compile the answer into a structured training object, review it, publish it, and measure how well it transfers to apprentices.
 
-This isn't about replacing tradespeople. It's about making anyone significantly more capable on the job, faster.
+## Current wedge: HVAC
 
-## The core experience
+First trade is HVAC residential/commercial troubleshooting — no-cool, no-heat, refrigerant, compressor, airflow, electrical faults.
 
-1. **ACT sees** — through your camera, in real time
-2. **ACT reasons** — about what's in front of you and what needs to happen next
-3. **ACT talks** — clear, step-by-step guidance through your earpiece
+Why HVAC:
+- Tight feedback loops — no-cool / no-heat is a repeated controlled event
+- Measurable outcomes — first-time fix rate, callbacks, time-to-diagnosis
+- Rich tacit signals — sound, vibration, line temp, frost patterns, gauge readings
+- BLS: 425k jobs in 2024, ~8% growth through 2034, ~40k openings/year
 
-## Current wedge: electrician field diagnostics
+Earlier electrician customer-discovery work is preserved as input but is not the first pilot target. Existing electrical prompts and KB entries stay in the codebase behind a `trade` flag during the migration — they are not being deleted.
 
-First vertical is working electricians doing on-site identification and safety triage: unknown panels, legacy wiring, hacked junctions, mixed old/new systems, and "what do I verify before touching this?" moments. Other trades come after we have paying electrical contractor design partners.
+## The Capture flow
+
+1. **Record** — senior tech starts a job recording from their phone
+2. **Mark** — they tap "mark this" at teachable moments (one-handed, glove-friendly)
+3. **Debrief** — after the job, ACT asks targeted questions about each mark
+4. **Compile** — clip + expert-why + novice-traps + safety + quiz → one training object
+5. **Review & publish** — a lead tech approves before it goes into the apprentice library
+6. **Measure** — apprentice quiz results and on-job application close the loop
 
 ## Repo layout
 
 This repo contains the **mobile client only**. The backend lives in a sibling repo.
 
 - `apps/mobile` — React Native Expo app
-  - `src/screens/AskActScreen.tsx` — current vertical slice: photo → question → Claude answer
+  - `src/screens/CaptureJobScreen.tsx` — capture-mvp flow: record, mark teachable moments, upload with retry
+  - `src/screens/AskActScreen.tsx` — earlier photo → question → Claude diagnosis slice (still wired as the app entry point on `main`)
   - `src/api/actApi.ts` — talks to the deployed backend
-- `packages/act-prompts`, `packages/shared-types`, `packages/act-kb` — shared code and electrical field knowledge
+- `packages/act-prompts` — shared prompt scaffolding
+- `packages/shared-types` — shared TypeScript types
+- `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
 - `../act-api/` — Python FastAPI backend, deployed at https://act-api-evode.fly.dev ([sibling repo](https://github.com/Evode-Manirahari/act-api))
+
+Active branch: **`capture-mvp`** — where the new capture flow is being built.
 
 ## Stack
 
@@ -39,8 +52,6 @@ This repo contains the **mobile client only**. The backend lives in a sibling re
 
 ## Run the mobile slice
 
-The mobile app currently launches directly into `AskActScreen` — a single screen that takes a photo, accepts a typed question, and streams Claude's diagnosis back from the live API at `https://act-api-evode.fly.dev`.
-
 ```bash
 pnpm install
 cd apps/mobile && pnpm start
@@ -51,10 +62,7 @@ Then on your phone:
 2. Make sure phone and Mac are on the **same WiFi**
 3. Scan the QR code in the terminal, or paste `exp://<lan-ip>:8081` via "Enter URL manually"
 
-The legacy multi-screen flow (Boot / Onboarding / Paywall / Home / Project) is preserved in git history. To restore it:
-```bash
-git show HEAD~:apps/mobile/App.tsx > apps/mobile/App.tsx
-```
+On `main`, the app launches into `AskActScreen` (single photo → question → streamed Claude answer). On `capture-mvp`, the entry point will be the Capture flow once App.tsx is wired through. The legacy multi-screen flow (Boot / Onboarding / Paywall / Home / Project) is preserved in git history.
 
 ## Backend (sibling repo)
 
@@ -63,6 +71,13 @@ See [Evode-Manirahari/act-api](https://github.com/Evode-Manirahari/act-api) for 
 ## Environment
 
 Mobile currently hardcodes the API base URL to `https://act-api-evode.fly.dev` in `apps/mobile/src/api/actApi.ts`. When the slice graduates beyond demo mode, this moves to an Expo env var. Backend env vars live in `act-api/.env` — see `act-api/.env.example`.
+
+## Product framing (do not drift)
+
+- **Say**: "Your best HVAC techs train the next generation without writing documentation."
+- **Do not say**: "AI tells techs what to do in real time." That is the *old* framing and it leaks into product decisions if you let it.
+
+The product is for the senior tech, the lead tech who reviews, and the apprentice who learns. Not the AI.
 
 ## AI workflow helper (gstack)
 
