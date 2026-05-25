@@ -1,0 +1,24 @@
+{
+  "id": "locked-rotor-failed-run-capacitor",
+  "trade": "hvac",
+  "brand": "Generic",
+  "model": "Single-phase condensing unit",
+  "equipment_type": "capacitor",
+  "symptom": "Outdoor unit hums for several seconds at call for cooling and then trips on overload. Compressor does not spin up; fan may or may not start depending on whether the run capacitor is dual-section.",
+  "diagnosis": "Failed run capacitor producing locked-rotor condition. The compressor draws stalled-rotor current because the start phase never establishes a rotating field; capacitor microfarad reading is below the rated value on the nameplate.",
+  "part_number": null,
+  "procedure": [
+    "Kill power at the disconnect and verify de-energized at the contactor with a meter.",
+    "Bleed the capacitor across both terminals through a properly rated resistor — DO NOT short with a screwdriver.",
+    "Read the labeled rated microfarads; measure actual capacitance with a meter that handles motor-run caps.",
+    "Replace with the same voltage rating and microfarad value; observe terminal labeling for dual-section caps (HERM / FAN / C).",
+    "Restart and confirm compressor and condenser fan both run; verify amperage is within nameplate."
+  ],
+  "safety_notes": [
+    "Capacitors can hold a lethal charge even after power is removed; always bleed before touching terminals.",
+    "Wrong terminal landing on a dual-section cap will burn out the start winding within seconds.",
+    "Locked-rotor lasting more than the rated stall time can damage the compressor permanently — diagnose quickly."
+  ],
+  "estimated_minutes": 30,
+  "tags": ["capacitor", "locked-rotor", "compressor", "hum", "no-start", "microfarad", "run-cap", "start-cap"]
+}

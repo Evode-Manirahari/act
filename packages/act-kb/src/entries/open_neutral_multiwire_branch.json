@@ -1,5 +1,6 @@
 {
   "id": "open-neutral-multiwire-branch",
+  "trade": "electrical",
   "brand": "Unknown",
   "model": "Multiwire branch circuit",
   "equipment_type": "branch-circuit",
@@ -19,5 +20,14 @@
     "Unstable neutral voltage can damage appliances and create shock risk."
   ],
   "estimated_minutes": 45,
-  "tags": ["open", "neutral", "multiwire", "shared", "mwbc", "voltage", "bright", "dim"]
+  "tags": [
+    "open",
+    "neutral",
+    "multiwire",
+    "shared",
+    "mwbc",
+    "voltage",
+    "bright",
+    "dim"
+  ]
 }

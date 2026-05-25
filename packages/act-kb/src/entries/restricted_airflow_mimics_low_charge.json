@@ -1,0 +1,25 @@
+{
+  "id": "restricted-airflow-mimics-low-charge",
+  "trade": "hvac",
+  "brand": "Generic",
+  "model": "Split system air handler",
+  "equipment_type": "evaporator-coil",
+  "symptom": "Low suction pressure, frost on suction line, weak airflow at the supply registers, and a higher-than-normal temperature drop across the coil. Apprentice may misread this as low refrigerant charge.",
+  "diagnosis": "Restricted airflow across the indoor coil — usually a dirty filter, dirty evaporator, collapsed flex duct, or closed dampers. The starved coil cannot pick up enough heat from the air, so suction pressure drops and the line cold-soaks into a frost pattern that looks identical to a low-charge call.",
+  "part_number": null,
+  "procedure": [
+    "Check the filter before touching the gauges — a clogged filter is the single most common cause.",
+    "Inspect the evaporator coil for dust mat or biological growth; clean if dirty.",
+    "Measure static pressure across the air handler with a manometer; compare to design (typically 0.5 in. WC).",
+    "Verify blower speed tap matches the equipment selection.",
+    "Inspect ductwork for crushed flex, closed dampers, or undersized returns.",
+    "Re-measure superheat and suction pressure after airflow is restored before deciding charge is wrong."
+  ],
+  "safety_notes": [
+    "A new tech who adds refrigerant to a restricted-airflow system will overcharge it, then flood the compressor on liquid return.",
+    "Do not run the system with a coil frozen solid — let it thaw fully before re-checking pressures.",
+    "Wear a dust mask when cleaning a heavily fouled evaporator coil."
+  ],
+  "estimated_minutes": 45,
+  "tags": ["restricted-airflow", "low-charge", "frost", "dirty-filter", "static-pressure", "novice-trap", "duct"]
+}
