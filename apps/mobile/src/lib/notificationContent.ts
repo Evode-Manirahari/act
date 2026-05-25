@@ -50,6 +50,11 @@ const STREAK: Record<number, string> = {
 };
 
 const DOMAIN: Record<string, string[]> = {
+  HVAC: [
+    "No-cool or no-heat call? Tell ACT the symptoms before you gauge up.",
+    "Frost on the suction line? Bad capacitor? ACT walks you through it.",
+    "Got an HVAC job lined up? Describe what you're seeing — ACT's ready.",
+  ],
   PLUMBING:   [
     "Dripping faucet? Slow drain? ACT knows the fix.",
     "Got a plumbing issue? Tell ACT what you're seeing.",
