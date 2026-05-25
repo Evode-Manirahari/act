@@ -1,0 +1,25 @@
+{
+  "id": "thermostat-missing-c-wire",
+  "trade": "hvac",
+  "brand": "Generic",
+  "model": "Wi-Fi / smart thermostat",
+  "equipment_type": "thermostat",
+  "symptom": "Smart or Wi-Fi thermostat keeps rebooting, drops Wi-Fi, or shows a low-battery warning even on a hard-wired install. May intermittently stop calling for heat or cool. Symptoms often blamed on the equipment or the homeowner's network.",
+  "diagnosis": "Missing common (C) wire at the thermostat. The thermostat is harvesting power by leaking through the heating or cooling relay, which destabilizes the 24V control circuit and leaves the thermostat starved during high-draw operations like Wi-Fi sync. New techs assume the Y wire is enough because the cooling works briefly.",
+  "part_number": null,
+  "procedure": [
+    "Pull the thermostat off the base and identify all conductors; document the existing wiring labels.",
+    "At the air handler / furnace control board, identify the C terminal — usually labeled C or COM.",
+    "If a spare conductor exists, land one end on C at the board and the other on C at the thermostat.",
+    "If no spare conductor, install a fused 24V add-a-wire kit OR run new thermostat cable.",
+    "Verify 24V between R and C at the thermostat base with the cover off.",
+    "Re-pair the thermostat to Wi-Fi and run a full heat / cool cycle to confirm stability."
+  ],
+  "safety_notes": [
+    "Kill power to the air handler at the disconnect before landing the C wire to avoid shorting 24V to chassis.",
+    "Do not jumper R to C — you will short the transformer and burn the board's fuse.",
+    "Common-stealing thermostat adapters are a stopgap, not a fix; recommend a real C wire whenever possible."
+  ],
+  "estimated_minutes": 45,
+  "tags": ["thermostat", "c-wire", "common", "smart-thermostat", "wi-fi", "24v", "control-circuit", "novice-trap"]
+}

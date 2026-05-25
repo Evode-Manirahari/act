@@ -1,5 +1,6 @@
 {
   "id": "federal-pacific-stab-lok-panel",
+  "trade": "electrical",
   "brand": "Federal Pacific",
   "model": "Stab-Lok",
   "equipment_type": "panel",
@@ -19,5 +20,14 @@
     "If bus damage, heat discoloration, or loose breakers are visible, stop and escalate."
   ],
   "estimated_minutes": 20,
-  "tags": ["panel", "federal", "pacific", "stab", "lok", "breaker", "legacy", "unsafe"]
+  "tags": [
+    "panel",
+    "federal",
+    "pacific",
+    "stab",
+    "lok",
+    "breaker",
+    "legacy",
+    "unsafe"
+  ]
 }
