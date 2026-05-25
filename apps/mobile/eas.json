@@ -15,7 +15,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://act-api-evode.fly.dev",
-        "EXPO_PUBLIC_ENV": "development"
+        "EXPO_PUBLIC_ENV": "development",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "development-simulator": {
@@ -25,7 +26,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://act-api-evode.fly.dev",
-        "EXPO_PUBLIC_ENV": "development"
+        "EXPO_PUBLIC_ENV": "development",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "development-local": {
@@ -39,7 +41,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8080",
-        "EXPO_PUBLIC_ENV": "development"
+        "EXPO_PUBLIC_ENV": "development",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "preview": {
@@ -52,7 +55,8 @@
       },
       "env": {
         "EXPO_PUBLIC_API_BASE_URL": "https://act-api-evode.fly.dev",
-        "EXPO_PUBLIC_ENV": "staging"
+        "EXPO_PUBLIC_ENV": "staging",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
