@@ -21,8 +21,9 @@ const LEVELS: { value: ExperienceLevel; label: string; emoji: string }[] = [
 ];
 
 const DOMAINS: { value: JobDomain; label: string; emoji: string }[] = [
-  { value: 'PLUMBING', label: 'Plumbing', emoji: '🔧' },
+  { value: 'HVAC', label: 'HVAC', emoji: '❄️' },
   { value: 'ELECTRICAL', label: 'Electrical', emoji: '⚡' },
+  { value: 'PLUMBING', label: 'Plumbing', emoji: '🔧' },
   { value: 'CARPENTRY', label: 'Carpentry', emoji: '🪵' },
   { value: 'PAINTING', label: 'Painting', emoji: '🖌️' },
   { value: 'TILING', label: 'Tiling', emoji: '🧱' },

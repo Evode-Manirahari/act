@@ -26,12 +26,13 @@ import { buildNotificationContent } from '../lib/notificationContent';
 const SESSION_ID_KEY = 'actober_active_session_id';
 
 const QUICK_CHIPS_BY_DOMAIN: Record<string, string[]> = {
+  HVAC: ['No-cool call', 'No-heat call', 'Frost on the suction line', 'Compressor won\'t start', 'Short cycling', 'Thermostat C-wire issue', 'Refrigerant leak suspected', 'Static pressure check'],
   PLUMBING: ['Leaking pipe under the sink', 'Unblock a drain', 'Replace a faucet', 'Water heater issue', 'Running toilet', 'Low water pressure'],
   ELECTRICAL: ['Outlet not working', 'Replace a light fixture', 'Running new cable', 'Tripped breaker won\'t reset', 'Install a ceiling fan', 'GFCI outlet issue'],
   CARPENTRY: ['Door won\'t close properly', 'Fixing a squeaky floor', 'Install door trim', 'Cabinet door hinge broken', 'Build a shelf', 'Deck board replacement'],
   PAINTING: ['Patching drywall', 'Prep walls for painting', 'Fix paint peeling', 'Caulk gaps before painting', 'Touch up scuffs', 'Painting trim'],
   TILING: ['Cracked tile needs replacing', 'Re-grout bathroom floor', 'Tile is coming loose', 'Caulk around tub', 'Lay new floor tile', 'Backsplash install'],
-  GENERAL: ['Leaking pipe under the sink', 'Outlet not working', 'Door won\'t close properly', 'Fixing a squeaky floor', 'Patching drywall', 'Replace a light fixture', 'Running new cable', 'Unblock a drain'],
+  GENERAL: ['No-cool call', 'Outlet not working', 'Leaking pipe under the sink', 'Door won\'t close properly', 'Frost on the suction line', 'Tripped breaker', 'Patching drywall'],
 };
 
 const CATEGORY_COLORS: Record<string, string> = {
