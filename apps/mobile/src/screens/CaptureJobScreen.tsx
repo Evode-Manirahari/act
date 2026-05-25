@@ -60,7 +60,6 @@ export default function CaptureJobScreen() {
 
   const [session, setSession] = useState<DemoSession | null>(null);
   const [recording, setRecording] = useState<RecordingOut | null>(null);
-  const [presignedUrl, setPresignedUrl] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [marks, setMarks] = useState<LocalMark[]>([]);
@@ -146,7 +145,6 @@ export default function CaptureJobScreen() {
         deviceMeta: { camera: 'phone_chest_or_handheld' },
       });
       setRecording(created.recording);
-      setPresignedUrl(created.upload_url);
       setMarks([]);
       setElapsedSeconds(0);
       recordingStartRef.current = Date.now();
@@ -155,7 +153,7 @@ export default function CaptureJobScreen() {
 
       const result = await cameraRef.current?.recordAsync({ maxDuration: 1800 });
       if (result?.uri) {
-        await enqueueUpload(created.recording, result.uri);
+        await enqueueUpload(created.recording, result.uri, created.upload_url);
       }
     } catch (err) {
       setIsRecording(false);
@@ -172,14 +170,18 @@ export default function CaptureJobScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
-  async function enqueueUpload(rec: RecordingOut, fileUri: string) {
+  async function enqueueUpload(
+    rec: RecordingOut,
+    fileUri: string,
+    uploadUrl: string | null,
+  ) {
     setStatus({ kind: 'saved_local', marks: marks.length });
     const duration = (Date.now() - recordingStartRef.current) / 1000;
 
     await captureQueue.enqueueUpload({
       recordingId: rec.id,
       fileUri,
-      presignedUrl,
+      presignedUrl: uploadUrl,
       contentType: rec.content_type ?? 'video/mp4',
     });
     await captureQueue.enqueueComplete({
