@@ -4,8 +4,14 @@
   "main": "index.js",
   "scripts": {
     "start": "expo start",
+    "start:dev-client": "expo start --dev-client",
     "android": "expo start --android",
     "ios": "expo start --ios",
+    "prebuild": "expo prebuild --no-install",
+    "build:dev-ios": "eas build --profile development --platform ios",
+    "build:dev-android": "eas build --profile development --platform android",
+    "build:dev-sim": "eas build --profile development-simulator --platform ios",
+    "build:preview": "eas build --profile preview --platform all",
     "test": "jest --passWithNoTests"
   },
   "dependencies": {

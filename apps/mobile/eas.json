@@ -1,13 +1,44 @@
 {
   "cli": {
-    "version": ">= 7.0.0"
+    "version": ">= 7.0.0",
+    "appVersionSource": "local"
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://localhost:3002",
+        "EXPO_PUBLIC_API_BASE_URL": "https://act-api-evode.fly.dev",
+        "EXPO_PUBLIC_ENV": "development"
+      }
+    },
+    "development-simulator": {
+      "extends": "development",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "https://act-api-evode.fly.dev",
+        "EXPO_PUBLIC_ENV": "development"
+      }
+    },
+    "development-local": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": false
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://localhost:8080",
         "EXPO_PUBLIC_ENV": "development"
       }
     },
@@ -20,13 +51,14 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.actguidance.app",
+        "EXPO_PUBLIC_API_BASE_URL": "https://act-api-evode.fly.dev",
         "EXPO_PUBLIC_ENV": "staging"
       }
     },
     "production": {
+      "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.actguidance.app",
+        "EXPO_PUBLIC_API_BASE_URL": "https://act-api-evode.fly.dev",
         "EXPO_PUBLIC_ENV": "production"
       }
     }
