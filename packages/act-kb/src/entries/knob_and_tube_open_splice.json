@@ -1,5 +1,6 @@
 {
   "id": "knob-and-tube-open-splice",
+  "trade": "electrical",
   "brand": "Unknown",
   "model": "Knob-and-tube",
   "equipment_type": "legacy-wiring",
@@ -19,5 +20,13 @@
     "If insulation crumbles or copper is exposed, stop and repair before proceeding."
   ],
   "estimated_minutes": 30,
-  "tags": ["knob", "tube", "cloth", "ceramic", "legacy", "splice", "ungrounded"]
+  "tags": [
+    "knob",
+    "tube",
+    "cloth",
+    "ceramic",
+    "legacy",
+    "splice",
+    "ungrounded"
+  ]
 }

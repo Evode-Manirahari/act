@@ -1,5 +1,10 @@
-import { ELECTRICAL_KB_ENTRIES } from './entries';
-import type { KBEntry, KBSearchHit } from './types';
+import {
+  ALL_KB_ENTRIES,
+  ELECTRICAL_KB_ENTRIES,
+  HVAC_KB_ENTRIES,
+  entriesForTrade,
+} from './entries';
+import type { KBEntry, KBSearchHit, Trade } from './types';
 
 const TOKEN_SPLIT = /[^a-z0-9]+/;
 
@@ -40,10 +45,10 @@ function indexEntry(entry: KBEntry): IndexedEntry {
   };
 }
 
-export class ElectricalKBStore {
+export class KBStore {
   private indexed: IndexedEntry[];
 
-  constructor(entries: KBEntry[] = ELECTRICAL_KB_ENTRIES) {
+  constructor(entries: KBEntry[]) {
     this.indexed = entries.map(indexEntry);
   }
 
@@ -75,6 +80,7 @@ export class ElectricalKBStore {
     const blocks = hits.map((hit) => {
       return [
         `KB ENTRY [${hit.id}] (score=${hit.score})`,
+        `Trade: ${hit.trade}`,
         `Equipment: ${hit.brand} ${hit.model} (${hit.equipment_type})`,
         `Symptom: ${hit.symptom}`,
         `Diagnosis: ${hit.diagnosis}`,
@@ -93,11 +99,31 @@ export class ElectricalKBStore {
   }
 }
 
-let globalStore: ElectricalKBStore | null = null;
+const storeByTrade: Partial<Record<Trade, KBStore>> = {};
+let allTradesStore: KBStore | null = null;
 
-export function getElectricalKBStore(): ElectricalKBStore {
-  if (!globalStore) {
-    globalStore = new ElectricalKBStore();
+export function getKBStore(trade?: Trade): KBStore {
+  if (!trade) {
+    if (!allTradesStore) allTradesStore = new KBStore(ALL_KB_ENTRIES);
+    return allTradesStore;
   }
-  return globalStore;
+  if (!storeByTrade[trade]) {
+    storeByTrade[trade] = new KBStore(entriesForTrade(trade));
+  }
+  return storeByTrade[trade]!;
 }
+
+/** @deprecated Use `getKBStore('electrical')` instead. */
+export class ElectricalKBStore extends KBStore {
+  constructor(entries: KBEntry[] = ELECTRICAL_KB_ENTRIES) {
+    super(entries);
+  }
+}
+
+/** @deprecated Use `getKBStore('electrical')` instead. */
+export function getElectricalKBStore(): KBStore {
+  return getKBStore('electrical');
+}
+
+// Re-export for callers that want raw entries.
+export { ELECTRICAL_KB_ENTRIES, HVAC_KB_ENTRIES, ALL_KB_ENTRIES };

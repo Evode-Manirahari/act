@@ -1,5 +1,6 @@
 {
   "id": "missing-bond-subpanel",
+  "trade": "electrical",
   "brand": "Unknown",
   "model": "Subpanel",
   "equipment_type": "subpanel",
@@ -19,5 +20,13 @@
     "If the feeder lacks an equipment grounding conductor, stop and evaluate the feeder."
   ],
   "estimated_minutes": 30,
-  "tags": ["subpanel", "neutral", "ground", "bond", "isolated", "feeder", "bar"]
+  "tags": [
+    "subpanel",
+    "neutral",
+    "ground",
+    "bond",
+    "isolated",
+    "feeder",
+    "bar"
+  ]
 }

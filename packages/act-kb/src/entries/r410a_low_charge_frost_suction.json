@@ -1,0 +1,25 @@
+{
+  "id": "r410a-low-charge-frost-suction",
+  "trade": "hvac",
+  "brand": "Generic",
+  "model": "R-410A split system",
+  "equipment_type": "refrigerant-circuit",
+  "symptom": "Frost or ice on the suction line at the indoor coil or near the service valve while the system is running. Discharge air feels lukewarm. Low side pressure runs well below the R-410A saturation table for the indoor return temperature.",
+  "diagnosis": "Low refrigerant charge on an R-410A system. The frost pattern follows the line where refrigerant is boiling at too low a saturation temperature because there isn't enough mass flow.",
+  "part_number": null,
+  "procedure": [
+    "Confirm airflow is normal first — restricted airflow can mimic low charge with similar suction-line frost.",
+    "Connect manifold gauges to the schrader ports; record low-side pressure and saturation temperature.",
+    "Measure superheat at the suction line if the metering device is a piston / fixed orifice; measure subcooling if it's a TXV.",
+    "Look for an oil stain at flares, brazed joints, and service valves before adding refrigerant.",
+    "If a leak is found, repair it, pull a deep vacuum (500 microns or below), and weigh in the manufacturer charge.",
+    "Verify final superheat / subcooling matches the equipment label."
+  ],
+  "safety_notes": [
+    "Recover refrigerant before opening any line — EPA 608 violation if vented.",
+    "R-410A operates at much higher pressures than R-22; verify gauges and hoses are rated for it.",
+    "Wear gloves and safety glasses when working with high-side connections."
+  ],
+  "estimated_minutes": 60,
+  "tags": ["r410a", "low-charge", "frost", "suction", "leak", "refrigerant", "subcool", "superheat"]
+}

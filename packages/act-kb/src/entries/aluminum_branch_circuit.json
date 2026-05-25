@@ -1,5 +1,6 @@
 {
   "id": "aluminum-branch-circuit",
+  "trade": "electrical",
   "brand": "Unknown",
   "model": "Solid aluminum branch wiring",
   "equipment_type": "branch-circuit",
@@ -19,5 +20,14 @@
     "If there are heat marks or melted insulation, stop and treat as a fire-risk repair."
   ],
   "estimated_minutes": 35,
-  "tags": ["aluminum", "branch", "circuit", "co", "alr", "wirenut", "overheat", "legacy"]
+  "tags": [
+    "aluminum",
+    "branch",
+    "circuit",
+    "co",
+    "alr",
+    "wirenut",
+    "overheat",
+    "legacy"
+  ]
 }

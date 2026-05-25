@@ -1,0 +1,25 @@
+{
+  "id": "txv-diagnose-with-subcooling",
+  "trade": "hvac",
+  "brand": "Generic",
+  "model": "TXV-metered split system",
+  "equipment_type": "metering-device",
+  "symptom": "Tech is staring at a superheat reading on a system with a thermostatic expansion valve and trying to use it to diagnose refrigerant charge. The superheat number is dancing because the TXV is doing its job — modulating to hold a target superheat regardless of charge.",
+  "diagnosis": "Wrong measurement for the metering device. On a TXV system, superheat is held nearly constant by the valve, so it cannot be used to judge charge. The diagnostic value lives in subcooling at the liquid line — that's the variable that moves with charge on a TXV.",
+  "part_number": null,
+  "procedure": [
+    "Confirm the metering device by inspecting the indoor coil — TXV has a sensing bulb clamped to the suction line near the coil outlet.",
+    "Connect to the liquid-line schrader; record liquid-line pressure and saturation temperature.",
+    "Measure liquid-line temperature with a clamp-on probe a few inches downstream of the condenser.",
+    "Calculate subcooling = saturation temperature − liquid-line temperature.",
+    "Compare to the equipment label or installation manual (often 8–12°F).",
+    "Low subcooling → suspect undercharge or restriction. High subcooling → suspect overcharge."
+  ],
+  "safety_notes": [
+    "Don't add refrigerant based on superheat on a TXV — it will look like the system is undercharged forever and you'll end up overcharged.",
+    "Verify the TXV sensing bulb is correctly clamped and insulated before blaming the valve itself.",
+    "A blocked TXV mimics undercharge; check the liquid-line filter-drier before condemning the valve."
+  ],
+  "estimated_minutes": 30,
+  "tags": ["txv", "subcooling", "superheat", "metering", "novice-trap", "charge", "refrigerant"]
+}
