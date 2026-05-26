@@ -73,6 +73,7 @@ We want **3 paid design partners.** Criteria, in order:
 
 - **Term:** 6 weeks of active capture + 4 weeks of measurement.
 - **Price:** $500 / week / shop during capture, $0 during measurement. Refund if < 30 reviewed cards published.
+- **Roles:** The **senior tech being recorded is also the lead tech** for the pilot — they approve their own moments and edit their own questions. Single neck-to-wring, fastest feedback. Post-pilot we can split the lead-tech role out to a GM or designated trainer.
 - **Data:** Their recordings, their cards. We retain anonymized rule-engine outputs for product improvement. Nothing leaves the shop without senior tech approval.
 - **Exclusivity:** No exclusivity. They can stop at any time. We can publish anonymized aggregate metrics for marketing.
 
@@ -110,12 +111,14 @@ Tied to the schemas in act-api so they fall out of the existing dashboards.
 
 ### Lagging indicators (apprentice transfer — Weeks 7-10)
 
-Each apprentice takes a **scenario assessment** in Week 0 (pre-pilot) and Week 10 (post-pilot). Same 15 HVAC scenarios both times, randomized order:
+Each apprentice takes a **scenario assessment** in Week 0 (pre-pilot) and Week 10 (post-pilot). Same 15 HVAC scenarios both times, randomized order.
+
+**Sourcing (locked 2026-05-25):** Hybrid. Evode drafts **10 scenarios** from public HVAC training material (ACCA, Carrier University, NATE practice banks) covering core no-cool / no-heat / airflow / electrical / refrigerant traps. A known senior tech is paid **$300–500** to write **5 high-tacit-judgment scenarios** — the kind of "I just knew" calls that don't show up in textbooks. Hybrid keeps the Week 0 baseline shippable while still capturing the moment-of-judgment patterns the pilot is meant to surface.
 
 1. "Frost on the suction line, 78°F return — what's your next reading?" (correct: airflow before charge)
 2. "Compressor hums 5 sec then trips on overload — what do you check first?" (correct: run cap microfarads)
 3. "Subcool of 3 on a TXV system — what does that tell you?" (correct: low charge)
-4. (...12 more, drawn from the published card library + a control set the pilot did not capture)
+4. (...12 more — 7 more from Evode + 5 from the commissioned senior tech)
 
 | Metric | Source | Target |
 |---|---|---|
@@ -153,6 +156,8 @@ These are product features, not legal footnotes.
 ### Consent script for the customer (residential — printed card to leave on the truck)
 
 > Your tech is part of a training program. Their phone is recording the work area to help train newer techs. We do not record inside private rooms or capture identifying information. If you would prefer they stop recording on this visit, just ask — there's no impact on your service.
+
+**Legal floor (locked 2026-05-25):** Before Week 1, the consent card + pilot agreement go to a contracts paralegal for a one-shot template review ($200–500). Goal is not a full lawyer pass — it is a defensible artifact that addresses CA/AZ/NV two-party recording rules and the AI/training-data use clause specifically. If the paralegal flags a state-specific issue, we ship a state-tagged variant of the card.
 
 ---
 
@@ -194,13 +199,16 @@ Things we have to watch and respond to:
 
 ---
 
-## 10. Open questions for Evode
+## 10. Decisions locked (2026-05-25)
 
-- [ ] Which 3 contractors specifically? Names go in §2.
-- [ ] Is the scenario assessment (§5) something we build or buy? 15 scenarios is the work — could draw from `KnowledgeObject` records or commission a senior tech to write them.
-- [ ] Does the consent card (§6) need a lawyer pass before Week 1 or are we OK with it as-is for a pilot?
-- [ ] Is $500/week credible without a signed customer agreement first, or do we lead with "free pilot in exchange for case study"?
-- [ ] Who is the "lead tech" at each shop — the senior being recorded, the GM, or a separate trainer role? Pilot can support any but the answer changes the admin UX rollout.
+- [x] **Scenario sourcing:** Hybrid — Evode drafts 10, commissions 5 from a paid senior tech ($300–500). See §5.
+- [x] **Consent legal floor:** Paid paralegal template review ($200–500) before Week 1, not a full lawyer pass. See §6.
+- [x] **Pricing:** $500/wk paid pilot with refund-if-<30-cards clause. No free-for-case-study variant. See §3 / §7.
+- [x] **Lead tech role (pilot only):** The senior tech being recorded IS the lead tech. Single neck-to-wring. See §3.
+
+### Still open
+
+- [ ] **Which 3 contractors specifically?** Names go in §2. Method: (a) ask the existing electrical crew which HVAC contractors they sub to or refer, (b) DM 5 owners who posted recently in /r/HVAC about training pain, (c) one ACCA-chapter intro in Bay Area / Phoenix. Aim for 5 quality leads → 3 signed.
 
 ---
 
