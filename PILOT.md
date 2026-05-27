@@ -1,6 +1,6 @@
 # ACT Capture — HVAC Pilot Plan
 
-**Status:** draft v1, 2026-05-25
+**Status:** pilot-ready draft v2, 2026-05-27
 **Owner:** Evode Manirahari
 **Wedge:** HVAC residential / light commercial troubleshooting
 **Mode:** ACT Capture (moment capture + expert debrief → reviewed training cards). Not real-time copilot.
@@ -33,15 +33,17 @@ We want **3 paid design partners.** Criteria, in order:
 4. **Owner is hands-on** with training and feels the ramp cost (most do — apprentices are expensive).
 5. **Located in CA / AZ / NV** so service density is high and seasonal cooling load runs through the pilot window.
 
-### Candidate list (to fill in)
+### Candidate list
 
 | # | Company | Contact | Source | Why a fit | Status |
 |---|---|---|---|---|---|
-| 1 | _____________ | _____________ | _____________ | _____________ | not contacted |
-| 2 | _____________ | _____________ | _____________ | _____________ | not contacted |
-| 3 | _____________ | _____________ | _____________ | _____________ | not contacted |
-| 4 | _____________ | _____________ | _____________ | _____________ | reserve |
-| 5 | _____________ | _____________ | _____________ | _____________ | reserve |
+| 1 | Cal State HVAC — Hillsborough / SF Bay Area | Owner / training lead via (650) 342-5556 | [calstatehvac.com](https://www.calstatehvac.com/) | Family-owned; residential + light commercial from SF to San Jose; says techs get comprehensive owner-led training before joining the team. Strongest match to "senior teaches juniors." | priority outreach |
+| 2 | North Breeze HVAC & Refrigeration — Los Gatos / South Bay | Owner / service lead via info@northbreezehvac.com or (408) 581-2241 | [northbreezehvac.com](https://northbreezehvac.com/about/) | Local, licensed C-20 + C-38 shop covering residential, commercial HVAC, and refrigeration. 15 years field background + diagnostic/service breadth make for richer teachable moments than simple changeouts. | priority outreach |
+| 3 | WISE Cooling & Heating — Greater Phoenix | Owner / lead-service-tech hiring contact via careers page | [wisecoolingandheating.com](https://wisecoolingandheating.com/careers/) | Family-owned Phoenix shop; current lead-tech role explicitly includes diagnosing residential/light-commercial systems and mentoring less-experienced techs. This is almost exactly the ACT capture motion. | priority outreach |
+| 4 | Dali Heating and Air Conditioning — Las Vegas | Owner / careers contact via website | [dalicools.com](https://dalicools.com/careers/) | Family-owned Las Vegas HVAC company; hiring HVAC service technicians; states ongoing training, certification support, and advancement opportunities. Good reserve if Phoenix/Bay Area leads stall. | reserve |
+| 5 | We Care Air — Las Vegas | Owner-operator via (702) 272-2348 | [wecareairlv.com](https://www.wecareairlv.com/) | Family-owned / owner-operated; no-commission diagnostic positioning; public examples emphasize finding refrigerant leaks and hands-on troubleshooting. Good fit for tacit-judgment cards. | reserve |
+
+**Verification call rule:** do not count a candidate as a real design partner until the first call confirms (1) at least one senior tech is willing to be recorded, (2) at least two apprentices/new hires can use the cards, (3) residential/light-commercial diagnostic work is a meaningful part of weekly volume, and (4) they are comfortable with the consent workflow.
 
 **How to find them:**
 - HVAC Reddit, /r/HVAC, /r/HVACAdvice — DM owners who post about training pain
@@ -206,9 +208,9 @@ Things we have to watch and respond to:
 - [x] **Pricing:** $500/wk paid pilot with refund-if-<30-cards clause. No free-for-case-study variant. See §3 / §7.
 - [x] **Lead tech role (pilot only):** The senior tech being recorded IS the lead tech. Single neck-to-wring. See §3.
 
-### Still open
+### Final open item locked
 
-- [ ] **Which 3 contractors specifically?** Names go in §2. Method: (a) ask the existing electrical crew which HVAC contractors they sub to or refer, (b) DM 5 owners who posted recently in /r/HVAC about training pain, (c) one ACCA-chapter intro in Bay Area / Phoenix. Aim for 5 quality leads → 3 signed.
+- [x] **Which 3 contractors specifically?** First-pass target list is in §2. Start with Cal State HVAC, North Breeze, and WISE; keep Dali and We Care Air as reserves. Method for Week 1: (a) ask the existing electrical crew which HVAC contractors they sub to or refer, (b) send the 5 DMs/calls above, (c) one ACCA-chapter intro in Bay Area / Phoenix. Aim for 5 quality leads → 3 signed.
 
 ---
 
