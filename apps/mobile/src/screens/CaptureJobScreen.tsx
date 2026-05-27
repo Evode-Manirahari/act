@@ -25,6 +25,7 @@ import {
   useMicrophonePermissions,
 } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { colors } from '../theme/colors';
 import MarkButton, { MarkType } from '../components/MarkButton';
@@ -32,15 +33,16 @@ import UploadStatusPill, { UploadStatus } from '../components/UploadStatusPill';
 import {
   createRecording,
   getRecording,
-  RecordingOut,
-  RecordingStatus,
 } from '../api/captureApi';
-import { captureQueue, QueueItem } from '../lib/offlineUploadQueue';
-import { createDemoSession, DemoSession } from '../api/actApi';
-import type { RootStackParamList } from '../navigation/RootNavigator';
+import type { ConsentState, RecordingOut, RecordingStatus } from '../api/captureApi';
+import { captureQueue } from '../lib/offlineUploadQueue';
+import type { QueueItem } from '../lib/offlineUploadQueue';
+import { createDemoSession } from '../api/actApi';
+import type { DemoSession } from '../api/actApi';
+import type { PilotStackParamList } from '../navigation/PilotNavigator';
 
 
-type NavProp = NativeStackNavigationProp<RootStackParamList>;
+type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 
 interface LocalMark {
   id: string;
@@ -49,12 +51,44 @@ interface LocalMark {
   note?: string;
 }
 
+const CONSENT_OPTIONS: Array<{
+  value: ConsentState;
+  label: string;
+  detail: string;
+  blocksRecording?: boolean;
+}> = [
+  {
+    value: 'internal_training',
+    label: 'Internal',
+    detail: 'shop training',
+  },
+  {
+    value: 'company_only',
+    label: 'Company',
+    detail: 'private library',
+  },
+  {
+    value: 'public_with_review',
+    label: 'Reviewed',
+    detail: 'approved sharing',
+  },
+  {
+    value: 'do_not_share',
+    label: 'No record',
+    detail: 'customer opted out',
+    blocksRecording: true,
+  },
+];
+
+const LAST_RECORDING_KEY = 'act_capture_last_recording_id';
+
 export default function CaptureJobScreen() {
   const navigation = useNavigation<NavProp>();
   const [camPerm, requestCamPerm] = useCameraPermissions();
   const [micPerm, requestMicPerm] = useMicrophonePermissions();
   const cameraRef = useRef<CameraView>(null);
   const recordingStartRef = useRef<number>(0);
+  const marksRef = useRef<LocalMark[]>([]);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollAbortRef = useRef<{ aborted: boolean } | null>(null);
 
@@ -65,6 +99,8 @@ export default function CaptureJobScreen() {
   const [marks, setMarks] = useState<LocalMark[]>([]);
   const [status, setStatus] = useState<UploadStatus>({ kind: 'idle' });
   const [pending, setPending] = useState<QueueItem[]>([]);
+  const [consentState, setConsentState] = useState<ConsentState>('internal_training');
+  const [lastRecordingId, setLastRecordingId] = useState<string | null>(null);
 
   // Bootstrap a demo session on mount so the screen can create recordings.
   // In a real pilot, user + job come from the auth/dispatch flow upstream.
@@ -83,6 +119,16 @@ export default function CaptureJobScreen() {
         }
       }
     })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void AsyncStorage.getItem(LAST_RECORDING_KEY).then((id) => {
+      if (!cancelled && id) setLastRecordingId(id);
+    });
     return () => {
       cancelled = true;
     };
@@ -112,6 +158,10 @@ export default function CaptureJobScreen() {
     };
   }, [isRecording]);
 
+  useEffect(() => {
+    marksRef.current = marks;
+  }, [marks]);
+
   const ensurePermissions = useCallback(async (): Promise<boolean> => {
     const cam = camPerm?.granted ? camPerm : await requestCamPerm();
     if (!cam?.granted) {
@@ -131,6 +181,10 @@ export default function CaptureJobScreen() {
 
   async function handleStart() {
     if (!session) return;
+    if (consentState === 'do_not_share') {
+      Alert.alert('Recording blocked', 'Customer opted out. Do not start capture for this visit.');
+      return;
+    }
     const ok = await ensurePermissions();
     if (!ok) return;
 
@@ -141,10 +195,13 @@ export default function CaptureJobScreen() {
         userId: session.user_id,
         contentType: 'video/mp4',
         trade: 'hvac',
-        consentState: 'internal_training',
+        consentState,
         deviceMeta: { camera: 'phone_chest_or_handheld' },
       });
       setRecording(created.recording);
+      setLastRecordingId(created.recording.id);
+      void AsyncStorage.setItem(LAST_RECORDING_KEY, created.recording.id);
+      marksRef.current = [];
       setMarks([]);
       setElapsedSeconds(0);
       recordingStartRef.current = Date.now();
@@ -154,6 +211,8 @@ export default function CaptureJobScreen() {
       const result = await cameraRef.current?.recordAsync({ maxDuration: 1800 });
       if (result?.uri) {
         await enqueueUpload(created.recording, result.uri, created.upload_url);
+      } else {
+        setStatus({ kind: 'failed', reason: 'recording did not save video' });
       }
     } catch (err) {
       setIsRecording(false);
@@ -175,7 +234,7 @@ export default function CaptureJobScreen() {
     fileUri: string,
     uploadUrl: string | null,
   ) {
-    setStatus({ kind: 'saved_local', marks: marks.length });
+    setStatus({ kind: 'saved_local', marks: marksRef.current.length });
     const duration = (Date.now() - recordingStartRef.current) / 1000;
 
     await captureQueue.enqueueUpload({
@@ -253,7 +312,11 @@ export default function CaptureJobScreen() {
       timestampSeconds: timestamp,
       markType: kind,
     };
-    setMarks((prev) => [...prev, local]);
+    setMarks((prev) => {
+      const next = [...prev, local];
+      marksRef.current = next;
+      return next;
+    });
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     await captureQueue.enqueueMark({
       recordingId: recording.id,
@@ -264,17 +327,39 @@ export default function CaptureJobScreen() {
     void captureQueue.flush();
   }
 
-  const canRecord = !!session && !!camPerm?.granted;
+  const canRecord = !!session && !!camPerm?.granted && consentState !== 'do_not_share';
   const headerLabel = session ? `Job ${session.job_id.slice(0, 8)}` : 'Starting session…';
+  const reviewRecordingId = recording?.id ?? lastRecordingId;
+  const canReviewCurrent = status.kind === 'ready' && !!recording?.id;
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
-          <Text style={styles.headerBack}>‹ Back</Text>
+        <Pressable
+          onPress={() =>
+            navigation.canGoBack()
+              ? navigation.goBack()
+              : navigation.navigate('PilotHome')
+          }
+          hitSlop={12}
+        >
+          <Text style={styles.headerBack}>
+            {navigation.canGoBack() ? '‹ Back' : 'Pilot'}
+          </Text>
         </Pressable>
         <Text style={styles.headerTitle}>ACT Capture</Text>
-        <View style={{ width: 60 }} />
+        <Pressable
+          disabled={!reviewRecordingId}
+          onPress={() =>
+            reviewRecordingId &&
+            navigation.navigate('PilotReview', { recordingId: reviewRecordingId })
+          }
+          hitSlop={12}
+        >
+          <Text style={[styles.headerAction, !reviewRecordingId && styles.headerActionDisabled]}>
+            Review
+          </Text>
+        </Pressable>
       </View>
 
       <View style={styles.subHeader}>
@@ -290,73 +375,133 @@ export default function CaptureJobScreen() {
         />
       </View>
 
-      <View style={styles.cameraWrap}>
-        {camPerm?.granted ? (
-          <CameraView
-            ref={cameraRef}
-            style={styles.camera}
-            mode="video"
-            facing="back"
-            videoQuality="720p"
-          />
-        ) : (
-          <View style={styles.cameraPlaceholder}>
-            <Text style={styles.placeholderText}>Camera permission required</Text>
-            <Pressable style={styles.permButton} onPress={ensurePermissions}>
-              <Text style={styles.permButtonText}>Grant access</Text>
-            </Pressable>
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.consentPanel}>
+          <Text style={styles.consentTitle}>Consent</Text>
+          <View style={styles.consentGrid}>
+            {CONSENT_OPTIONS.map((option) => {
+              const selected = consentState === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  style={({ pressed }) => [
+                    styles.consentOption,
+                    selected && styles.consentOptionSelected,
+                    option.blocksRecording && selected && styles.consentOptionBlocked,
+                    pressed && styles.consentOptionPressed,
+                  ]}
+                  onPress={() => setConsentState(option.value)}
+                >
+                  <Text
+                    style={[
+                      styles.consentOptionLabel,
+                      selected && styles.consentOptionLabelSelected,
+                      option.blocksRecording && selected && styles.consentOptionLabelBlocked,
+                    ]}
+                  >
+                    {option.label}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.consentOptionDetail,
+                      selected && styles.consentOptionDetailSelected,
+                      option.blocksRecording && selected && styles.consentOptionDetailBlocked,
+                    ]}
+                  >
+                    {option.detail}
+                  </Text>
+                </Pressable>
+              );
+            })}
           </View>
-        )}
-      </View>
-
-      <View style={styles.controls}>
-        <View style={styles.markRow}>
-          <MarkButton disabled={!isRecording} onMark={handleMark} />
         </View>
 
-        <View style={styles.bottomRow}>
-          {isRecording ? (
-            <Pressable style={[styles.recordBtn, styles.stopBtn]} onPress={handleStop}>
-              <Text style={styles.recordBtnText}>Stop</Text>
-            </Pressable>
+        <View style={styles.cameraWrap}>
+          {camPerm?.granted ? (
+            <CameraView
+              ref={cameraRef}
+              style={styles.camera}
+              mode="video"
+              facing="back"
+              videoQuality="720p"
+            />
           ) : (
-            <Pressable
-              style={[styles.recordBtn, !canRecord && styles.disabledBtn]}
-              disabled={!canRecord}
-              onPress={handleStart}
-            >
-              {session ? (
-                <Text style={styles.recordBtnText}>Start recording</Text>
-              ) : (
-                <ActivityIndicator color="#fff" />
-              )}
-            </Pressable>
+            <View style={styles.cameraPlaceholder}>
+              <Text style={styles.placeholderText}>Camera permission required</Text>
+              <Pressable style={styles.permButton} onPress={ensurePermissions}>
+                <Text style={styles.permButtonText}>Grant access</Text>
+              </Pressable>
+            </View>
           )}
         </View>
 
-        <View style={styles.marksList}>
-          <Text style={styles.marksHeader}>
-            Marks this session ({marks.length})
-          </Text>
-          <ScrollView style={styles.marksScroll}>
-            {marks.length === 0 ? (
-              <Text style={styles.marksEmpty}>
-                Tap the big button when something matters. Long-press to change what kind of moment it is.
-              </Text>
+        <View style={styles.controls}>
+          <View style={styles.markRow}>
+            <MarkButton disabled={!isRecording} onMark={handleMark} />
+          </View>
+
+          <View style={styles.bottomRow}>
+            {isRecording ? (
+              <Pressable style={[styles.recordBtn, styles.stopBtn]} onPress={handleStop}>
+                <Text style={styles.recordBtnText}>Stop</Text>
+              </Pressable>
             ) : (
-              marks
-                .slice()
-                .reverse()
-                .map((m) => (
-                  <View key={m.id} style={styles.markRowItem}>
-                    <Text style={styles.markTime}>{formatTimestamp(m.timestampSeconds)}</Text>
-                    <Text style={styles.markKind}>{m.markType}</Text>
-                  </View>
-                ))
+              <Pressable
+                style={[styles.recordBtn, !canRecord && styles.disabledBtn]}
+                disabled={!canRecord}
+                onPress={handleStart}
+              >
+                {consentState === 'do_not_share' ? (
+                  <Text style={styles.recordBtnText}>Recording blocked</Text>
+                ) : session ? (
+                  <Text style={styles.recordBtnText}>Start recording</Text>
+                ) : (
+                  <ActivityIndicator color="#fff" />
+                )}
+              </Pressable>
             )}
-          </ScrollView>
+          </View>
+
+          {canReviewCurrent && (
+            <Pressable
+              style={({ pressed }) => [styles.reviewReadyButton, pressed && styles.pressed]}
+              onPress={() =>
+                navigation.navigate('PilotReview', { recordingId: recording.id })
+              }
+            >
+              <Text style={styles.reviewReadyTitle}>Open review</Text>
+              <Text style={styles.reviewReadyDetail}>Approve or reject proposed moments</Text>
+            </Pressable>
+          )}
+
+          <View style={styles.marksList}>
+            <Text style={styles.marksHeader}>
+              Marks this session ({marks.length})
+            </Text>
+            <ScrollView style={styles.marksScroll} nestedScrollEnabled>
+              {marks.length === 0 ? (
+                <Text style={styles.marksEmpty}>
+                  Tap the big button when something matters. Long-press to change what kind of moment it is.
+                </Text>
+              ) : (
+                marks
+                  .slice()
+                  .reverse()
+                  .map((m) => (
+                    <View key={m.id} style={styles.markRowItem}>
+                      <Text style={styles.markTime}>{formatTimestamp(m.timestampSeconds)}</Text>
+                      <Text style={styles.markKind}>{m.markType}</Text>
+                    </View>
+                  ))
+              )}
+            </ScrollView>
+          </View>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -388,6 +533,16 @@ const styles = StyleSheet.create({
   },
   headerBack: { fontSize: 16, color: colors.primary, fontWeight: '700' },
   headerTitle: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: 1 },
+  headerAction: {
+    minWidth: 60,
+    textAlign: 'right',
+    fontSize: 16,
+    color: colors.primary,
+    fontWeight: '800',
+  },
+  headerActionDisabled: {
+    color: colors.textLight,
+  },
   subHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -397,8 +552,79 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   subHeaderText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  body: {
+    flex: 1,
+  },
+  bodyContent: {
+    paddingBottom: 20,
+  },
+  consentPanel: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: 12,
+    gap: 10,
+  },
+  consentTitle: {
+    color: colors.text,
+    fontSize: 12,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  consentGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  consentOption: {
+    width: '48%',
+    minHeight: 58,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+    justifyContent: 'center',
+  },
+  consentOptionSelected: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  consentOptionBlocked: {
+    borderColor: colors.error,
+    backgroundColor: '#FEE2E2',
+  },
+  consentOptionPressed: {
+    opacity: 0.72,
+  },
+  consentOptionLabel: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  consentOptionLabelSelected: {
+    color: colors.primary,
+  },
+  consentOptionLabelBlocked: {
+    color: colors.error,
+  },
+  consentOptionDetail: {
+    color: colors.textMuted,
+    fontSize: 11,
+    marginTop: 3,
+  },
+  consentOptionDetailSelected: {
+    color: colors.text,
+  },
+  consentOptionDetailBlocked: {
+    color: colors.error,
+  },
   cameraWrap: {
-    height: 280,
+    height: 230,
     margin: 16,
     borderRadius: 16,
     overflow: 'hidden',
@@ -421,7 +647,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   permButtonText: { color: '#fff', fontWeight: '700' },
-  controls: { flex: 1, paddingHorizontal: 16, gap: 16 },
+  controls: { paddingHorizontal: 16, gap: 14 },
   markRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
   bottomRow: { alignItems: 'center' },
   recordBtn: {
@@ -435,14 +661,37 @@ const styles = StyleSheet.create({
   stopBtn: { backgroundColor: colors.error },
   disabledBtn: { opacity: 0.5 },
   recordBtnText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
+  pressed: {
+    opacity: 0.76,
+  },
+  reviewReadyButton: {
+    minHeight: 62,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.success,
+    backgroundColor: colors.successLight,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    justifyContent: 'center',
+  },
+  reviewReadyTitle: {
+    color: '#065F46',
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  reviewReadyDetail: {
+    color: '#047857',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 3,
+  },
   marksList: {
-    flex: 1,
+    minHeight: 132,
     backgroundColor: colors.surface,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 12,
-    marginBottom: 16,
   },
   marksHeader: {
     fontSize: 11,
@@ -452,7 +701,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     marginBottom: 8,
   },
-  marksScroll: { flex: 1 },
+  marksScroll: { maxHeight: 190 },
   marksEmpty: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
   markRowItem: {
     flexDirection: 'row',

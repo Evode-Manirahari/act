@@ -85,6 +85,23 @@ export interface CompleteRecordingInput {
   endedAt?: string;
 }
 
+export interface MomentOut {
+  id: string;
+  recording_id: string;
+  start_s: number;
+  end_s: number;
+  moment_type: string;
+  score: number;
+  do_not_interrupt: boolean;
+  evidence_json: Record<string, unknown> | string;
+  why_it_matters: string | null;
+  status: 'proposed' | 'approved' | 'rejected' | 'needs_more_info' | string;
+  reviewer_id: string | null;
+  reviewed_at: string | null;
+  review_note: string | null;
+  created_at: string;
+}
+
 
 async function jsonFetch<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -165,6 +182,35 @@ export async function getRecording(recordingId: string): Promise<{
   marks: MarkOut[];
 }> {
   return jsonFetch(`/recordings/${recordingId}`, { method: 'GET' });
+}
+
+export async function listRecordingMoments(input: {
+  recordingId: string;
+  status?: string;
+}): Promise<MomentOut[]> {
+  const params = new URLSearchParams();
+  if (input.status) params.set('status', input.status);
+  const suffix = params.toString() ? `?${params}` : '';
+  return jsonFetch<MomentOut[]>(
+    `/recordings/${input.recordingId}/moments${suffix}`,
+    { method: 'GET' },
+  );
+}
+
+export async function reviewMoment(input: {
+  momentId: string;
+  status: 'approved' | 'rejected' | 'needs_more_info' | 'proposed';
+  reviewerId?: string;
+  reviewNote?: string;
+}): Promise<MomentOut> {
+  return jsonFetch<MomentOut>(`/moments/${input.momentId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      status: input.status,
+      reviewer_id: input.reviewerId ?? null,
+      review_note: input.reviewNote ?? null,
+    }),
+  });
 }
 
 

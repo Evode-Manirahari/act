@@ -124,5 +124,5 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
-  text: { fontSize: 12, fontWeight: '700' },
+  text: { fontSize: 12, fontWeight: '700', flexShrink: 1, maxWidth: 220 },
 });
