@@ -34,9 +34,12 @@ The earlier electrician customer-discovery work is preserved as input but is not
 This repo (`act/`) contains the mobile client only. The backend lives in a sibling repo.
 
 - `apps/mobile` — React Native Expo app
+  - `App.tsx` — pilot shell entrypoint, currently launching straight into Capture
   - `src/screens/CaptureJobScreen.tsx` — heart of ACT Capture: record, mark teachable moments, upload with retry
+  - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
+  - `src/screens/PilotHomeScreen.tsx` — secondary pilot menu for Capture, Learn, and legacy diagnosis
   - `src/screens/LearnScreen.tsx` — apprentice-facing learning surface
-  - `src/screens/AskActScreen.tsx` — legacy photo → question → Claude diagnosis slice (still wired as the app entry point on `main`)
+  - `src/screens/AskActScreen.tsx` — legacy photo → question → Claude diagnosis slice, now demoted behind the pilot shell
   - Legacy screens (Boot / Onboarding / Paywall / Home / Profile / Project / History) retained pending Capture flow finalization
 - `packages/act-prompts` — shared prompt scaffolding used by mobile
 - `packages/shared-types` — shared TypeScript types
@@ -83,9 +86,12 @@ Legacy copilot surface (still present, not the focus):
 
 The mobile app has been progressively rewiring from the pre-pivot consumer-DIY product to the Capture flow. As of the latest `capture-mvp` work:
 - `CaptureJobScreen` records, drops marks, queues uploads with retry/resume
+- `App.tsx` now launches straight into Capture through the HVAC pilot shell
+- `CaptureJobScreen` includes a consent selector before recording; `do_not_share` blocks capture
+- `PilotReviewScreen` lets the pilot reviewer approve/reject proposed moments for the latest recording
 - `LearnScreen` is the apprentice-facing surface
 - Status polling + auto-process closes the loop after upload
-- App entry point on `main` still renders `AskActScreen` (legacy diagnosis slice); on `capture-mvp` the entry point will switch as the Capture flow stabilizes
+- `AskActScreen` is still reachable for legacy diagnosis, but it is no longer the app entry point on `capture-mvp`
 
 The mobile API client (`apps/mobile/src/api/actApi.ts`) talks to the deployed FastAPI service at `https://act-api-evode.fly.dev`.
 
