@@ -15,7 +15,7 @@ const targetStats = [
   { label: 'reviewed cards', value: '50' },
 ];
 
-const workflow = ['Record', 'Mark', 'Review', 'Publish'];
+const workflow = ['Record', 'Mark', 'Review', 'Teach', 'Measure'];
 
 export default function PilotHomeScreen() {
   const navigation = useNavigation<NavProp>();
@@ -46,6 +46,11 @@ export default function PilotHomeScreen() {
             label="Apprentice training"
             detail="Open reviewed cards and quick checks"
             onPress={() => navigation.navigate('Learn')}
+          />
+          <ActionButton
+            label="Measure outcome"
+            detail="Log first-time fix, callback, and apprentice progress"
+            onPress={() => navigation.navigate('PilotOutcome', undefined)}
           />
         </View>
 
@@ -220,7 +225,7 @@ const styles = StyleSheet.create({
   },
   workflowStep: {
     alignItems: 'center',
-    minWidth: 58,
+    minWidth: 50,
   },
   workflowNumber: {
     width: 28,
@@ -235,7 +240,7 @@ const styles = StyleSheet.create({
   },
   workflowLabel: {
     color: colors.text,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
   },
   workflowLine: {

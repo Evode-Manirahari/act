@@ -1,6 +1,7 @@
 import {
   compileMoment,
   generateMomentQuestion,
+  logTrainingEvent,
   publishKnowledgeObject,
   submitExpertAnswer,
 } from '../libraryApi';
@@ -75,6 +76,31 @@ describe('library publishing API', () => {
       expect.stringContaining('/knowledge-objects/ko-1/publish'),
       expect.objectContaining({ method: 'POST' }),
     );
+  });
+
+  it('logs apprentice completion events', async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse({ id: 'event-1' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await logTrainingEvent({
+      knowledgeObjectId: 'ko-1',
+      userId: 'user-1',
+      eventType: 'completed',
+      score: 1,
+      note: 'Completed after quiz: correct',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/training-events'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({
+      knowledge_object_id: 'ko-1',
+      user_id: 'user-1',
+      event_type: 'completed',
+      score: 1,
+      note: 'Completed after quiz: correct',
+    });
   });
 });
 

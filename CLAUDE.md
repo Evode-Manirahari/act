@@ -89,7 +89,8 @@ The mobile app has been progressively rewiring from the pre-pivot consumer-DIY p
 - `App.tsx` now launches into the HVAC training-capture shell
 - `CaptureJobScreen` includes a consent selector before recording; `do_not_share` blocks capture
 - `PilotReviewScreen` lets the pilot reviewer approve/reject proposed moments for the latest recording
-- `LearnScreen` is the apprentice-facing surface and includes a seeded HVAC training card so demos can show the published-card output before live cards exist
+- `LearnScreen` is the apprentice-facing surface and includes a seeded HVAC training card, quiz-event logging, and completion logging so demos can show the published-card output before live cards exist
+- `PilotOutcomeScreen` logs final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, and apprentice progress against `/jobs/{job_id}/outcomes`
 - Status polling + auto-process closes the loop after upload
 - `AskActScreen` remains in source for legacy diagnosis, but it is no longer part of the pilot shell on `capture-mvp`
 

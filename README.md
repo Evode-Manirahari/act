@@ -53,8 +53,8 @@ Earlier electrician customer-discovery work is preserved as input but is not the
 | Safe post-job review | Implemented as `PilotReviewScreen`; current mobile copy focuses on review/publish after capture. |
 | Structured training cards | Implemented in `LearnScreen` and mobile API calls for compile/publish. |
 | Expert approval | Implemented as mobile review actions before publish. |
-| Apprentice library + quiz | Implemented with live library search plus seeded HVAC demo card and quiz. |
-| Outcome tracking | Backend model exists in `act-api`; mobile UX is not built yet. |
+| Apprentice library + quiz | Implemented with live library search, seeded HVAC demo card, quiz events, and completion tracking. |
+| Outcome tracking | Implemented in `PilotOutcomeScreen`: final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, apprentice-progress note, and one-row-per-job outcome upsert. |
 | Fully automatic moment detection | Not a day-one requirement; backend proposed moments are supported, but human marks remain the MVP control. |
 
 ## Repo layout
@@ -67,6 +67,7 @@ This repo contains the **mobile client only**. The backend lives in a sibling re
   - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
   - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
   - `src/screens/LearnScreen.tsx` — apprentice-facing published-card library with a seeded HVAC demo card
+  - `src/screens/PilotOutcomeScreen.tsx` — manager-facing outcome capture for callback signal, diagnosis time, and apprentice progress
   - `src/screens/AskActScreen.tsx` — earlier photo → question → Claude diagnosis slice; kept in source but outside the pilot shell
   - `src/api/actApi.ts` — talks to the deployed backend
 - `packages/act-prompts` — shared prompt scaffolding
@@ -96,7 +97,7 @@ Then on your phone:
 2. Make sure phone and Mac are on the **same WiFi**
 3. Scan the QR code in the terminal, or paste `exp://<lan-ip>:8081` via "Enter URL manually"
 
-On `capture-mvp`, the app launches into the HVAC training-capture shell: Record senior tech → Review moments → Apprentice training. `AskActScreen` (single photo → question → streamed Claude answer) remains in source as legacy code, but it is not part of the pilot shell. The legacy multi-screen flow (Boot / Onboarding / Paywall / Home / Project) is preserved in source but is no longer the app entry point.
+On `capture-mvp`, the app launches into the HVAC training-capture shell: Record senior tech → Review moments → Apprentice training → Measure outcome. `AskActScreen` (single photo → question → streamed Claude answer) remains in source as legacy code, but it is not part of the pilot shell. The legacy multi-screen flow (Boot / Onboarding / Paywall / Home / Project) is preserved in source but is no longer the app entry point.
 
 ## Backend (sibling repo)
 

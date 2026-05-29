@@ -236,6 +236,9 @@ function CardDetail({
 }) {
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [completed, setCompleted] = useState(false);
+  const [completionSaving, setCompletionSaving] = useState(false);
+  const [completionError, setCompletionError] = useState<string | null>(null);
 
   const quiz = card.quiz_json;
   const isCorrect = useMemo(
@@ -261,6 +264,30 @@ function CardDetail({
         eventType: isCorrect ? 'quiz_correct' : 'quiz_wrong',
         score: isCorrect ? 1.0 : 0.0,
       });
+    }
+  }
+
+  async function markComplete() {
+    if (completed || completionSaving) return;
+    setCompletionSaving(true);
+    setCompletionError(null);
+    try {
+      if (userId && !card.demo) {
+        await logTrainingEvent({
+          knowledgeObjectId: card.id,
+          userId,
+          eventType: 'completed',
+          score: submitted && isCorrect ? 1.0 : undefined,
+          note: submitted
+            ? `Completed after quiz: ${isCorrect ? 'correct' : 'wrong'}`
+            : 'Completed without quiz',
+        });
+      }
+      setCompleted(true);
+    } catch (err) {
+      setCompletionError(err instanceof Error ? err.message : 'completion save failed');
+    } finally {
+      setCompletionSaving(false);
     }
   }
 
@@ -359,6 +386,41 @@ function CardDetail({
                       {isCorrect ? 'Right.' : `Not quite. ${quiz.answer}.`}
                     </Text>
                   </View>
+                )}
+              </View>
+            )}
+
+            {(!quiz || submitted) && (
+              <View style={styles.completeCard}>
+                <Text style={styles.completeLabel}>Progress</Text>
+                <Text style={styles.completeBody}>
+                  Mark this card complete when the apprentice has reviewed the decision trace.
+                </Text>
+                <Pressable
+                  disabled={completed || completionSaving}
+                  style={({ pressed }) => [
+                    styles.completeButton,
+                    completed && styles.completeButtonDone,
+                    (completed || completionSaving) && styles.submitDisabled,
+                    pressed && styles.cardPressed,
+                  ]}
+                  onPress={() => void markComplete()}
+                >
+                  <Text
+                    style={[
+                      styles.completeButtonText,
+                      completed && styles.completeButtonDoneText,
+                    ]}
+                  >
+                    {completed
+                      ? 'Training complete'
+                      : completionSaving
+                        ? 'Saving'
+                        : 'Mark complete'}
+                  </Text>
+                </Pressable>
+                {completionError && (
+                  <Text style={styles.completeErrorText}>{completionError}</Text>
                 )}
               </View>
             )}
@@ -559,4 +621,48 @@ const styles = StyleSheet.create({
   resultRight: { backgroundColor: colors.successLight },
   resultWrong: { backgroundColor: '#FEE2E2' },
   resultText: { fontSize: 14, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  completeCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 9,
+  },
+  completeLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.success,
+    textTransform: 'uppercase',
+  },
+  completeBody: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  completeButton: {
+    minHeight: 44,
+    borderRadius: 8,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completeButtonDone: {
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success,
+  },
+  completeButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  completeButtonDoneText: {
+    color: '#065F46',
+  },
+  completeErrorText: {
+    color: colors.error,
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });
