@@ -39,8 +39,18 @@ interface Turn {
   audioUrl?: string;
 }
 
+interface DraftPhoto {
+  uri: string;
+  file?: Blob;
+}
+
 function newId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+function toDraftPhoto(asset: ImagePicker.ImagePickerAsset): DraftPhoto {
+  const file = 'file' in asset && asset.file instanceof Blob ? asset.file : undefined;
+  return { uri: asset.uri, file };
 }
 
 const SEVERITY_COLOR: Record<Hazard['severity'], string> = {
@@ -58,7 +68,7 @@ const SEVERITY_LABEL: Record<Hazard['severity'], string> = {
 export default function AskActScreen() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [draftPhotoUri, setDraftPhotoUri] = useState<string | null>(null);
+  const [draftPhoto, setDraftPhoto] = useState<DraftPhoto | null>(null);
   const [draftQuestion, setDraftQuestion] = useState('');
   const [useTyping, setUseTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -87,7 +97,7 @@ export default function AskActScreen() {
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (result.canceled) return;
-    setDraftPhotoUri(result.assets[0].uri);
+    setDraftPhoto(toDraftPhoto(result.assets[0]));
   }
 
   async function ensureSession(): Promise<string> {
@@ -159,13 +169,13 @@ export default function AskActScreen() {
       Alert.alert('No audio captured', 'Try again — make sure you spoke before tapping send.');
       return;
     }
-    if (!draftPhotoUri) {
+    if (!draftPhoto) {
       Alert.alert('No photo', 'Take a photo first, then record.');
       return;
     }
 
-    sendTurn({ photoUri: draftPhotoUri, audioUri: uri });
-    setDraftPhotoUri(null);
+    sendTurn({ photo: draftPhoto, audioUri: uri });
+    setDraftPhoto(null);
   }
 
   async function cancelRecording() {
@@ -185,19 +195,19 @@ export default function AskActScreen() {
   }
 
   function handleAskTyped() {
-    if (!draftPhotoUri || !draftQuestion.trim() || streaming) return;
-    const photoUri = draftPhotoUri;
+    if (!draftPhoto || !draftQuestion.trim() || streaming) return;
+    const photo = draftPhoto;
     const question = draftQuestion.trim();
-    setDraftPhotoUri(null);
+    setDraftPhoto(null);
     setDraftQuestion('');
-    sendTurn({ photoUri, question });
+    sendTurn({ photo, question });
   }
 
-  function sendTurn(args: { photoUri: string; question?: string; audioUri?: string }) {
+  function sendTurn(args: { photo: DraftPhoto; question?: string; audioUri?: string }) {
     const id = newId();
     const turn: Turn = {
       id,
-      photoUri: args.photoUri,
+      photoUri: args.photo.uri,
       question: args.question ?? '🎤 (recording…)',
       answer: '',
       status: 'streaming',
@@ -221,7 +231,12 @@ export default function AskActScreen() {
 
       handleRef.current = streamJobTurn(
         activeJobId,
-        { photoUri: args.photoUri, question: args.question, audioUri: args.audioUri },
+        {
+          photoUri: args.photo.uri,
+          photoFile: args.photo.file,
+          question: args.question,
+          audioUri: args.audioUri,
+        },
         {
           onTranscript: (text) =>
             setTurns((prev) => prev.map((t) => (t.id === id ? { ...t, question: text } : t))),
@@ -267,7 +282,7 @@ export default function AskActScreen() {
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.7 });
     if (result.canceled) return;
-    setDraftPhotoUri(result.assets[0].uri);
+    setDraftPhoto(toDraftPhoto(result.assets[0]));
     setDraftQuestion(`Follow-up: ${hint}`);
     setUseTyping(true);
   }
@@ -279,7 +294,7 @@ export default function AskActScreen() {
     playbackRef.current = null;
     setTurns([]);
     setJobId(null);
-    setDraftPhotoUri(null);
+    setDraftPhoto(null);
     setDraftQuestion('');
     setUseTyping(false);
   }
@@ -304,7 +319,7 @@ export default function AskActScreen() {
 
         {!composerHidden && (
           <View style={styles.composer}>
-            {!draftPhotoUri ? (
+            {!draftPhoto ? (
               <TouchableOpacity style={styles.captureBtn} onPress={takePhoto} activeOpacity={0.85}>
                 <Text style={styles.captureBtnIcon}>📷</Text>
                 <Text style={styles.captureBtnText}>
@@ -313,7 +328,7 @@ export default function AskActScreen() {
               </TouchableOpacity>
             ) : (
               <>
-                <Image source={{ uri: draftPhotoUri }} style={styles.preview} />
+                <Image source={{ uri: draftPhoto.uri }} style={styles.preview} />
                 <TouchableOpacity style={styles.linkBtn} onPress={takePhoto} disabled={isRecording}>
                   <Text style={[styles.linkText, isRecording && styles.linkTextDisabled]}>Retake</Text>
                 </TouchableOpacity>

@@ -1,4 +1,6 @@
-export { ACT_SYSTEM_PROMPT } from './system';
+// Retired pre-pivot consumer-DIY prompt. Exported for history only — not used
+// by any live surface. See the deprecation note in ./system.
+export { LEGACY_DIY_SYSTEM_PROMPT } from './system';
 export { ACT_ELECTRICAL_SYSTEM_PROMPT } from './electrical';
 export { ACT_HVAC_SYSTEM_PROMPT } from './hvac';
 

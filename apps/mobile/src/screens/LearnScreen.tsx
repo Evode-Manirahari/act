@@ -16,7 +16,8 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 
 import { colors } from '../theme/colors';
 import {
@@ -25,13 +26,52 @@ import {
   searchLibrary,
 } from '../api/libraryApi';
 import { createDemoSession, DemoSession } from '../api/actApi';
+import type { PilotStackParamList } from '../navigation/PilotNavigator';
+
+type TrainingCard = KnowledgeObject & { demo?: boolean };
+type LearnRoute = RouteProp<PilotStackParamList, 'Learn'>;
+
+const SEEDED_HVAC_CARDS: TrainingCard[] = [
+  {
+    id: 'demo-restricted-airflow-before-charge',
+    moment_id: 'demo-moment-restricted-airflow',
+    title: 'Frost on suction line: check airflow before charge',
+    trade: 'hvac',
+    situation:
+      'No-cool call. The suction line is frosting and the apprentice wants to add refrigerant immediately.',
+    observable_cue:
+      'The senior tech notices weak return airflow and a clogged filter before reaching for gauges.',
+    expert_reasoning:
+      'Restricted airflow can make the coil too cold and mimic low charge. Charging first can hide the real fault and create a callback.',
+    decision:
+      'Verify airflow, filter condition, blower operation, and coil cleanliness before diagnosing refrigerant charge.',
+    novice_trap:
+      'Seeing frost and assuming low refrigerant without checking airflow first.',
+    safety_boundary:
+      'Do not keep running the system with a freezing coil; water damage and compressor stress can follow.',
+    verification:
+      'After airflow is restored, recheck suction line condition, temperature split, superheat, and subcooling.',
+    quiz_json: {
+      question: 'What should the apprentice check before adding refrigerant?',
+      choices: ['Airflow and filter restriction', 'Thermostat brand', 'Outdoor paint color'],
+      answer: 'Airflow and filter restriction',
+    },
+    tags_json: ['no-cool', 'airflow', 'novice-trap'],
+    status: 'published',
+    created_by: 'demo',
+    published_at: '2026-05-28T00:00:00.000Z',
+    created_at: '2026-05-28T00:00:00.000Z',
+    demo: true,
+  },
+];
 
 
 export default function LearnScreen() {
+  const route = useRoute<LearnRoute>();
   const [session, setSession] = useState<DemoSession | null>(null);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<KnowledgeObject[]>([]);
-  const [selected, setSelected] = useState<KnowledgeObject | null>(null);
+  const [selected, setSelected] = useState<TrainingCard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,6 +113,21 @@ export default function LearnScreen() {
     }, [refresh]),
   );
 
+  const cards: TrainingCard[] = results.length > 0 ? results : SEEDED_HVAC_CARDS;
+  const showingDemoCards = !loading && results.length === 0;
+
+  useEffect(() => {
+    if (route.params?.card) {
+      setSelected(route.params.card);
+    }
+  }, [route.params?.card?.id]);
+
+  useEffect(() => {
+    if (route.params?.card || !route.params?.cardId) return;
+    const match = cards.find((card) => card.id === route.params?.cardId);
+    if (match) setSelected(match);
+  }, [cards, route.params?.card, route.params?.cardId]);
+
   if (selected) {
     return (
       <CardDetail
@@ -86,9 +141,9 @@ export default function LearnScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Learn</Text>
+        <Text style={styles.headerTitle}>Apprentice Training</Text>
         <Text style={styles.headerSub}>
-          Reviewed lessons from the master techs.
+          Reviewed cards from senior-tech captures.
         </Text>
       </View>
 
@@ -97,7 +152,7 @@ export default function LearnScreen() {
           style={styles.searchInput}
           value={query}
           onChangeText={setQuery}
-          placeholder="search by symptom, equipment, or hazard"
+          placeholder="Search symptom, equipment, hazard"
           placeholderTextColor={colors.textLight}
           returnKeyType="search"
           onSubmitEditing={refresh}
@@ -110,25 +165,26 @@ export default function LearnScreen() {
         </View>
       )}
 
-      {loading ? (
-        <ActivityIndicator style={styles.loading} color={colors.primary} />
-      ) : results.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>No published lessons yet</Text>
-          <Text style={styles.emptyBody}>
-            Once a trainer approves a moment, drafts a question, captures the
-            expert&apos;s answer, and publishes a card — it appears here.
+      {showingDemoCards && (
+        <View style={styles.demoNotice}>
+          <Text style={styles.demoNoticeTitle}>Demo card</Text>
+          <Text style={styles.demoNoticeText}>
+            Published cards appear here after review. This seeded HVAC card shows the apprentice output.
           </Text>
         </View>
+      )}
+
+      {loading ? (
+        <ActivityIndicator style={styles.loading} color={colors.primary} />
       ) : (
         <FlatList
-          data={results}
+          data={cards}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => {
                 setSelected(item);
-                if (session) {
+                if (session && !item.demo) {
                   void logTrainingEvent({
                     knowledgeObjectId: item.id,
                     userId: session.user_id,
@@ -143,6 +199,11 @@ export default function LearnScreen() {
                 <View style={styles.pill}>
                   <Text style={styles.pillText}>{item.trade}</Text>
                 </View>
+                {item.demo && (
+                  <View style={styles.demoPill}>
+                    <Text style={styles.demoPillText}>demo</Text>
+                  </View>
+                )}
                 {item.tags_json?.slice(0, 3).map((tag) => (
                   <View key={tag} style={styles.pillLight}>
                     <Text style={styles.pillLightText}>{tag}</Text>
@@ -151,7 +212,7 @@ export default function LearnScreen() {
               </View>
               {item.novice_trap && (
                 <Text numberOfLines={2} style={styles.cardBody}>
-                  ⚠ {item.novice_trap}
+                  Novice trap: {item.novice_trap}
                 </Text>
               )}
             </Pressable>
@@ -169,7 +230,7 @@ function CardDetail({
   userId,
   onBack,
 }: {
-  card: KnowledgeObject;
+  card: TrainingCard;
   userId: string | undefined;
   onBack: () => void;
 }) {
@@ -188,7 +249,7 @@ function CardDetail({
     // Log the attempt and the outcome. Two events on purpose — the
     // attempt count and the correct count are useful separately on the
     // dashboard.
-    if (userId) {
+    if (userId && !card.demo) {
       void logTrainingEvent({
         knowledgeObjectId: card.id,
         userId,
@@ -222,6 +283,11 @@ function CardDetail({
               <View style={styles.pill}>
                 <Text style={styles.pillText}>{card.trade}</Text>
               </View>
+              {card.demo && (
+                <View style={styles.demoPill}>
+                  <Text style={styles.demoPillText}>demo</Text>
+                </View>
+              )}
               {card.tags_json?.map((tag) => (
                 <View key={tag} style={styles.pillLight}>
                   <Text style={styles.pillLightText}>{tag}</Text>
@@ -339,7 +405,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900', color: colors.primary, letterSpacing: 3 },
+  headerTitle: { fontSize: 22, fontWeight: '900', color: colors.primary },
   headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
   searchRow: { padding: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   searchInput: {
@@ -356,13 +422,33 @@ const styles = StyleSheet.create({
   notice: { padding: 12, margin: 12, borderRadius: 8 },
   noticeError: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5' },
   noticeText: { fontSize: 13, color: colors.error },
+  demoNotice: {
+    margin: 12,
+    marginBottom: 0,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: 12,
+  },
+  demoNoticeTitle: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '900',
+  },
+  demoNoticeText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 4,
+  },
   empty: { padding: 32, alignItems: 'center' },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 },
   emptyBody: { fontSize: 13, color: colors.textMuted, textAlign: 'center', lineHeight: 18 },
   listContent: { padding: 12, gap: 10 },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 14,
     borderWidth: 1,
     borderColor: colors.border,
@@ -379,6 +465,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   pillText: { fontSize: 11, fontWeight: '800', color: colors.primary, textTransform: 'uppercase' },
+  demoPill: {
+    backgroundColor: colors.successLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  demoPillText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#065F46',
+    textTransform: 'uppercase',
+  },
   pillLight: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -394,7 +492,7 @@ const styles = StyleSheet.create({
   detailTitle: { fontSize: 20, fontWeight: '800', color: colors.text, lineHeight: 26 },
   section: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 14,
     borderWidth: 1,
     borderColor: colors.border,
@@ -407,12 +505,11 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
   },
   sectionBody: { fontSize: 14, color: colors.text, lineHeight: 20 },
   quizCard: {
     backgroundColor: colors.surface,
-    borderRadius: 12,
+    borderRadius: 8,
     padding: 16,
     borderWidth: 1,
     borderColor: colors.border,
@@ -423,7 +520,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.primary,
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
   },
   quizQuestion: { fontSize: 15, fontWeight: '600', color: colors.text, lineHeight: 22 },
   choice: {
@@ -432,7 +528,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     paddingHorizontal: 14,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
@@ -446,7 +542,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.success,
     textTransform: 'uppercase',
-    letterSpacing: 1,
   },
   submit: {
     backgroundColor: colors.primary,

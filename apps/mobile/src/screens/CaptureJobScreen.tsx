@@ -81,6 +81,7 @@ const CONSENT_OPTIONS: Array<{
 ];
 
 const LAST_RECORDING_KEY = 'act_capture_last_recording_id';
+const CAPTURE_PHASES = ['Consent', 'Capture', 'Review'] as const;
 
 export default function CaptureJobScreen() {
   const navigation = useNavigation<NavProp>();
@@ -331,6 +332,11 @@ export default function CaptureJobScreen() {
   const headerLabel = session ? `Job ${session.job_id.slice(0, 8)}` : 'Starting session…';
   const reviewRecordingId = recording?.id ?? lastRecordingId;
   const canReviewCurrent = status.kind === 'ready' && !!recording?.id;
+  const activePhase = canReviewCurrent
+    ? 'Review'
+    : isRecording || recording
+      ? 'Capture'
+      : 'Consent';
 
   return (
     <View style={styles.container}>
@@ -347,7 +353,7 @@ export default function CaptureJobScreen() {
             {navigation.canGoBack() ? '‹ Back' : 'Pilot'}
           </Text>
         </Pressable>
-        <Text style={styles.headerTitle}>ACT Capture</Text>
+        <Text style={styles.headerTitle}>Expert Capture</Text>
         <Pressable
           disabled={!reviewRecordingId}
           onPress={() =>
@@ -373,6 +379,18 @@ export default function CaptureJobScreen() {
                 : status
           }
         />
+      </View>
+
+      <View style={styles.phaseRail}>
+        {CAPTURE_PHASES.map((phase) => {
+          const active = activePhase === phase;
+          return (
+            <View key={phase} style={styles.phaseItem}>
+              <View style={[styles.phaseBar, active && styles.phaseBarActive]} />
+              <Text style={[styles.phaseText, active && styles.phaseTextActive]}>{phase}</Text>
+            </View>
+          );
+        })}
       </View>
 
       <ScrollView
@@ -458,7 +476,7 @@ export default function CaptureJobScreen() {
                 {consentState === 'do_not_share' ? (
                   <Text style={styles.recordBtnText}>Recording blocked</Text>
                 ) : session ? (
-                  <Text style={styles.recordBtnText}>Start recording</Text>
+                  <Text style={styles.recordBtnText}>Start capture</Text>
                 ) : (
                   <ActivityIndicator color="#fff" />
                 )}
@@ -473,19 +491,19 @@ export default function CaptureJobScreen() {
                 navigation.navigate('PilotReview', { recordingId: recording.id })
               }
             >
-              <Text style={styles.reviewReadyTitle}>Open review</Text>
-              <Text style={styles.reviewReadyDetail}>Approve or reject proposed moments</Text>
+              <Text style={styles.reviewReadyTitle}>Review for training</Text>
+              <Text style={styles.reviewReadyDetail}>Approve moments before cards publish</Text>
             </Pressable>
           )}
 
           <View style={styles.marksList}>
             <Text style={styles.marksHeader}>
-              Marks this session ({marks.length})
+              Teachable marks ({marks.length})
             </Text>
             <ScrollView style={styles.marksScroll} nestedScrollEnabled>
               {marks.length === 0 ? (
                 <Text style={styles.marksEmpty}>
-                  Tap the big button when something matters. Long-press to change what kind of moment it is.
+                  Waiting for the first teachable mark.
                 </Text>
               ) : (
                 marks
@@ -494,7 +512,7 @@ export default function CaptureJobScreen() {
                   .map((m) => (
                     <View key={m.id} style={styles.markRowItem}>
                       <Text style={styles.markTime}>{formatTimestamp(m.timestampSeconds)}</Text>
-                      <Text style={styles.markKind}>{m.markType}</Text>
+                      <Text style={styles.markKind}>{formatMarkType(m.markType)}</Text>
                     </View>
                   ))
               )}
@@ -517,6 +535,12 @@ function formatTimestamp(seconds: number): string {
   return `${mm}:${ss}`;
 }
 
+function formatMarkType(kind: MarkType): string {
+  if (kind === 'counterfactual') return 'Avoid';
+  if (kind === 'sensory') return 'Notice';
+  return kind.charAt(0).toUpperCase() + kind.slice(1);
+}
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
@@ -532,7 +556,7 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   headerBack: { fontSize: 16, color: colors.primary, fontWeight: '700' },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: colors.text, letterSpacing: 1 },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
   headerAction: {
     minWidth: 60,
     textAlign: 'right',
@@ -552,6 +576,35 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   subHeaderText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  phaseRail: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  phaseItem: {
+    flex: 1,
+    gap: 5,
+  },
+  phaseBar: {
+    height: 3,
+    borderRadius: 3,
+    backgroundColor: colors.border,
+  },
+  phaseBarActive: {
+    backgroundColor: colors.primary,
+  },
+  phaseText: {
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  phaseTextActive: {
+    color: colors.text,
+  },
   body: {
     flex: 1,
   },
@@ -660,7 +713,7 @@ const styles = StyleSheet.create({
   },
   stopBtn: { backgroundColor: colors.error },
   disabledBtn: { opacity: 0.5 },
-  recordBtnText: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: 0.5 },
+  recordBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
   pressed: {
     opacity: 0.76,
   },
@@ -698,7 +751,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: colors.textMuted,
     textTransform: 'uppercase',
-    letterSpacing: 1.2,
     marginBottom: 8,
   },
   marksScroll: { maxHeight: 190 },
@@ -717,6 +769,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primary,
     textTransform: 'uppercase',
-    letterSpacing: 1,
   },
 });

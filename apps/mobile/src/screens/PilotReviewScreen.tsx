@@ -18,11 +18,19 @@ import {
   reviewMoment,
 } from '../api/captureApi';
 import type { MomentOut, RecordingOut } from '../api/captureApi';
+import {
+  compileMoment,
+  generateMomentQuestion,
+  publishKnowledgeObject,
+  submitExpertAnswer,
+} from '../api/libraryApi';
+import type { KnowledgeObject } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { colors } from '../theme/colors';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 type ReviewRoute = RouteProp<PilotStackParamList, 'PilotReview'>;
+type PublishStage = 'approving' | 'answering' | 'drafting' | 'publishing';
 
 export default function PilotReviewScreen() {
   const navigation = useNavigation<NavProp>();
@@ -34,6 +42,8 @@ export default function PilotReviewScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [publishedCards, setPublishedCards] = useState<Record<string, KnowledgeObject>>({});
+  const [publishStages, setPublishStages] = useState<Record<string, PublishStage>>({});
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -65,11 +75,72 @@ export default function PilotReviewScreen() {
       setMoments((prev) =>
         prev.map((moment) => (moment.id === momentId ? updated : moment)),
       );
+      if (status !== 'approved') {
+        setPublishedCards((prev) => {
+          const next = { ...prev };
+          delete next[momentId];
+          return next;
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'review action failed');
     } finally {
       setActingId(null);
     }
+  }
+
+  async function approveAndPublish(moment: MomentOut) {
+    setActingId(moment.id);
+    setError(null);
+    try {
+      setPublishStage(moment.id, 'approving');
+      const approvedMoment = moment.status === 'approved'
+        ? moment
+        : await reviewMoment({ momentId: moment.id, status: 'approved' });
+      setMoments((prev) =>
+        prev.map((current) => (current.id === moment.id ? approvedMoment : current)),
+      );
+
+      const trade = recording?.trade ?? 'hvac';
+      setPublishStage(moment.id, 'drafting');
+      let card: KnowledgeObject;
+      try {
+        card = await compileMoment({ momentId: moment.id, trade });
+      } catch (compileError) {
+        const transcript = buildExpertAnswer(approvedMoment);
+        if (!transcript) throw compileError;
+        setPublishStage(moment.id, 'answering');
+        const question = await generateMomentQuestion(moment.id);
+        await submitExpertAnswer({
+          questionId: question.id,
+          transcript,
+          approvedByExpert: true,
+          expertUserId: recording?.user_id ?? approvedMoment.reviewer_id,
+        });
+        setPublishStage(moment.id, 'drafting');
+        card = await compileMoment({ momentId: moment.id, trade });
+      }
+
+      setPublishStage(moment.id, 'publishing');
+      const published = card.status === 'published'
+        ? card
+        : await publishKnowledgeObject(card.id);
+      setPublishedCards((prev) => ({ ...prev, [moment.id]: published }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'publish failed');
+    } finally {
+      setActingId(null);
+      setPublishStage(moment.id, undefined);
+    }
+  }
+
+  function setPublishStage(momentId: string, stage: PublishStage | undefined) {
+    setPublishStages((prev) => {
+      const next = { ...prev };
+      if (stage) next[momentId] = stage;
+      else delete next[momentId];
+      return next;
+    });
   }
 
   const status = recording?.status ?? 'loading';
@@ -88,18 +159,23 @@ export default function PilotReviewScreen() {
         >
           <Text style={styles.headerBack}>‹ Capture</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>Review</Text>
-        <View style={{ width: 82 }} />
+        <Text style={styles.headerTitle}>Review Moments</Text>
+        <Pressable onPress={() => navigation.navigate('Learn', undefined)} hitSlop={12}>
+          <Text style={styles.headerAction}>Training</Text>
+        </Pressable>
       </View>
 
       <View style={styles.summary}>
-        <Text style={styles.summaryLabel}>Recording</Text>
-        <Text style={styles.recordingId}>{recordingId.slice(0, 8)}</Text>
-        <View style={[styles.statusPill, ready ? styles.statusReady : styles.statusPending]}>
-          <Text style={[styles.statusText, ready ? styles.statusReadyText : styles.statusPendingText]}>
-            {formatStatus(status)}
-          </Text>
+        <View style={styles.summaryTop}>
+          <Text style={styles.summaryLabel}>Recording</Text>
+          <Text style={styles.recordingId}>{recordingId.slice(0, 8)}</Text>
+          <View style={[styles.statusPill, ready ? styles.statusReady : styles.statusPending]}>
+            <Text style={[styles.statusText, ready ? styles.statusReadyText : styles.statusPendingText]}>
+              {formatStatus(status)}
+            </Text>
+          </View>
         </View>
+        <Text style={styles.summaryHelp}>Approve + publish sends reviewed moments into Apprentice Training.</Text>
       </View>
 
       {error && (
@@ -143,7 +219,10 @@ export default function PilotReviewScreen() {
             <MomentCard
               moment={item}
               busy={actingId === item.id}
-              onApprove={() => void actOnMoment(item.id, 'approved')}
+              publishStage={publishStages[item.id]}
+              publishedCard={publishedCards[item.id]}
+              onApproveAndPublish={() => void approveAndPublish(item)}
+              onOpenCard={(card) => navigation.navigate('Learn', { card, cardId: card.id })}
               onReject={() => void actOnMoment(item.id, 'rejected')}
               onNeedsInfo={() => void actOnMoment(item.id, 'needs_more_info')}
             />
@@ -157,13 +236,19 @@ export default function PilotReviewScreen() {
 function MomentCard({
   moment,
   busy,
-  onApprove,
+  publishStage,
+  publishedCard,
+  onApproveAndPublish,
+  onOpenCard,
   onReject,
   onNeedsInfo,
 }: {
   moment: MomentOut;
   busy: boolean;
-  onApprove: () => void;
+  publishStage?: PublishStage;
+  publishedCard?: KnowledgeObject;
+  onApproveAndPublish: () => void;
+  onOpenCard: (card: KnowledgeObject) => void;
   onReject: () => void;
   onNeedsInfo: () => void;
 }) {
@@ -194,7 +279,22 @@ function MomentCard({
             <Text style={[styles.metaText, styles.warnText]}>post-job only</Text>
           </View>
         )}
+        {publishedCard && (
+          <View style={[styles.metaPill, styles.publishedPill]}>
+            <Text style={[styles.metaText, styles.publishedText]}>published</Text>
+          </View>
+        )}
       </View>
+
+      {publishedCard && (
+        <Pressable
+          style={({ pressed }) => [styles.publishedBand, pressed && styles.pressed]}
+          onPress={() => onOpenCard(publishedCard)}
+        >
+          <Text style={styles.publishedBandLabel}>Apprentice card</Text>
+          <Text style={styles.publishedBandTitle}>{publishedCard.title}</Text>
+        </Pressable>
+      )}
 
       <View style={styles.actionRow}>
         <Pressable
@@ -202,31 +302,38 @@ function MomentCard({
           style={({ pressed }) => [
             styles.actionButton,
             styles.approveButton,
+            styles.approveActionButton,
             pressed && styles.pressed,
             busy && styles.disabled,
           ]}
-          onPress={onApprove}
+          onPress={() => (publishedCard ? onOpenCard(publishedCard) : onApproveAndPublish())}
         >
-          <Text style={styles.approveText}>{busy ? 'Saving' : 'Approve'}</Text>
+          <Text numberOfLines={1} style={styles.approveText}>
+            {publishedCard
+              ? 'Open card'
+              : busy
+                ? formatPublishStage(publishStage)
+                : 'Approve + publish'}
+          </Text>
         </Pressable>
         <Pressable
-          disabled={busy}
+          disabled={busy || !!publishedCard}
           style={({ pressed }) => [
             styles.actionButton,
             pressed && styles.pressed,
-            busy && styles.disabled,
+            (busy || !!publishedCard) && styles.disabled,
           ]}
           onPress={onNeedsInfo}
         >
-          <Text style={styles.actionText}>Needs info</Text>
+          <Text style={styles.actionText}>Follow-up</Text>
         </Pressable>
         <Pressable
-          disabled={busy}
+          disabled={busy || !!publishedCard}
           style={({ pressed }) => [
             styles.actionButton,
             styles.rejectButton,
             pressed && styles.pressed,
-            busy && styles.disabled,
+            (busy || !!publishedCard) && styles.disabled,
           ]}
           onPress={onReject}
         >
@@ -235,6 +342,14 @@ function MomentCard({
       </View>
     </View>
   );
+}
+
+function formatPublishStage(stage: PublishStage | undefined): string {
+  if (stage === 'approving') return 'Approving';
+  if (stage === 'answering') return 'Adding answer';
+  if (stage === 'drafting') return 'Drafting card';
+  if (stage === 'publishing') return 'Publishing';
+  return 'Saving';
 }
 
 function humanizeMomentType(value: string): string {
@@ -264,6 +379,38 @@ function formatTimestamp(seconds: number): string {
   return `${mm}:${ss}`;
 }
 
+function buildExpertAnswer(moment: MomentOut): string {
+  const parts = [
+    `Moment: ${humanizeMomentType(moment.moment_type)} from ${formatTimestamp(moment.start_s)} to ${formatTimestamp(moment.end_s)}.`,
+    moment.why_it_matters ? `Why it matters: ${moment.why_it_matters}` : null,
+    summarizeEvidence(moment.evidence_json),
+  ].filter(Boolean);
+  return parts.join('\n');
+}
+
+function summarizeEvidence(evidence: MomentOut['evidence_json']): string | null {
+  if (!evidence) return null;
+  if (typeof evidence === 'string') {
+    return evidence.trim() ? `Evidence: ${evidence.slice(0, 700)}` : null;
+  }
+  const entries = Object.entries(evidence)
+    .map(([key, value]) => `${key}: ${formatEvidenceValue(value)}`)
+    .filter((entry) => entry.length > 0)
+    .slice(0, 6);
+  return entries.length > 0 ? `Evidence: ${entries.join('; ')}` : null;
+}
+
+function formatEvidenceValue(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  try {
+    return JSON.stringify(value).slice(0, 180);
+  } catch {
+    return String(value);
+  }
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -290,6 +437,11 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '900',
   },
+  headerAction: {
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '900',
+  },
   summary: {
     margin: 16,
     borderRadius: 8,
@@ -297,6 +449,9 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.surface,
     padding: 14,
+    gap: 8,
+  },
+  summaryTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
@@ -312,6 +467,11 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '900',
     flex: 1,
+  },
+  summaryHelp: {
+    color: colors.textMuted,
+    fontSize: 13,
+    lineHeight: 18,
   },
   statusPill: {
     borderRadius: 999,
@@ -445,6 +605,30 @@ const styles = StyleSheet.create({
   warnText: {
     color: '#92400E',
   },
+  publishedPill: {
+    backgroundColor: colors.successLight,
+  },
+  publishedText: {
+    color: '#065F46',
+  },
+  publishedBand: {
+    borderRadius: 8,
+    backgroundColor: colors.successLight,
+    padding: 12,
+    gap: 3,
+  },
+  publishedBandLabel: {
+    color: '#065F46',
+    fontSize: 11,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
+  publishedBandTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 19,
+  },
   actionRow: {
     flexDirection: 'row',
     gap: 8,
@@ -463,6 +647,9 @@ const styles = StyleSheet.create({
   approveButton: {
     backgroundColor: colors.success,
     borderColor: colors.success,
+  },
+  approveActionButton: {
+    flex: 1.35,
   },
   rejectButton: {
     backgroundColor: '#FEE2E2',

@@ -70,14 +70,19 @@ export function extractNeedsPhotoHint(text: string): { cleaned: string; hint: st
   return { cleaned, hint };
 }
 
-function streamSSE(url: string, formData: FormData, callbacks: StreamCallbacks): StreamHandle {
+function streamSSE(
+  url: string,
+  formData: FormData | Promise<FormData>,
+  callbacks: StreamCallbacks,
+): StreamHandle {
   const controller = new AbortController();
 
   (async () => {
     try {
+      const body = await formData;
       const response = await fetch(url, {
         method: 'POST',
-        body: formData as any,
+        body: body as any,
         headers: { Accept: 'text/event-stream' },
         signal: controller.signal,
       });
@@ -125,8 +130,10 @@ function streamSSE(url: string, formData: FormData, callbacks: StreamCallbacks):
 
 export interface JobTurnInput {
   photoUri: string;
+  photoFile?: Blob;
   question?: string;        // text question (used if no audio)
   audioUri?: string;        // recorded audio file URI
+  audioFile?: Blob;
   audioMime?: string;       // e.g. 'audio/m4a'
 }
 
@@ -135,17 +142,58 @@ export function streamJobTurn(
   input: JobTurnInput,
   callbacks: StreamCallbacks,
 ): StreamHandle {
+  return streamSSE(`${API_BASE}/jobs/${jobId}/turns`, buildJobTurnFormData(input), callbacks);
+}
+
+async function buildJobTurnFormData(input: JobTurnInput): Promise<FormData> {
   const formData = new FormData();
-  formData.append('frame', { uri: input.photoUri, name: 'frame.jpg', type: 'image/jpeg' } as any);
+  await appendUriFile(formData, 'frame', input.photoUri, 'frame.jpg', 'image/jpeg', input.photoFile);
   if (input.question) {
     formData.append('question', input.question);
   }
   if (input.audioUri) {
-    formData.append('audio', {
-      uri: input.audioUri,
-      name: 'voice.m4a',
-      type: input.audioMime ?? 'audio/m4a',
-    } as any);
+    await appendUriFile(
+      formData,
+      'audio',
+      input.audioUri,
+      'voice.m4a',
+      input.audioMime ?? 'audio/m4a',
+      input.audioFile,
+    );
   }
-  return streamSSE(`${API_BASE}/jobs/${jobId}/turns`, formData, callbacks);
+  return formData;
+}
+
+async function appendUriFile(
+  formData: FormData,
+  field: string,
+  uri: string,
+  name: string,
+  type: string,
+  file?: Blob,
+): Promise<void> {
+  if (usesBrowserFormData()) {
+    if (file) {
+      formData.append(field, file, file instanceof File && file.name ? file.name : name);
+      return;
+    }
+    const response = await fetch(uri);
+    if (!response.ok) {
+      throw new Error(`Could not read ${field} file: ${response.status}`);
+    }
+    const blob = await response.blob();
+    const typedBlob = blob.type ? blob : new Blob([blob], { type });
+    formData.append(field, typedBlob, name);
+    return;
+  }
+
+  formData.append(field, { uri, name, type } as any);
+}
+
+function usesBrowserFormData(): boolean {
+  return (
+    typeof document !== 'undefined' &&
+    typeof navigator !== 'undefined' &&
+    navigator.product !== 'ReactNative'
+  );
 }
