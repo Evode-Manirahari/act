@@ -10,12 +10,12 @@ import { colors } from '../theme/colors';
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 
 const targetStats = [
-  { label: 'shops', value: '3' },
-  { label: 'captured jobs', value: '20' },
-  { label: 'training cards', value: '50' },
+  { label: 'pilot shops', value: '3' },
+  { label: 'recorded jobs', value: '20' },
+  { label: 'reviewed cards', value: '50' },
 ];
 
-const workflow = ['Consent', 'Capture', 'Review', 'Learn'];
+const workflow = ['Record', 'Mark', 'Review', 'Publish'];
 
 export default function PilotHomeScreen() {
   const navigation = useNavigation<NavProp>();
@@ -28,23 +28,23 @@ export default function PilotHomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.kicker}>HVAC pilot</Text>
-          <Text style={styles.title}>ACT Capture</Text>
+          <Text style={styles.kicker}>HVAC training capture</Text>
+          <Text style={styles.title}>Capture senior judgment. Train apprentices.</Text>
           <Text style={styles.subtitle}>
-            Your best techs train the next generation without writing documentation.
+            Record the job, mark teachable moments, review the draft, then publish cards apprentices can practice.
           </Text>
         </View>
 
         <View style={styles.actionBand}>
           <ActionButton
-            label="Start capture"
-            detail="Senior tech job recording"
+            label="Record senior tech"
+            detail="Capture the call and mark what matters"
             variant="primary"
             onPress={() => navigation.navigate('CaptureJob')}
           />
           <ActionButton
-            label="Learn"
-            detail="Reviewed apprentice cards"
+            label="Apprentice training"
+            detail="Open reviewed cards and quick checks"
             onPress={() => navigation.navigate('Learn')}
           />
         </View>
@@ -70,18 +70,12 @@ export default function PilotHomeScreen() {
           ))}
         </View>
 
-        <View style={styles.secondaryBand}>
-          <View style={styles.secondaryCopy}>
-            <Text style={styles.secondaryTitle}>Legacy diagnosis</Text>
-            <Text style={styles.secondaryText}>Photo and voice troubleshooting remains available.</Text>
-          </View>
-          <Pressable
-            style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
-            onPress={() => navigation.navigate('AskAct')}
-          >
-            <Text style={styles.secondaryButtonText}>Open</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          style={({ pressed }) => [styles.legacyLink, pressed && styles.pressed]}
+          onPress={() => navigation.navigate('AskAct')}
+        >
+          <Text style={styles.legacyLinkText}>Legacy photo diagnosis →</Text>
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -142,7 +136,8 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: 38,
+    fontSize: 30,
+    lineHeight: 36,
     fontWeight: '900',
   },
   subtitle: {
@@ -171,7 +166,7 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     color: colors.text,
-    fontSize: 22,
+    fontSize: 21,
     fontWeight: '900',
   },
   actionDetail: {
@@ -250,41 +245,13 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
     marginBottom: 22,
   },
-  secondaryBand: {
-    minHeight: 82,
-    borderRadius: 8,
-    backgroundColor: colors.surfaceAlt,
-    padding: 14,
-    flexDirection: 'row',
+  legacyLink: {
     alignItems: 'center',
-    gap: 12,
+    paddingVertical: 6,
   },
-  secondaryCopy: {
-    flex: 1,
-  },
-  secondaryTitle: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  secondaryText: {
+  legacyLinkText: {
     color: colors.textMuted,
     fontSize: 13,
-    lineHeight: 18,
-    marginTop: 3,
-  },
-  secondaryButton: {
-    minWidth: 76,
-    minHeight: 42,
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  secondaryButtonText: {
-    color: colors.text,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 });

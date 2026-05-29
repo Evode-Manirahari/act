@@ -6,7 +6,7 @@
     "dev:mobile": "pnpm --filter mobile start",
     "build": "pnpm --recursive build",
     "test": "pnpm --recursive test",
-    "tsc": "pnpm --recursive tsc"
+    "typecheck": "pnpm --recursive --if-present typecheck"
   },
   "devDependencies": {
     "typescript": "^5.4.0"

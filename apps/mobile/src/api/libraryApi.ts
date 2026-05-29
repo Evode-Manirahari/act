@@ -32,6 +32,26 @@ export interface KnowledgeObject {
   created_at: string;
 }
 
+export interface ElicitationQuestion {
+  id: string;
+  moment_id: string;
+  question: string;
+  reason: string | null;
+  status: string;
+  asked_at: string | null;
+  created_at: string;
+}
+
+export interface ExpertAnswer {
+  id: string;
+  question_id: string;
+  transcript: string | null;
+  audio_key: string | null;
+  approved_by_expert: boolean;
+  expert_user_id: string | null;
+  created_at: string;
+}
+
 
 export type TrainingEventType =
   | 'viewed'
@@ -81,6 +101,50 @@ export async function searchLibrary(input: {
   if (input.limit) params.set('limit', String(input.limit));
   const suffix = params.toString() ? `?${params}` : '';
   return jsonFetch<KnowledgeObject[]>(`/library/search${suffix}`);
+}
+
+export async function generateMomentQuestion(
+  momentId: string,
+): Promise<ElicitationQuestion> {
+  return jsonFetch<ElicitationQuestion>(`/moments/${momentId}/questions`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+}
+
+export async function submitExpertAnswer(input: {
+  questionId: string;
+  transcript: string;
+  approvedByExpert?: boolean;
+  expertUserId?: string | null;
+}): Promise<ExpertAnswer> {
+  return jsonFetch<ExpertAnswer>(`/questions/${input.questionId}/answers`, {
+    method: 'POST',
+    body: JSON.stringify({
+      transcript: input.transcript,
+      approved_by_expert: input.approvedByExpert ?? true,
+      expert_user_id: input.expertUserId ?? null,
+    }),
+  });
+}
+
+export async function compileMoment(input: {
+  momentId: string;
+  trade?: string;
+}): Promise<KnowledgeObject> {
+  return jsonFetch<KnowledgeObject>(`/moments/${input.momentId}/compile`, {
+    method: 'POST',
+    body: JSON.stringify({ trade: input.trade ?? 'hvac' }),
+  });
+}
+
+export async function publishKnowledgeObject(
+  knowledgeObjectId: string,
+): Promise<KnowledgeObject> {
+  return jsonFetch<KnowledgeObject>(
+    `/knowledge-objects/${knowledgeObjectId}/publish`,
+    { method: 'POST' },
+  );
 }
 
 

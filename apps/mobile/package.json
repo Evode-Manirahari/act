@@ -12,7 +12,8 @@
     "build:dev-android": "eas build --profile development --platform android",
     "build:dev-sim": "eas build --profile development-simulator --platform ios",
     "build:preview": "eas build --profile preview --platform all",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@actober/act-prompts": "workspace:*",

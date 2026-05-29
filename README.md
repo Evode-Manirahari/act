@@ -32,12 +32,12 @@ Earlier electrician customer-discovery work is preserved as input but is not the
 This repo contains the **mobile client only**. The backend lives in a sibling repo.
 
 - `apps/mobile` — React Native Expo app
-  - `App.tsx` — pilot shell, currently launching straight into Capture
+  - `App.tsx` — pilot shell for the Capture → Review → Training flow
   - `src/screens/CaptureJobScreen.tsx` — capture-mvp flow: record, mark teachable moments, upload with retry
   - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
-  - `src/screens/PilotHomeScreen.tsx` — secondary pilot menu for Capture, Learn, and legacy diagnosis access
-  - `src/screens/LearnScreen.tsx` — apprentice-facing published-card library
-  - `src/screens/AskActScreen.tsx` — earlier photo → question → Claude diagnosis slice, now demoted behind the pilot shell
+  - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
+  - `src/screens/LearnScreen.tsx` — apprentice-facing published-card library with a seeded HVAC demo card
+  - `src/screens/AskActScreen.tsx` — earlier photo → question → Claude diagnosis slice; kept in source but outside the pilot shell
   - `src/api/actApi.ts` — talks to the deployed backend
 - `packages/act-prompts` — shared prompt scaffolding
 - `packages/shared-types` — shared TypeScript types
@@ -66,7 +66,7 @@ Then on your phone:
 2. Make sure phone and Mac are on the **same WiFi**
 3. Scan the QR code in the terminal, or paste `exp://<lan-ip>:8081` via "Enter URL manually"
 
-On `capture-mvp`, the app launches directly into ACT Capture. The secondary pilot menu links to Learn and `AskActScreen` (single photo → question → streamed Claude answer) for legacy diagnosis. The legacy multi-screen flow (Boot / Onboarding / Paywall / Home / Project) is preserved in source but is no longer the app entry point.
+On `capture-mvp`, the app launches into the HVAC training-capture shell: Record senior tech → Review moments → Apprentice training. `AskActScreen` (single photo → question → streamed Claude answer) remains in source as legacy code, but it is not part of the pilot shell. The legacy multi-screen flow (Boot / Onboarding / Paywall / Home / Project) is preserved in source but is no longer the app entry point.
 
 ## Backend (sibling repo)
 
