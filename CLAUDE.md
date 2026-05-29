@@ -8,10 +8,15 @@ ACT Capture turns ride-alongs and senior service calls into reviewed training ob
 **This is NOT a real-time AI copilot telling techs what to do.** That was the prior framing and it leaks into product decisions if you let it.
 
 **Product framing**:
-- **Say**: "Your best HVAC techs train the next generation without writing documentation."
-- **Do not say**: "AI tells techs what to do in real time."
+- **Say (buyer value)**: "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire." Sold to multi-site operators; measured in callbacks / first-90-day turnover / time-to-billable.
+- **Say (user value)**: "Your senior techs pass on what they know without writing a word — captured from real jobs, in their own words."
+- **Do not say (retired framing)**: "AI tells techs what to do in real time." (old copilot pitch)
+- **Do not say / do not position as (retired framing)**: "Train the next generation" / "generic apprentice training" sold to solo shops. That is the incumbent's (Interplay) position; ACT is the company-specific capture layer *on top of* generic training.
 
-**Target users**: senior tech (capture), lead tech (review), apprentice (learn). Not the AI.
+**Users**: senior tech (capture), lead tech (review), apprentice (learn).
+**Buyer**: ops director / regional service director / service manager at a multi-site operator or consolidator (ARS, CoolSys, Service Champions, franchise networks). Not the AI, not the solo shop.
+
+**Where ACT sits**: on top of generic simulation training (e.g. Interplay Learning), not against it. Generic training teaches the textbook; ACT captures the company-specific tribal knowledge a generic catalog cannot hold. That non-genericness is the moat.
 
 ## Current Wedge: HVAC
 
