@@ -2,6 +2,8 @@
 
 **Your best HVAC techs train the next generation without writing documentation.**
 
+*For multi-site HVAC operators: capture your senior techs' company-specific reasoning before they retire — and cut callbacks and new-hire ramp on your own install base.*
+
 ACT Capture turns ride-alongs and senior service calls into reviewed training objects — short clips of a teachable moment, paired with the expert's reasoning, the novice traps to avoid, the safety boundaries, and a quick quiz to check transfer.
 
 The core invention is not smart glasses, a live AI copilot, or a generic training app. It is the tacit knowledge engine: detect teachable events in the field, ask the expert the right question at a safe time *after* the job, structure the answer into a reviewed training object, publish it, and measure whether apprentices actually improve.
@@ -9,6 +11,28 @@ The core invention is not smart glasses, a live AI copilot, or a generic trainin
 The product loop is:
 
 > **Capture → Detect → Ask → Structure → Review → Teach → Improve**
+
+## Who buys ACT, and the dollar it moves
+
+ACT's **users** are the senior tech (capture), the lead tech (review), and the apprentice (learn). ACT's **buyer** is different: the ops director / regional service director / service manager at a **multi-site operator or consolidator** — the ARS, CoolSys, Service Champions, and franchise-network operators of the world. Not solo shops. Not the apprentice.
+
+That buyer already tracks the dollars ACT moves:
+
+- **Callbacks** — industry-average first-time-fix is ~80%; a typical callback runs [~$650 (ACCA)](https://hvac-blog.acca.org/the-true-cost-of-callbacks-and-how-to-stop-the-bleeding/), and two of the named top-five callback causes are *inadequate documentation* and *gaps in technician knowledge*.
+- **First-90-day turnover** — most tech attrition happens in the first 30–90 days; [replacing a tech costs 100–150% of salary](https://applausehq.com/blog/how-retaining-your-home-services-technicians-saves-thousands-vs-hiring).
+- **Ramp** — [new hires take 6–12 months to full productivity](https://thebluecollarrecruiter.com/hvac-technician-turnover-costs-jacksonville-the-real-cost-of-hvac-technician-turnover-a-jacksonville/); the first three months alone burn salary against partial output.
+
+When a senior tech retires, the company-specific reasoning that prevents callbacks on *that operator's own install base* walks out the door. ACT captures it first.
+
+## Where ACT sits (vs. generic training)
+
+Generic simulation training (e.g. [Interplay Learning](https://www.interplaylearning.com/industries/hvac/)) teaches the textbook: how a heat pump works, how to braze, how to troubleshoot a *typical* system. ACT does not compete there and should not try to.
+
+ACT is the layer on top: it captures how *your* best tech diagnoses *your* hardest jobs on *your* accounts — the tribal knowledge a generic catalog structurally cannot hold. That non-genericness is the moat. The pitch that lands with a buyer:
+
+> "Generic training teaches your new hire what a capacitor is. It can't teach them how your lead tech, who retires in 14 months, fixes the recurring fault at your three biggest commercial accounts. We capture that, before he leaves, and put it on every truck."
+
+First go-to-market motion is a **60-day paid concierge pilot**: one operator, one senior/retiring tech, ~20 company-specific training cards on real callback-prone accounts, measured against the callback/ramp signal — proving willingness to pay before building self-serve.
 
 ## Current wedge: HVAC
 
@@ -109,10 +133,12 @@ Mobile reads the API base URL through `apps/mobile/src/lib/config.ts`. Set `EXPO
 
 ## Product framing (do not drift)
 
-- **Say**: "Your best HVAC techs train the next generation without writing documentation."
+- **Say (user value)**: "Your best HVAC techs train the next generation without writing documentation."
+- **Say (buyer value)**: "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire." Sold to multi-site operators; measured in callbacks / first-90-day turnover / time-to-billable.
 - **Do not say**: "AI tells techs what to do in real time." That is the *old* framing and it leaks into product decisions if you let it.
+- **Do not position as** generic apprentice training sold to solo shops — that is Interplay's hill and ACT loses there. ACT is the company-specific capture layer *on top of* generic training.
 
-The product is for the senior tech, the lead tech who reviews, and the apprentice who learns. Not the AI.
+The product's **users** are the senior tech (capture), the lead tech (review), and the apprentice (learn). The product's **buyer** is the multi-site operator. Not the AI, not the solo shop.
 
 ## AI workflow helper (gstack)
 
