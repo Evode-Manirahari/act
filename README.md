@@ -4,7 +4,11 @@
 
 ACT Capture turns ride-alongs and senior service calls into reviewed training objects — short clips of a teachable moment, paired with the expert's reasoning, the novice traps to avoid, the safety boundaries, and a quick quiz to check transfer.
 
-The core invention is not a live AI copilot telling techs what to do. It's a moment-capture system: detect teachable events in the field, ask the expert the right question at a safe time *after* the job, compile the answer into a structured training object, review it, publish it, and measure how well it transfers to apprentices.
+The core invention is not smart glasses, a live AI copilot, or a generic training app. It is the tacit knowledge engine: detect teachable events in the field, ask the expert the right question at a safe time *after* the job, structure the answer into a reviewed training object, publish it, and measure whether apprentices actually improve.
+
+The product loop is:
+
+> **Capture → Detect → Ask → Structure → Review → Teach → Improve**
 
 ## Current wedge: HVAC
 
@@ -14,7 +18,11 @@ Why HVAC:
 - Tight feedback loops — no-cool / no-heat is a repeated controlled event
 - Measurable outcomes — first-time fix rate, callbacks, time-to-diagnosis
 - Rich tacit signals — sound, vibration, line temp, frost patterns, gauge readings
-- BLS: 425k jobs in 2024, ~8% growth through 2034, ~40k openings/year
+- BLS: [425,200 jobs in 2024, 8% projected growth from 2024-2034, and about 40,100 openings per year](https://www.bls.gov/ooh/installation-maintenance-and-repair/heating-air-conditioning-and-refrigeration-mechanics-and-installers.htm)
+
+Adjacent-market signal, not the first wedge:
+- USDA's 2022 Census of Agriculture reported average U.S. producer age at [58.1](https://www.nass.usda.gov/Newsroom/2024/02-13-2024.php), with producers under 35 comprising [9%](https://www.nass.usda.gov/Newsroom/2024/02-13-2024.php) of all producers.
+- ABC estimated construction needs [439,000 net new workers in 2025 and 499,000 in 2026](https://www.abc.org/News-Media/News-Releases/abc-construction-industry-must-attract-439000-workers-in-2025); this is ABC's proprietary model, not a government statistic.
 
 Earlier electrician customer-discovery work is preserved as input but is not the first pilot target. Existing electrical prompts and KB entries stay in the codebase behind a `trade` flag during the migration — they are not being deleted.
 
@@ -22,10 +30,32 @@ Earlier electrician customer-discovery work is preserved as input but is not the
 
 1. **Record** — senior tech starts a job recording from their phone
 2. **Mark** — they tap "mark this" at teachable moments (one-handed, glove-friendly)
-3. **Debrief** — after the job, ACT asks targeted questions about each mark
-4. **Compile** — clip + expert-why + novice-traps + safety + quiz → one training object
-5. **Review & publish** — a lead tech approves before it goes into the apprentice library
-6. **Measure** — apprentice quiz results and on-job application close the loop
+3. **Detect** — backend processing proposes expertise-rich moments from transcript, marks, frames, and job context
+4. **Ask** — after the job, ACT asks targeted why/how/counterfactual/safety questions
+5. **Structure** — clip + situation + observation + expert reasoning + novice trap + safety + quiz become one training object
+6. **Review & publish** — a lead tech approves before it goes into the apprentice library
+7. **Teach & improve** — apprentice quiz results and job outcomes close the loop
+
+## Product guardrails
+
+- Do not build custom hardware first. Use phones, GoPros, chest mounts, or existing smart glasses until the software workflow proves what hardware is missing.
+- Do not position ACT as surveillance. The expert controls capture, can mark moments, can delete or reject, and approves what enters the training library.
+- Do not keep everything. Keep diagnostic shortcuts, sensory cues, counterfactuals, novice traps, threshold judgments, safety boundaries, repair verification, and customer/context reads.
+- Do not automate everything on day one. The first serious MVP is human-marked moments plus AI-generated training cards; automatic moment detection expands after the loop proves value.
+
+## Current MVP status
+
+| Spec principle | Current state |
+| --- | --- |
+| HVAC wedge | Implemented in docs, app copy, seeded training card, and pilot shell. |
+| Capture from phone | Implemented in `CaptureJobScreen` with camera/audio recording, consent state, marks, upload queue, and retry. |
+| Moment marking | Implemented with explicit mark types: teachable, safety, verification, sensory, counterfactual. |
+| Safe post-job review | Implemented as `PilotReviewScreen`; current mobile copy focuses on review/publish after capture. |
+| Structured training cards | Implemented in `LearnScreen` and mobile API calls for compile/publish. |
+| Expert approval | Implemented as mobile review actions before publish. |
+| Apprentice library + quiz | Implemented with live library search plus seeded HVAC demo card and quiz. |
+| Outcome tracking | Backend model exists in `act-api`; mobile UX is not built yet. |
+| Fully automatic moment detection | Not a day-one requirement; backend proposed moments are supported, but human marks remain the MVP control. |
 
 ## Repo layout
 
@@ -74,7 +104,7 @@ See [Evode-Manirahari/act-api](https://github.com/Evode-Manirahari/act-api) for 
 
 ## Environment
 
-Mobile currently hardcodes the API base URL to `https://act-api-evode.fly.dev` in `apps/mobile/src/api/actApi.ts`. When the slice graduates beyond demo mode, this moves to an Expo env var. Backend env vars live in `act-api/.env` — see `act-api/.env.example`.
+Mobile reads the API base URL through `apps/mobile/src/lib/config.ts`. Set `EXPO_PUBLIC_API_BASE_URL` for local or preview environments; otherwise it falls back to `https://act-api-evode.fly.dev`. Backend env vars live in `act-api/.env` — see `act-api/.env.example`.
 
 ## Product framing (do not drift)
 
@@ -99,6 +129,29 @@ cd ~/.claude/skills/gstack && ./setup
 - Run `/review` before opening a PR
 - Run `/qa` against the changed experience before merge
 - Run `/ship` when ready to push and open PRs
+
+## ACT agent memory (gbrain)
+
+This repo is wired for [garrytan/gbrain](https://github.com/garrytan/gbrain) in the ACT agent context.
+
+- Codex MCP server: `gbrain`
+- Command: `/Users/evodemanirahari/.bun/bin/gbrain serve`
+- ACT source id: `gstack-code-act-b3325446`
+- Repo policy: `read-write`
+- Worktree pin: `.gbrain-source` (ignored by git)
+
+Use gbrain for semantic or symbol-based questions:
+
+```bash
+gbrain search "<terms>"
+gbrain query "<question>"
+gbrain code-def <symbol>
+gbrain code-refs <symbol>
+gbrain code-callers <symbol>
+gbrain code-callees <symbol>
+```
+
+Use `rg` for exact strings, regexes, file globs, and small local checks.
 
 ## License
 
