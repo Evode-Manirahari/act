@@ -42,3 +42,4 @@ coverage/
 # EAS
 apps/mobile/eas-update/
 .gstack/
+.gbrain-source
