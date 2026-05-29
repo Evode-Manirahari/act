@@ -218,6 +218,45 @@ Use [garrytan/gstack](https://github.com/garrytan/gstack) as the default helper 
 ### Browsing/tooling rule
 Use the `/browse` skill from gstack for all web browsing tasks.
 
+## GBrain Configuration (configured by /setup-gbrain)
+- Mode: local-stdio
+- Engine: pglite
+- Config file: `~/.gbrain/config.json` (mode 0600)
+- Setup date: 2026-05-29
+- MCP registered: yes, via Codex global config at `~/.codex/config.toml`
+- Codex MCP command: `/Users/evodemanirahari/.bun/bin/gbrain serve`
+- Current repo policy: read-write
+- Current repo source: `gstack-code-act-b3325446`
+- Worktree pin: `.gbrain-source` (ignored by git)
+- Artifacts sync: off
+- Known warning: vector embeddings are not populated until `ZEROENTROPY_API_KEY` or another embedding provider is configured. Keyword search and symbol code lookup still work.
+
+## GBrain Search Guidance (configured by /setup-gbrain)
+<!-- gstack-gbrain-search-guidance:start -->
+
+GBrain is installed and synced for this ACT worktree. Prefer gbrain over Grep when the question is semantic, architectural, or symbol-based and you do not already know the exact string to search.
+
+Indexed ACT code source:
+- `gstack-code-act-b3325446` for `/Users/evodemanirahari/act`
+
+Prefer gbrain when:
+- "Where is X handled?" or intent-based lookup:
+  `gbrain search "<terms>"` or `gbrain query "<question>"`
+- "Where is symbol Y defined?":
+  `gbrain code-def <symbol>`
+- "Where is symbol Y used?":
+  `gbrain code-refs <symbol>`
+- "What calls Y?" or "What does Y call?":
+  `gbrain code-callers <symbol>` / `gbrain code-callees <symbol>`
+- "What did we decide last time?":
+  `gbrain search "<terms>" --source gstack-code-act-b3325446` for ACT-specific indexed content, then fall back to local project docs if needed.
+
+Grep is still right for exact strings, regex, file globs, and very small local checks. Run `/sync-gbrain` or:
+`bun ~/.codex/skills/gstack/bin/gstack-gbrain-sync.ts --code-only --full`
+after large code moves so the ACT source stays fresh.
+
+<!-- gstack-gbrain-search-guidance:end -->
+
 ### Core gstack skills used in ACT
 - `/office-hours` — product discovery and reframing
 - `/plan-ceo-review` — first-principles founder/product review
