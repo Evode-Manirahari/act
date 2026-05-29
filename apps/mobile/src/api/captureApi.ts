@@ -102,6 +102,28 @@ export interface MomentOut {
   created_at: string;
 }
 
+export interface JobOutcomeOut {
+  id: string;
+  job_id: string;
+  final_diagnosis: string | null;
+  fix: string | null;
+  callback: boolean;
+  callback_at: string | null;
+  manager_notes: string | null;
+  recorded_by: string | null;
+  created_at: string;
+}
+
+export interface UpsertJobOutcomeInput {
+  jobId: string;
+  finalDiagnosis?: string | null;
+  fix?: string | null;
+  callback?: boolean;
+  callbackAt?: string | null;
+  managerNotes?: string | null;
+  recordedBy?: string | null;
+}
+
 
 async function jsonFetch<T>(path: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE}${path}`, {
@@ -210,6 +232,28 @@ export async function reviewMoment(input: {
       reviewer_id: input.reviewerId ?? null,
       review_note: input.reviewNote ?? null,
     }),
+  });
+}
+
+export async function upsertJobOutcome(
+  input: UpsertJobOutcomeInput,
+): Promise<JobOutcomeOut> {
+  return jsonFetch<JobOutcomeOut>(`/jobs/${input.jobId}/outcomes`, {
+    method: 'POST',
+    body: JSON.stringify({
+      final_diagnosis: input.finalDiagnosis ?? null,
+      fix: input.fix ?? null,
+      callback: input.callback ?? false,
+      callback_at: input.callbackAt ?? null,
+      manager_notes: input.managerNotes ?? null,
+      recorded_by: input.recordedBy ?? null,
+    }),
+  });
+}
+
+export async function getJobOutcome(jobId: string): Promise<JobOutcomeOut> {
+  return jsonFetch<JobOutcomeOut>(`/jobs/${jobId}/outcomes`, {
+    method: 'GET',
   });
 }
 

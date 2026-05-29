@@ -1,4 +1,4 @@
-const API_BASE = 'https://act-api-evode.fly.dev';
+import { API_BASE } from '../lib/config';
 
 interface SSEEvent {
   event: string;

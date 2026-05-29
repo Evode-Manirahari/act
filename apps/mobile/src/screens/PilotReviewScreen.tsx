@@ -175,7 +175,23 @@ export default function PilotReviewScreen() {
             </Text>
           </View>
         </View>
-        <Text style={styles.summaryHelp}>Approve + publish sends reviewed moments into Apprentice Training.</Text>
+        <Text style={styles.summaryHelp}>
+          Approve + publish sends reviewed moments into Apprentice Training. Outcome logging closes the measurement loop for this job.
+        </Text>
+        {recording?.job_id && (
+          <Pressable
+            style={({ pressed }) => [styles.outcomeLink, pressed && styles.pressed]}
+            onPress={() =>
+              navigation.navigate('PilotOutcome', {
+                jobId: recording.job_id,
+                recordedBy: recording.user_id,
+                sourceRecordingId: recording.id,
+              })
+            }
+          >
+            <Text style={styles.outcomeLinkText}>Log job outcome</Text>
+          </Pressable>
+        )}
       </View>
 
       {error && (
@@ -472,6 +488,19 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: 13,
     lineHeight: 18,
+  },
+  outcomeLink: {
+    minHeight: 42,
+    borderRadius: 8,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  outcomeLinkText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: '900',
   },
   statusPill: {
     borderRadius: 999,
