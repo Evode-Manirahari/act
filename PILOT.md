@@ -7,11 +7,15 @@
 
 ---
 
+> **⚠️ Reframe (2026-05-29):** This plan predates the wedge reframe. The **buyer is a multi-site operator / consolidator** (ARS, CoolSys, Service Champions, franchise networks), **not a solo shop**, and the sell is **callback reduction + retiring-expert capture + faster time-to-billable**, not generic "apprentice ramp." The original solo-shop target list (§2) and per-apprentice pricing (§7) are **superseded**; first motion is a **60-day paid concierge pilot** with one operator + one retiring senior tech. Sections below are being migrated; treat superseded blocks as reserve research until rewritten. Source: `~/.gstack/projects/evodemanirahari/evodemanirahari-act-capture-design-20260529-115431.md`.
+
+---
+
 ## 1. What we are selling
 
-> Your best HVAC techs train the next generation without writing documentation.
+> Capture how your best techs diagnose your hardest jobs — before they retire — and turn it into company-specific training that cuts callbacks and gets new hires billable on your own install base.
 
-We are **not** selling AI that tells techs what to do. We are selling **apprentice ramp speed** and **preservation of senior expertise** — the institutional knowledge that walks out the door when a 30-year master retires.
+We are **not** selling AI that tells techs what to do, and we are **not** selling generic apprentice training (that is the incumbent Interplay's hill). We are selling, to a multi-site operator, **fewer callbacks on their own install base**, **faster time-to-billable for new hires**, and **preservation of senior expertise** — the company-specific institutional knowledge that walks out the door when a 30-year master retires.
 
 Concretely, the pilot delivers:
 
@@ -19,21 +23,23 @@ Concretely, the pilot delivers:
 - Each card = short clip + the expert's *why* + the novice trap + the safety boundary + a quiz.
 - A measurable improvement in apprentice hazard ID and next-step decisions, pre/post.
 
-What the buyer (shop owner / GM) hears: *"In six weeks you'll have a library that makes a 19-year-old apprentice notice what your best tech notices."*
+What the buyer (ops director / regional service director at a multi-site operator) hears: *"In 60 days you'll have a library, captured from your own senior tech, that makes a new hire notice what your best tech notices on your own accounts — and you'll see it in callbacks and time-to-billable."*
 
 ---
 
-## 2. Target design partners
+## 2. Target design partner
 
-We want **3 paid design partners.** Criteria, in order:
+We want **one paid concierge-pilot partner** to start: a **multi-site operator or consolidator**, not a solo shop. Criteria, in order:
 
-1. **Has ≥1 senior tech (10+ years)** willing to be recorded on real jobs. This is the gating constraint.
-2. **Has ≥2 apprentices** (or new hires < 2 years) who can be the learning target.
-3. **Residential or light commercial** service work — pure new-construction shops have less diagnostic variability per call.
-4. **Owner is hands-on** with training and feels the ramp cost (most do — apprentices are expensive).
-5. **Located in CA / AZ / NV** so service density is high and seasonal cooling load runs through the pilot window.
+1. **Multi-site / multi-truck operator** (regional branch network, consolidator, or multi-location franchise) where slow ramp and callbacks scale across many techs. This is the buyer profile.
+2. **A reachable human with budget** — ops director, regional service director, or service manager who owns the ramp/callback P&L. Not a careers page.
+3. **Has ≥1 senior or retiring tech (10+ years)** willing to be recorded on real jobs. This is the gating constraint.
+4. **New hires / apprentices** who can be the learning target, and **callback / first-time-fix data** we can baseline against to prove ROI.
+5. **Diagnostic-heavy** residential or commercial service work — high variability per call yields richer teachable moments than pure changeouts/new-construction.
 
-### Candidate list
+### Candidate list — ⚠️ SUPERSEDED (old solo-shop frame; kept as reserve research)
+
+> The list below targets **solo shops**, which the 2026-05-29 reframe rules out as the buyer. Retained as reserve research / possible referral sources, **not** the primary target. Primary targets are now multi-site operators (ARS/Rescue Rooter, CoolSys, Service Champions, One Hour and franchise networks) — see the design doc for the ICP rationale.
 
 | # | Company | Contact | Source | Why a fit | Status |
 |---|---|---|---|---|---|
@@ -57,13 +63,13 @@ We want **3 paid design partners.** Criteria, in order:
 
 ### Cold message (text or LinkedIn DM, ~80 words)
 
-> Hey [Name], I'm building a tool for HVAC contractors that captures what your senior techs already know — the diagnostic shortcuts, the novice traps, the safety stuff that lives in their head — and turns it into short training cards your apprentices can practice with. No writing required. 6-week paid pilot, 3 shops. Worth a 20-min call to see if your shop is a fit?
+> Hey [Name], I work with multi-site HVAC operators on a problem you already track: callbacks and the months it takes a new hire to get billable on your own accounts. We capture how your senior techs actually diagnose your hardest jobs — the shortcuts, the novice traps, the safety calls that live in their head — and turn it into short training your new hires practice with, before that senior tech retires. No writing required. 60-day paid pilot, one region. Worth a 20-min call to see if it's a fit?
 
 ### First call (20 min — qualify, don't sell)
 
 1. (3 min) Their training pain today. *How do you onboard a new tech? What part costs you the most time?*
 2. (5 min) The wedge. *Walk through the capture loop in 3 sentences.* "Senior tech records, taps Mark on teachable moments, answers 3 questions later. We turn it into apprentice cards."
-3. (5 min) What they would pay for. *Is this nice-to-have or is it the apprentice-ramp problem?*
+3. (5 min) What they would pay for. *Make the pain a number: what does a callback cost you, how many new hires did you lose in the first 90 days last year, how long until a new hire is billable? Is moving those numbers worth a paid pilot?*
 4. (4 min) Fit check. Do they have ≥1 senior + ≥2 apprentices? Is the senior willing? Are they OK with consent on residential calls?
 5. (3 min) Next step. Schedule the in-person kickoff if they're in.
 
@@ -127,7 +133,7 @@ Each apprentice takes a **scenario assessment** in Week 0 (pre-pilot) and Week 1
 | Apprentice scenario score Δ | (Week 10 score − Week 0 score) / Week 0 score, per apprentice | ≥ +25% mean improvement |
 | Hazard-ID accuracy Δ | subset of scenarios that are safety-boundary moments | ≥ +30% mean improvement |
 | First-time-fix rate Δ | from `JobOutcome.first_time_fix` rows in pilot vs prior 90 days | ≥ +5 percentage points (noisy — directional) |
-| Manager value | "Would you pay $X/seat/month to continue?" | ≥ 2 of 3 shops say yes at $50+ per apprentice/month |
+| Buyer value | "Would you roll this out per-seat across the region to continue?" | Operator commits to a paid per-seat rollout (signal $50+/tech/month), justified against callback + ramp savings |
 
 ### Anti-metrics (things we explicitly are NOT optimizing for)
 
@@ -165,13 +171,13 @@ These are product features, not legal footnotes.
 
 ## 7. Pricing & commercial framing
 
-**Pilot:** $500 / shop / week during the 6 active capture weeks = $3,000 per shop. $9,000 total across 3 shops if all in.
+**Concierge pilot:** a single multi-site operator, 60-day engagement. Flat pilot fee (signal ~$4–5k) covering capture of ~20 jobs into company-specific cards plus the callback/ramp measurement. One operator, not three solo shops.
 
-**Post-pilot price (signaled, not committed):** $50–100 / apprentice / month. The buyer is the shop owner; the price scales with the apprentice headcount (the thing they're trying to make more efficient).
+**Post-pilot price (signaled, not committed):** per-seat across the operator's tech base (signal $50–100 / tech / month). The buyer is the multi-site operator; the price scales with tech headcount and is justified against the callback dollar (~$650/callback) and time-to-billable, not against apprentice count.
 
 **Why this works:**
-- $50 / apprentice / month is < 1 hour of a senior tech's billable rate. Easy ROI math.
-- The pilot price is high enough that they take it seriously and low enough that 3 shops is realistic for a single-founder push.
+- A per-seat fee is a rounding error against one avoided callback per tech per quarter. Easy ROI math the operator already tracks.
+- The concierge pilot price is high enough that the operator takes it seriously and low enough that one operator is realistic for a single-founder push.
 - We give one full refund clause (< 30 cards) to remove buyer risk.
 
 ---
@@ -182,9 +188,9 @@ These are product features, not legal footnotes.
 |---|---|---|
 | Week 0 (now, 2026-05-25) | Finalize this doc. Apple Developer enrollment (in progress). Real-iPhone build verified. | Evode |
 | Week 1 | First 5 outreach DMs sent. Aim: 2 qualified calls. | Evode |
-| Week 2 | 3 signed pilot agreements. Apprentice pre-pilot assessments administered. | Evode + 3 shops |
+| Week 2 | 1 signed concierge-pilot agreement. New-hire pre-pilot assessments administered; callback baseline pulled. | Evode + 1 operator |
 | **Weeks 3–8** | Capture weeks 1–6 (6 weeks of active capture, see §4). | All |
-| Weeks 9–10 | Measurement — apprentice post-pilot assessments, manager interview, churn / continue decision. | Evode + 3 shops |
+| Weeks 9–10 | Measurement — new-hire post-pilot assessments, callback/ramp delta, operator interview, churn / continue decision. | Evode + 1 operator |
 | Week 11 | Pilot retro. Decide commercial structure for Round 2. | Evode |
 
 ---
@@ -195,9 +201,9 @@ Things we have to watch and respond to:
 
 - **No senior tech will agree to be recorded.** Mitigation: lead with the "credit the master" framing. Show the admin review queue — they own the publish button.
 - **Manual marks dry up after Day 2.** Mitigation: mid-week check-in catches this. If the Mark button is friction, fix it before Week 2.
-- **Apprentices ignore the cards.** Mitigation: ship the Learn tab with quiz scoring + streak. Make completion visible to the shop owner.
+- **New hires ignore the cards.** Mitigation: ship the Learn tab with quiz scoring + streak. Make completion visible to the operator / service manager.
 - **Cards don't transfer (Week 10 score = Week 0 score).** Mitigation: this is the existential question. If transfer is zero we have a design problem in the cards themselves, not the capture loop.
-- **Shop owner won't pay post-pilot.** Mitigation: the manager interview at Week 9 surfaces this before we ask. If they say "this is interesting but not $50/apprentice", we re-price or re-scope.
+- **Operator won't pay post-pilot.** Mitigation: the operator interview at Week 9 surfaces this before we ask. If they say "interesting but not worth a per-seat rollout," we re-price or re-scope against the callback/ramp delta.
 
 ---
 

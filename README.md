@@ -1,8 +1,8 @@
 # ACT
 
-**Your best HVAC techs train the next generation without writing documentation.**
+**ACT captures how your best HVAC techs diagnose your hardest jobs — before they retire — and turns it into company-specific training that cuts callbacks and gets new hires billable on your own install base.**
 
-*For multi-site HVAC operators: capture your senior techs' company-specific reasoning before they retire — and cut callbacks and new-hire ramp on your own install base.*
+*Sold to multi-site HVAC operators. Measured in callbacks, first-90-day turnover, and time-to-billable. No documentation and no writing: the expertise is captured from real jobs in the expert's own words.*
 
 ACT Capture turns ride-alongs and senior service calls into reviewed training objects — short clips of a teachable moment, paired with the expert's reasoning, the novice traps to avoid, the safety boundaries, and a quick quiz to check transfer.
 
@@ -133,12 +133,12 @@ Mobile reads the API base URL through `apps/mobile/src/lib/config.ts`. Set `EXPO
 
 ## Product framing (do not drift)
 
-- **Say (user value)**: "Your best HVAC techs train the next generation without writing documentation."
 - **Say (buyer value)**: "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire." Sold to multi-site operators; measured in callbacks / first-90-day turnover / time-to-billable.
-- **Do not say**: "AI tells techs what to do in real time." That is the *old* framing and it leaks into product decisions if you let it.
-- **Do not position as** generic apprentice training sold to solo shops — that is Interplay's hill and ACT loses there. ACT is the company-specific capture layer *on top of* generic training.
+- **Say (user value)**: "Your senior techs pass on what they know without writing a word — captured from real jobs, in their own words."
+- **Do not say (retired framing)**: "AI tells techs what to do in real time." The old copilot pitch; it leaks into product decisions if you let it.
+- **Do not say (retired framing)**: "Train the next generation" / "generic apprentice training" sold to solo shops. That is the incumbent's (Interplay) hill and ACT loses there. ACT is the company-specific capture layer *on top of* generic training.
 
-The product's **users** are the senior tech (capture), the lead tech (review), and the apprentice (learn). The product's **buyer** is the multi-site operator. Not the AI, not the solo shop.
+The product's **users** are the senior tech (capture), the lead tech (review), and the apprentice (learn). The product's **buyer** is the multi-site operator / consolidator. Not the AI, not the solo shop.
 
 ## AI workflow helper (gstack)
 
