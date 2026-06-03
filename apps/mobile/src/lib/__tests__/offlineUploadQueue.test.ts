@@ -123,6 +123,84 @@ describe('OfflineUploadQueue', () => {
     );
   });
 
+  it('carries duration through the upload auto-complete (no separate complete)', async () => {
+    // Regression: duration_s used to be enqueued as a standalone complete
+    // that lost a 409 race against the upload auto-complete and was dropped.
+    const storage = new MemoryStorage();
+    const handlers = makeHandlers();
+    const q = new OfflineUploadQueue({ storage, handlers });
+
+    await q.enqueueUpload({
+      recordingId: 'r-dur',
+      fileUri: 'file:///tmp/clip.mp4',
+      presignedUrl: 'https://r2.example/upload-here',
+      durationSeconds: 184.5,
+      endedAt: '2026-06-02T10:00:00.000Z',
+    });
+    const result = await q.flush();
+    expect(result.succeeded).toBe(1);
+    expect(handlers.completeRecording).toHaveBeenCalledTimes(1);
+    expect(handlers.completeRecording).toHaveBeenCalledWith(
+      expect.objectContaining({
+        recordingId: 'r-dur',
+        bytesUploaded: 123456,
+        durationSeconds: 184.5,
+        endedAt: '2026-06-02T10:00:00.000Z',
+      }),
+    );
+  });
+
+  it('does not run complete/process before the upload lands', async () => {
+    // Ordering guarantee: when the upload fails (offline), the dependent
+    // process item must NOT execute out of order — it waits, untouched.
+    const storage = new MemoryStorage();
+    const handlers = makeHandlers({
+      uploadRecordingFile: jest.fn().mockRejectedValue(new Error('offline')),
+    });
+    const q = new OfflineUploadQueue({ storage, handlers });
+
+    await q.enqueueUpload({
+      recordingId: 'r-ord',
+      fileUri: 'file:///tmp/clip.mp4',
+      presignedUrl: 'https://r2.example/upload-here',
+    });
+    await q.enqueueProcess({ recordingId: 'r-ord' });
+
+    const result = await q.flush();
+
+    expect(handlers.uploadRecordingFile).toHaveBeenCalledTimes(1);
+    expect(handlers.completeRecording).not.toHaveBeenCalled();
+    expect(handlers.startProcessing).not.toHaveBeenCalled();
+    expect(result.remaining).toBe(2);
+
+    const persisted = JSON.parse(
+      storage.store.get('act_capture_queue_v1')!,
+    ) as QueueItem[];
+    const upload = persisted.find((i) => i.kind === 'upload')!;
+    const process = persisted.find((i) => i.kind === 'process')!;
+    expect(upload.attempts).toBe(1);
+    expect(process.attempts).toBe(0); // held intact, no attempt consumed
+  });
+
+  it('does not block independent marks on the same recording', async () => {
+    // Marks carry no ordering dependency: a failed mark must not stall a
+    // sibling mark for the same recording.
+    const storage = new MemoryStorage();
+    const postMark = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('flaky'))
+      .mockResolvedValue({ id: 'm-ok' });
+    const handlers = makeHandlers({ postMark });
+    const q = new OfflineUploadQueue({ storage, handlers });
+
+    await q.enqueueMark({ recordingId: 'r-mk', timestampSeconds: 1 });
+    await q.enqueueMark({ recordingId: 'r-mk', timestampSeconds: 2 });
+
+    await q.flush();
+
+    expect(postMark).toHaveBeenCalledTimes(2);
+  });
+
   it('treats a 409 on complete as success (recording already advanced)', async () => {
     const storage = new MemoryStorage();
     const handlers = makeHandlers({
