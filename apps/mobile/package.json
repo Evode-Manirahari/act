@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@actober/act-prompts": "workspace:*",
-    "@actober/shared-types": "workspace:*",
     "@expo/metro-runtime": "~6.1.2",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "11.4.1",
@@ -60,9 +59,6 @@
     "testMatch": [
       "**/__tests__/**/*.test.ts"
     ],
-    "moduleNameMapper": {
-      "^@actober/shared-types$": "<rootDir>/../../packages/shared-types/src/index.ts"
-    },
     "globals": {
       "ts-jest": {
         "tsconfig": {
