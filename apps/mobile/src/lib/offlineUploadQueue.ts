@@ -23,6 +23,11 @@ import {
 
 const QUEUE_KEY = 'act_capture_queue_v1';
 
+// Kinds whose order matters within a single recording. A recording must be
+// uploaded before it can be completed, and completed before processing is
+// kicked. Marks carry no such dependency.
+const ORDERED_KINDS = new Set<QueueItem['kind']>(['upload', 'complete', 'process']);
+
 export type QueueItem =
   | {
       kind: 'mark';
@@ -42,6 +47,12 @@ export type QueueItem =
       fileUri: string;
       presignedUrl: string | null;
       contentType: string;
+      // Carried so the post-upload auto-complete can stamp duration in the
+      // same step. Without this, a separate `complete` item races the
+      // auto-complete, loses (409 — recording already advanced), and
+      // duration_s is silently never persisted.
+      durationSeconds?: number;
+      endedAt?: string;
       enqueuedAt: number;
       attempts: number;
     }
@@ -147,6 +158,8 @@ export class OfflineUploadQueue {
     fileUri: string;
     presignedUrl: string | null;
     contentType?: string;
+    durationSeconds?: number;
+    endedAt?: string;
   }): Promise<QueueItem> {
     const item: QueueItem = {
       kind: 'upload',
@@ -155,6 +168,8 @@ export class OfflineUploadQueue {
       fileUri: input.fileUri,
       presignedUrl: input.presignedUrl,
       contentType: input.contentType ?? 'video/mp4',
+      durationSeconds: input.durationSeconds,
+      endedAt: input.endedAt,
       enqueuedAt: Date.now(),
       attempts: 0,
     };
@@ -204,20 +219,36 @@ export class OfflineUploadQueue {
       // Work off a snapshot, but write back the mutated list when done.
       let pending = await this.items();
       const survivors: QueueItem[] = [];
+      // Recordings whose ordered lifecycle chain (upload → complete →
+      // process) errored this pass. Those three kinds have a hard ordering
+      // dependency, so once one fails we must defer the rest of that
+      // recording's chain intact rather than run it out of order. Marks are
+      // independent and never blocked.
+      const blockedRecordings = new Set<string>();
       for (const item of pending) {
+        const ordered = ORDERED_KINDS.has(item.kind);
+        if (ordered && blockedRecordings.has(item.recordingId)) {
+          // Earlier step in this recording's chain hasn't landed yet. Hold
+          // this item — untouched, no attempt burned — for a later flush.
+          survivors.push(item);
+          continue;
+        }
         try {
           await this.executeOne(item);
           succeeded += 1;
         } catch (err) {
+          failed += 1;
+          if (ordered) {
+            // Stall the rest of this recording's chain until this lands.
+            blockedRecordings.add(item.recordingId);
+          }
           const attempts = item.attempts + 1;
           if (attempts >= this.maxAttempts) {
-            failed += 1;
             // Drop poisoned items after maxAttempts to keep the queue
             // unblocked. The mobile UI surfaces the failure separately.
             continue;
           }
           survivors.push({ ...item, attempts });
-          failed += 1;
         }
       }
       await this.replace(survivors);
@@ -245,12 +276,16 @@ export class OfflineUploadQueue {
           item.presignedUrl,
           item.contentType,
         );
-        // After a successful upload, automatically enqueue a complete so the
-        // server flips the status. Mobile callers can also enqueue their own
-        // complete with duration_s; this is the safety net.
+        // After a successful upload, complete in the same step so the server
+        // flips the status AND records duration_s together. Stamping duration
+        // here (rather than from a separate `complete` item) avoids the race
+        // where the standalone complete arrives after status has advanced and
+        // is rejected with a 409.
         await this.handlers.completeRecording({
           recordingId: item.recordingId,
           bytesUploaded: bytes,
+          durationSeconds: item.durationSeconds,
+          endedAt: item.endedAt,
         });
         return;
       }

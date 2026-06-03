@@ -238,14 +238,14 @@ export default function CaptureJobScreen() {
     setStatus({ kind: 'saved_local', marks: marksRef.current.length });
     const duration = (Date.now() - recordingStartRef.current) / 1000;
 
+    // Duration + endedAt ride on the upload item so the queue's post-upload
+    // complete records them in one step. Enqueuing a separate complete here
+    // would race that auto-complete, lose on a 409, and drop duration_s.
     await captureQueue.enqueueUpload({
       recordingId: rec.id,
       fileUri,
       presignedUrl: uploadUrl,
       contentType: rec.content_type ?? 'video/mp4',
-    });
-    await captureQueue.enqueueComplete({
-      recordingId: rec.id,
       durationSeconds: duration,
       endedAt: new Date().toISOString(),
     });
