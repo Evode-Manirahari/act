@@ -3,7 +3,6 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@actober/shared-types": ["../../packages/shared-types/src"],
       "@actober/act-prompts": ["../../packages/act-prompts/src"]
     }
   }

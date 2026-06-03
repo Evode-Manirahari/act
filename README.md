@@ -92,10 +92,9 @@ This repo contains the **mobile client only**. The backend lives in a sibling re
   - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
   - `src/screens/LearnScreen.tsx` — apprentice-facing published-card library with a seeded HVAC demo card
   - `src/screens/PilotOutcomeScreen.tsx` — manager-facing outcome capture for callback signal, diagnosis time, and apprentice progress
-  - `src/screens/AskActScreen.tsx` — earlier photo → question → Claude diagnosis slice; kept in source but outside the pilot shell
+  - `src/screens/AskActScreen.tsx` — earlier photo → question → Claude diagnosis slice; reachable from PilotHome via a low-prominence "Legacy photo diagnosis" link, not part of the core Capture flow
   - `src/api/actApi.ts` — talks to the deployed backend
 - `packages/act-prompts` — shared prompt scaffolding
-- `packages/shared-types` — shared TypeScript types
 - `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
 - `../act-api/` — Python FastAPI backend, deployed at https://act-api-evode.fly.dev ([sibling repo](https://github.com/Evode-Manirahari/act-api))
 
@@ -121,7 +120,7 @@ Then on your phone:
 2. Make sure phone and Mac are on the **same WiFi**
 3. Scan the QR code in the terminal, or paste `exp://<lan-ip>:8081` via "Enter URL manually"
 
-On `capture-mvp`, the app launches into the HVAC training-capture shell: Record senior tech → Review moments → Apprentice training → Measure outcome. `AskActScreen` (single photo → question → streamed Claude answer) remains in source as legacy code, but it is not part of the pilot shell. The legacy multi-screen flow (Boot / Onboarding / Paywall / Home / Project) is preserved in source but is no longer the app entry point.
+On `capture-mvp`, the app launches into the HVAC training-capture shell: Record senior tech → Review moments → Apprentice training → Measure outcome. `AskActScreen` (single photo → question → streamed Claude answer) remains in source as legacy code, reachable from PilotHome via a low-prominence "Legacy photo diagnosis" link. The pre-pivot consumer-DIY multi-screen flow (Boot / Onboarding / Paywall / Home / Project / etc.) and the `shared-types` package were removed on 2026-06-02 — they were unreachable dead code.
 
 ## Backend (sibling repo)
 

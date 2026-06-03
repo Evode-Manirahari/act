@@ -46,9 +46,6 @@ importers:
       '@actober/act-prompts':
         specifier: workspace:*
         version: link:../../packages/act-prompts
-      '@actober/shared-types':
-        specifier: workspace:*
-        version: link:../../packages/shared-types
       '@expo/metro-runtime':
         specifier: ~6.1.2
         version: 6.1.2(expo@54.0.34)(react-dom@19.1.0(react@19.1.0))(react-native@0.81.5(@babel/core@7.29.0)(@react-native-community/cli@13.6.4)(@react-native/metro-config@0.85.2(@babel/core@7.29.0))(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
@@ -157,12 +154,6 @@ importers:
         version: 5.9.3
 
   packages/act-prompts:
-    devDependencies:
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
-
-  packages/shared-types:
     devDependencies:
       typescript:
         specifier: ^5.4.0

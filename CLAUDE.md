@@ -44,16 +44,16 @@ This repo (`act/`) contains the mobile client only. The backend lives in a sibli
   - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
   - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
   - `src/screens/LearnScreen.tsx` — apprentice-facing learning surface with a seeded HVAC demo card
-  - `src/screens/AskActScreen.tsx` — legacy photo → question → Claude diagnosis slice; kept in source but outside the pilot shell
-  - Legacy screens (Boot / Onboarding / Paywall / Home / Profile / Project / History) retained pending Capture flow finalization
+  - `src/screens/AskActScreen.tsx` — legacy photo → question → Claude diagnosis slice; reachable from PilotHome via a low-prominence "Legacy photo diagnosis" link, not part of the core Capture flow
 - `packages/act-prompts` — shared prompt scaffolding used by mobile
-- `packages/shared-types` — shared TypeScript types
 - `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
 - `../act-api/` — Python FastAPI backend (sibling repo, not a workspace member)
 
 **Active branch**: `capture-mvp` — where the Capture flow is being built and merged back to `main` in waves.
 
 Removed 2026-04-23: `apps/api` (Node/Express/Prisma), `apps/web` (React/Vite), `apps/flutter` (untracked, archived to `~/Downloads/act-apps-flutter-backup-2026-04-23.zip`), `railway.toml`.
+
+Removed 2026-06-02: the orphaned pre-pivot consumer-DIY surface — `RootNavigator` + 8 screens (Boot / Onboarding / Paywall / Home / Project / ProjectDetail / History / Profile), `hooks/usePaywall`, `store/act`, `api/act`, the `CompletionModal` / `ResumeBanner` / `SuggestionCard` components, and the now-dead `packages/shared-types` package (~3.7k lines). None were reachable from `App.tsx → PilotNavigator`. The Capture flow and `AskActScreen` are unaffected.
 
 ## Stack
 - **Mobile**: React Native (Expo SDK 51), TypeScript, Zustand
