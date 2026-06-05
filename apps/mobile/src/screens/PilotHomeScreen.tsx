@@ -6,13 +6,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { colors } from '../theme/colors';
+import { fonts, labelStyle } from '../theme/typography';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 
+// Pilot targets (goal, not live counts — live counts come from /dashboard/summary later).
 const targetStats = [
-  { label: 'pilot shops', value: '3' },
-  { label: 'recorded jobs', value: '20' },
-  { label: 'reviewed cards', value: '50' },
+  { label: 'pilot days', value: '60' },
+  { label: 'jobs captured', value: '20' },
+  { label: 'cards published', value: '50' },
 ];
 
 const workflow = ['Record', 'Mark', 'Review', 'Teach', 'Measure'];
@@ -28,10 +30,11 @@ export default function PilotHomeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.kicker}>HVAC training capture</Text>
-          <Text style={styles.title}>Capture senior judgment. Train apprentices.</Text>
+          <Text style={styles.kicker}>HVAC · Field Capture</Text>
+          <Text style={styles.title}>Capture what your best techs know.</Text>
           <Text style={styles.subtitle}>
-            Record the job, mark teachable moments, review the draft, then publish cards apprentices can practice.
+            Record the job, mark the teachable moment, review, publish. The judgment that
+            prevents callbacks, captured before it retires.
           </Text>
         </View>
 
@@ -49,11 +52,12 @@ export default function PilotHomeScreen() {
           />
           <ActionButton
             label="Measure outcome"
-            detail="Log first-time fix, callback, and apprentice progress"
+            detail="Log first-time fix, callback, and ramp"
             onPress={() => navigation.navigate('PilotOutcome', undefined)}
           />
         </View>
 
+        <Text style={styles.sectionLabel}>Pilot target</Text>
         <View style={styles.statsRow}>
           {targetStats.map((stat) => (
             <View key={stat.label} style={styles.statTile}>
@@ -118,104 +122,66 @@ function ActionButton({
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-    gap: 18,
-  },
-  header: {
-    paddingTop: 10,
-    gap: 6,
-  },
-  kicker: {
-    color: colors.primary,
-    fontSize: 13,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-  },
+  safe: { flex: 1, backgroundColor: colors.background },
+  container: { flex: 1 },
+  content: { padding: 20, gap: 16 },
+  header: { paddingTop: 8, gap: 8 },
+  kicker: { ...labelStyle, color: colors.primary, fontSize: 12 },
   title: {
-    color: colors.text,
-    fontSize: 30,
-    lineHeight: 36,
-    fontWeight: '900',
+    color: colors.ink,
+    fontSize: 28,
+    lineHeight: 34,
+    fontFamily: fonts.display, // bold Geist (so it isn't flattened by the global default)
   },
   subtitle: {
-    color: colors.textMuted,
-    fontSize: 16,
-    lineHeight: 23,
-    maxWidth: 340,
+    color: colors.steel500,
+    fontSize: 15,
+    lineHeight: 22,
+    maxWidth: 360,
+    fontFamily: fonts.body,
   },
-  actionBand: {
-    gap: 10,
-  },
+  actionBand: { gap: 10 },
   actionButton: {
-    minHeight: 96,
-    borderRadius: 8,
+    minHeight: 88,
+    borderRadius: 6,
     padding: 18,
     justifyContent: 'center',
     borderWidth: 1,
   },
   primaryAction: {
     backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    borderColor: colors.primaryPressed,
   },
   secondaryAction: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.steel300,
   },
-  actionLabel: {
-    color: colors.text,
-    fontSize: 21,
-    fontWeight: '900',
-  },
-  actionDetail: {
-    color: colors.textMuted,
-    fontSize: 14,
-    marginTop: 6,
-  },
-  primaryActionText: {
-    color: '#FFFFFF',
-  },
-  primaryActionDetail: {
-    color: 'rgba(255,255,255,0.84)',
-  },
-  pressed: {
-    opacity: 0.78,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
+  actionLabel: { color: colors.ink, fontSize: 19, fontFamily: fonts.semibold },
+  actionDetail: { color: colors.steel500, fontSize: 14, marginTop: 5, fontFamily: fonts.body },
+  primaryActionText: { color: '#FFFFFF' },
+  primaryActionDetail: { color: 'rgba(255,255,255,0.85)' },
+  pressed: { opacity: 0.8 },
+  sectionLabel: { ...labelStyle, color: colors.steel500, marginBottom: -6 },
+  statsRow: { flexDirection: 'row', gap: 10 },
   statTile: {
     flex: 1,
-    minHeight: 86,
-    borderRadius: 8,
+    minHeight: 80,
+    borderRadius: 6,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+    borderTopWidth: 3,
+    borderTopColor: colors.primary,
     padding: 14,
     justifyContent: 'center',
   },
-  statValue: {
-    color: colors.text,
-    fontSize: 27,
-    fontWeight: '900',
-  },
-  statLabel: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
-  },
+  statValue: { color: colors.ink, fontSize: 26, fontFamily: fonts.mono }, // mono = instrument
+  statLabel: { ...labelStyle, color: colors.steel500, fontSize: 10, marginTop: 4 },
   workflowBand: {
-    minHeight: 82,
-    borderRadius: 8,
+    minHeight: 80,
+    borderRadius: 6,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -223,40 +189,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  workflowStep: {
-    alignItems: 'center',
-    minWidth: 50,
-  },
+  workflowStep: { alignItems: 'center', minWidth: 50 },
   workflowNumber: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.primaryLight,
-    color: colors.primary,
+    width: 26,
+    height: 26,
+    borderRadius: 3, // square instrument chip, not a round pill
+    backgroundColor: colors.ink,
+    color: '#FFFFFF',
     textAlign: 'center',
-    lineHeight: 28,
-    fontWeight: '900',
+    lineHeight: 26,
+    fontFamily: fonts.monoSemibold,
+    fontSize: 13,
     marginBottom: 6,
+    overflow: 'hidden',
   },
-  workflowLabel: {
-    color: colors.text,
-    fontSize: 10,
-    fontWeight: '800',
-  },
+  workflowLabel: { ...labelStyle, color: colors.steel700, fontSize: 9 },
   workflowLine: {
     flex: 1,
     height: 1,
     backgroundColor: colors.border,
     marginHorizontal: 2,
-    marginBottom: 22,
+    marginBottom: 20,
   },
-  legacyLink: {
-    alignItems: 'center',
-    paddingVertical: 6,
-  },
-  legacyLinkText: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '700',
-  },
+  legacyLink: { alignItems: 'center', paddingVertical: 6 },
+  legacyLinkText: { color: colors.textLight, fontSize: 13, fontFamily: fonts.mono },
 });
