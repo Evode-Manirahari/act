@@ -24,7 +24,8 @@
           "iosDisplayInForeground": true
         }
       ],
-      "@sentry/react-native"
+      "@sentry/react-native",
+      "expo-font"
     ],
     "ios": {
       "supportsTablet": true,
