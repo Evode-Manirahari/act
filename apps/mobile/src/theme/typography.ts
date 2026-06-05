@@ -1,14 +1,20 @@
-import { Platform, TextStyle } from 'react-native';
+import { TextStyle } from 'react-native';
 
-// "Field Instrument" type — see DESIGN.md.
-// TODO: bundle General Sans (display), Geist (body, tabular-nums), and
-// Geist Mono (instrument accent) via expo-font in assets/fonts/. Until then,
-// system fallbacks hold the structure; the monospace accent is what makes the
-// numbers + section labels read like a gauge.
+// "Field Instrument" type — see DESIGN.md. Real Geist family, loaded in App.tsx
+// via expo-font + @expo-google-fonts. Each weight is its own named family in RN
+// (custom fonts don't synthesize weight from fontWeight), so reference the
+// specific weight you need. Geist Mono is the instrument accent on numbers/labels.
+//
+// NOTE: General Sans was the original display pick; standardized on Geist for
+// clean bundling (one family, no manual font files). Swap later if desired.
 export const fonts = {
-  display: Platform.select({ ios: 'System', android: 'sans-serif-medium', default: 'System' }),
-  body: Platform.select({ ios: 'System', android: 'sans-serif', default: 'System' }),
-  mono: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+  body: 'Geist_400Regular',
+  medium: 'Geist_500Medium',
+  semibold: 'Geist_600SemiBold',
+  bold: 'Geist_700Bold',
+  display: 'Geist_700Bold',
+  mono: 'GeistMono_500Medium',
+  monoSemibold: 'GeistMono_600SemiBold',
 } as const;
 
 // Mono, uppercase, tracked-out — the instrument section label.
