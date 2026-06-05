@@ -272,3 +272,11 @@ after large code moves so the ACT source stays fresh.
 - `/ship` — release engineer flow for push + PR
 - `/browse` — browser automation + screenshots
 - `/retro` — post-release process improvement
+
+## Design System
+Read **DESIGN.md** before any visual/UI work. ACT's system is "Field Instrument"
+(industrial/utilitarian, light-first): one hi-vis action color (safety orange
+`#EA580C`), cool steel neutrals, ink text, mono-accented numbers/labels, and a
+lockout-style safety panel. Tokens live in `apps/mobile/src/theme/colors.ts` and
+`typography.ts`. Don't deviate without updating DESIGN.md. In QA, flag UI that
+doesn't match it.
