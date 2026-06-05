@@ -20,6 +20,7 @@ import { useFocusEffect, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 
 import { colors } from '../theme/colors';
+import { fonts, labelStyle } from '../theme/typography';
 import {
   KnowledgeObject,
   logTrainingEvent,
@@ -442,16 +443,33 @@ function Section({
   tone?: 'warn' | 'error';
 }) {
   if (!body) return null;
+  const isWarn = tone === 'warn';
+  const isError = tone === 'error'; // safety -> lockout panel
   return (
     <View
       style={[
         styles.section,
-        tone === 'warn' && styles.sectionWarn,
-        tone === 'error' && styles.sectionError,
+        isWarn && styles.sectionWarn,
+        isError && styles.sectionError,
       ]}
     >
-      <Text style={styles.sectionLabel}>{label}</Text>
-      <Text style={styles.sectionBody}>{body}</Text>
+      <View style={styles.sectionHd}>
+        {isError && (
+          <View style={styles.lockoutIcon}>
+            <Text style={styles.lockoutIconText}>!</Text>
+          </View>
+        )}
+        <Text
+          style={[
+            styles.sectionLabel,
+            isWarn && styles.sectionLabelWarn,
+            isError && styles.sectionLabelError,
+          ]}
+        >
+          {label}
+        </Text>
+      </View>
+      <Text style={[styles.sectionBody, isError && styles.sectionBodyError]}>{body}</Text>
     </View>
   );
 }
@@ -551,24 +569,45 @@ const styles = StyleSheet.create({
   detailHeader: { paddingTop: 56, paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   backText: { fontSize: 16, fontWeight: '700', color: colors.primary },
   detailBody: { padding: 16, gap: 12 },
-  detailTitle: { fontSize: 20, fontWeight: '800', color: colors.text, lineHeight: 26 },
+  detailTitle: { fontSize: 22, fontWeight: '800', color: colors.ink, lineHeight: 28, fontFamily: fonts.display },
   section: {
     backgroundColor: colors.surface,
-    borderRadius: 8,
+    borderRadius: 6,
     padding: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    gap: 4,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.steel300,
+    gap: 8,
   },
-  sectionWarn: { borderColor: '#FCD34D', backgroundColor: '#FEF3C7' },
-  sectionError: { borderColor: '#FCA5A5', backgroundColor: '#FEE2E2' },
-  sectionLabel: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
+  sectionWarn: {
+    borderColor: '#F1D7A8',
+    backgroundColor: colors.cautionLight,
+    borderLeftWidth: 5,
+    borderLeftColor: colors.caution,
   },
-  sectionBody: { fontSize: 14, color: colors.text, lineHeight: 20 },
+  // Safety = industrial lockout panel: heavy danger left rule + tinted bg.
+  sectionError: {
+    borderColor: '#F3C9C9',
+    backgroundColor: colors.errorLight,
+    borderLeftWidth: 5,
+    borderLeftColor: colors.error,
+  },
+  sectionHd: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  lockoutIcon: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    backgroundColor: colors.error,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lockoutIconText: { color: '#fff', fontSize: 12, fontWeight: '800', fontFamily: fonts.mono },
+  sectionLabel: { ...labelStyle, color: colors.steel500 },
+  sectionLabelWarn: { color: colors.caution },
+  sectionLabelError: { color: colors.error },
+  sectionBody: { fontSize: 15, color: colors.steel700, lineHeight: 22, fontFamily: fonts.body },
+  sectionBodyError: { color: '#5B1212', fontWeight: '500' },
   quizCard: {
     backgroundColor: colors.surface,
     borderRadius: 8,
@@ -577,12 +616,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: 10,
   },
-  quizLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.primary,
-    textTransform: 'uppercase',
-  },
+  quizLabel: { ...labelStyle, color: colors.primary },
   quizQuestion: { fontSize: 15, fontWeight: '600', color: colors.text, lineHeight: 22 },
   choice: {
     flexDirection: 'row',
