@@ -1,7 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import AskActScreen from '../screens/AskActScreen';
 import CaptureJobScreen from '../screens/CaptureJobScreen';
 import LearnScreen from '../screens/LearnScreen';
 import PilotHomeScreen from '../screens/PilotHomeScreen';
@@ -15,9 +14,6 @@ export type PilotStackParamList = {
   PilotReview: { recordingId: string };
   Learn: { card?: KnowledgeObject; cardId?: string } | undefined;
   PilotOutcome: { jobId?: string; recordedBy?: string; sourceRecordingId?: string } | undefined;
-  // Legacy photo-to-question-to-Claude diagnosis slice. Not the core Capture flow;
-  // reachable from PilotHome behind a clearly-labeled legacy entry point.
-  AskAct: undefined;
 };
 
 const Stack = createNativeStackNavigator<PilotStackParamList>();
@@ -30,7 +26,6 @@ export default function PilotNavigator() {
       <Stack.Screen name="PilotReview" component={PilotReviewScreen} />
       <Stack.Screen name="Learn" component={LearnScreen} />
       <Stack.Screen name="PilotOutcome" component={PilotOutcomeScreen} />
-      <Stack.Screen name="AskAct" component={AskActScreen} />
     </Stack.Navigator>
   );
 }

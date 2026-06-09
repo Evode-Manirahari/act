@@ -15,8 +15,8 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { createDemoSession } from '../api/actApi';
-import type { DemoSession } from '../api/actApi';
+import { createDemoSession } from '../api/captureApi';
+import type { DemoSession } from '../api/captureApi';
 import { upsertJobOutcome } from '../api/captureApi';
 import type { JobOutcomeOut } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';

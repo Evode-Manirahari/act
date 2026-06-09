@@ -92,9 +92,7 @@ This repo contains the **mobile client only**. The backend lives in a sibling re
   - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
   - `src/screens/LearnScreen.tsx` — apprentice-facing published-card library with a seeded HVAC demo card
   - `src/screens/PilotOutcomeScreen.tsx` — manager-facing outcome capture for callback signal, diagnosis time, and apprentice progress
-  - `src/screens/AskActScreen.tsx` — earlier photo → question → Claude diagnosis slice; reachable from PilotHome via a low-prominence "Legacy photo diagnosis" link, not part of the core Capture flow
-  - `src/api/actApi.ts` — talks to the deployed backend
-- `packages/act-prompts` — shared prompt scaffolding
+  - `src/api/captureApi.ts`, `src/api/libraryApi.ts` — typed clients for the deployed backend
 - `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
 - `../act-api/` — Python FastAPI backend, deployed at https://act-api-evode.fly.dev ([sibling repo](https://github.com/Evode-Manirahari/act-api))
 
@@ -120,7 +118,7 @@ Then on your phone:
 2. Make sure phone and Mac are on the **same WiFi**
 3. Scan the QR code in the terminal, or paste `exp://<lan-ip>:8081` via "Enter URL manually"
 
-On `capture-mvp`, the app launches into the HVAC training-capture shell: Record senior tech → Review moments → Apprentice training → Measure outcome. `AskActScreen` (single photo → question → streamed Claude answer) remains in source as legacy code, reachable from PilotHome via a low-prominence "Legacy photo diagnosis" link. The pre-pivot consumer-DIY multi-screen flow (Boot / Onboarding / Paywall / Home / Project / etc.) and the `shared-types` package were removed on 2026-06-02 — they were unreachable dead code.
+On `capture-mvp`, the app launches into the HVAC training-capture shell: Record senior tech → Review moments → Apprentice training → Measure outcome. The pre-pivot consumer-DIY flow was removed 2026-06-02 and the legacy copilot surface (`AskActScreen`, the SSE `actApi.ts` client, `packages/act-prompts`) on 2026-06-09 — both were dead code off the pilot path.
 
 ## Backend (sibling repo)
 

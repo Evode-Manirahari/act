@@ -23,19 +23,3 @@ from `/plan-eng-review` on 2026-05-29.
   exists, so the wiring is the work, not the dependency.
 - **Depends on:** Nothing. Becomes urgent when pilot expands past one operator.
 
-## P3 — Freeze or remove the legacy copilot surface
-
-- **What:** Remove (or clearly quarantine) the dead "live copilot" surface:
-  `act-api` `turns.py` (SSE), `demo.py`, ElevenLabs TTS (`tts.py`), and mobile
-  `AskActScreen.tsx`, plus the `Turn`/`Frame` models if nothing else references them.
-- **Why:** It's not on the capture pilot path and not part of the product anymore
-  (the 2026-05-19 pivot retired the live copilot). It's maintenance weight and a
-  future dev will waste time figuring out which surface is real.
-- **Pros:** Smaller, clearer codebase; one obvious product surface.
-- **Cons:** Need to confirm nothing in the capture flow imports `Turn`/`Frame` or
-  the SSE helpers before deleting; tests for those surfaces (`test_diagnose.py`)
-  would go too.
-- **Context:** Explore confirmed these are unreachable from the active `PilotNavigator`.
-  Defer until after the pilot so capture work isn't disrupted; do it as a dedicated
-  cleanup PR with the test suite as the safety net.
-- **Depends on:** Pilot stable; verify no capture-path imports first.

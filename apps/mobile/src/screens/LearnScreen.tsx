@@ -26,7 +26,7 @@ import {
   logTrainingEvent,
   searchLibrary,
 } from '../api/libraryApi';
-import { createDemoSession, DemoSession } from '../api/actApi';
+import { createDemoSession, DemoSession } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 
 type TrainingCard = KnowledgeObject & { demo?: boolean };

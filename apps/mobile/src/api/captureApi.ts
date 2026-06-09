@@ -13,6 +13,26 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { API_BASE } from '../lib/config';
 
 
+/**
+ * Pilot session bootstrap: returns the seeded demo account/user/job the
+ * capture flow records against until real auth lands.
+ */
+export interface DemoSession {
+  job_id: string;
+  user_id: string;
+  account_id: string;
+}
+
+export async function createDemoSession(): Promise<DemoSession> {
+  const response = await fetch(`${API_BASE}/demo/session`, { method: 'POST' });
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Session ${response.status}: ${body.slice(0, 200)}`);
+  }
+  return response.json();
+}
+
+
 export type RecordingStatus =
   | 'pending'
   | 'uploading'

@@ -44,8 +44,6 @@ This repo (`act/`) contains the mobile client only. The backend lives in a sibli
   - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
   - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
   - `src/screens/LearnScreen.tsx` — apprentice-facing learning surface with a seeded HVAC demo card
-  - `src/screens/AskActScreen.tsx` — legacy photo → question → Claude diagnosis slice; reachable from PilotHome via a low-prominence "Legacy photo diagnosis" link, not part of the core Capture flow
-- `packages/act-prompts` — shared prompt scaffolding used by mobile
 - `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
 - `../act-api/` — Python FastAPI backend (sibling repo, not a workspace member)
 
@@ -53,7 +51,9 @@ This repo (`act/`) contains the mobile client only. The backend lives in a sibli
 
 Removed 2026-04-23: `apps/api` (Node/Express/Prisma), `apps/web` (React/Vite), `apps/flutter` (untracked, archived to `~/Downloads/act-apps-flutter-backup-2026-04-23.zip`), `railway.toml`.
 
-Removed 2026-06-02: the orphaned pre-pivot consumer-DIY surface — `RootNavigator` + 8 screens (Boot / Onboarding / Paywall / Home / Project / ProjectDetail / History / Profile), `hooks/usePaywall`, `store/act`, `api/act`, the `CompletionModal` / `ResumeBanner` / `SuggestionCard` components, and the now-dead `packages/shared-types` package (~3.7k lines). None were reachable from `App.tsx → PilotNavigator`. The Capture flow and `AskActScreen` are unaffected.
+Removed 2026-06-02: the orphaned pre-pivot consumer-DIY surface — `RootNavigator` + 8 screens (Boot / Onboarding / Paywall / Home / Project / ProjectDetail / History / Profile), `hooks/usePaywall`, `store/act`, `api/act`, the `CompletionModal` / `ResumeBanner` / `SuggestionCard` components, and the now-dead `packages/shared-types` package (~3.7k lines). None were reachable from `App.tsx → PilotNavigator`.
+
+Removed 2026-06-09: the legacy copilot surface — `AskActScreen.tsx` (photo → question → Claude diagnosis), its `AskAct` route and PilotHome entry link, `api/actApi.ts` (SSE `streamJobTurn` client; `createDemoSession` moved to `captureApi.ts`), and the unused `packages/act-prompts` package. The matching backend surface (`turns.py`, `/demo/turn`, `claude.py`, `tts.py`, `verified.py`, `Turn`/`Frame` models + tables) was removed from `../act-api/` in the same sweep.
 
 ## Stack
 - **Mobile**: React Native (Expo SDK 51), TypeScript, Zustand
@@ -83,9 +83,7 @@ Capture surface (the new core):
 - `training_events` — apprentice interactions with a knowledge object (viewed, quizzed, applied)
 - `job_outcomes` — first-time-fix, callbacks, time-to-diagnosis per job (the measurement loop)
 
-Legacy copilot surface (still present, not the focus):
-- `turns` — one voice Q → Claude A exchange within a job
-- `frames` — image captures attached to a turn
+The legacy copilot tables (`turns`, `frames`) were dropped 2026-06-09 along with the rest of that surface.
 
 ## Mobile State
 
@@ -97,7 +95,6 @@ The mobile app has been progressively rewiring from the pre-pivot consumer-DIY p
 - `LearnScreen` is the apprentice-facing surface and includes a seeded HVAC training card, quiz-event logging, and completion logging so demos can show the published-card output before live cards exist
 - `PilotOutcomeScreen` logs final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, and apprentice progress against `/jobs/{job_id}/outcomes`
 - Status polling + auto-process closes the loop after upload
-- `AskActScreen` remains in source for legacy diagnosis, but it is no longer part of the pilot shell on `capture-mvp`
 
 The mobile API client (`apps/mobile/src/api/actApi.ts`) talks to the deployed FastAPI service at `https://act-api-evode.fly.dev`.
 
@@ -117,7 +114,7 @@ Phase state, if needed, lives in the mobile app. The backend tracks objects, not
 **DO NOT rebuild anything already working. Extend only.**
 Read a file before touching it. Understand before changing.
 
-*(Exceptions taken: 2026-04-23 backend rewritten from Node to Python because the vision/audio pipeline is materially easier in Python. 2026-05-19 product pivot from live copilot to ACT Capture — superseded vision/persona but did not require a code rewrite; capture surface is additive, copilot surface is retained behind the trade migration.)*
+*(Exceptions taken: 2026-04-23 backend rewritten from Node to Python because the vision/audio pipeline is materially easier in Python. 2026-05-19 product pivot from live copilot to ACT Capture — superseded vision/persona but did not require a code rewrite; the retained copilot surface was finally removed 2026-06-09.)*
 
 ## Colors
 - Primary: #F97316 (warm orange)
@@ -156,7 +153,6 @@ Jobs:
 - `POST /jobs` — create a job
 - `GET  /jobs` — list recent jobs
 - `GET  /jobs/{job_id}` — fetch one job
-- `POST /jobs/{job_id}/summary` — generate/fetch job summary
 
 Recordings (the Capture core):
 - `POST /jobs/{job_id}/recordings` — create a recording for a job
@@ -184,27 +180,10 @@ Library + outcomes:
 - `GET  /jobs/{job_id}/outcomes` — fetch outcomes
 - `GET  /dashboard/summary` — pilot-readiness metrics
 
-Legacy copilot (retained):
-- `POST /jobs/{job_id}/turns` — SSE streaming voice Q → Claude A flow (older surface)
-- `POST /demo/turn`, `POST /demo/session` — demo endpoints
+Session bootstrap:
+- `POST /demo/session` — returns the seeded pilot account/user/job the capture flow records against until real auth lands
 
-## Streaming (SSE, legacy turns surface)
-`POST /jobs/{job_id}/turns` streams these events in order:
-```
-event: transcript
-data: <tech's transcribed question>
-
-event: token
-data: <incremental Claude output token>
-...
-
-event: audio
-data: <synthesized TTS audio URL>
-
-event: done
-data: <turn id>
-```
-Client: `EventSource` (web) or SSE-capable fetch reader (React Native). Capture-flow endpoints are request/response, not SSE.
+All endpoints are request/response — the SSE streaming surface went with the legacy copilot.
 
 ## Admin / Pilot Safety
 

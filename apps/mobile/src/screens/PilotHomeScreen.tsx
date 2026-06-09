@@ -108,12 +108,6 @@ export default function PilotHomeScreen() {
           ))}
         </View>
 
-        <Pressable
-          style={({ pressed }) => [styles.legacyLink, pressed && styles.pressed]}
-          onPress={() => navigation.navigate('AskAct')}
-        >
-          <Text style={styles.legacyLinkText}>Legacy photo diagnosis →</Text>
-        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -240,6 +234,4 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
     marginBottom: 20,
   },
-  legacyLink: { alignItems: 'center', paddingVertical: 6 },
-  legacyLinkText: { color: colors.textLight, fontSize: 13, fontFamily: fonts.mono },
 });
