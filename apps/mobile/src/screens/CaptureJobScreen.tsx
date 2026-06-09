@@ -37,8 +37,8 @@ import {
 import type { ConsentState, RecordingOut, RecordingStatus } from '../api/captureApi';
 import { captureQueue } from '../lib/offlineUploadQueue';
 import type { QueueItem } from '../lib/offlineUploadQueue';
-import { createDemoSession } from '../api/actApi';
-import type { DemoSession } from '../api/actApi';
+import { createDemoSession } from '../api/captureApi';
+import type { DemoSession } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 
 

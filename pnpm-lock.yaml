@@ -43,9 +43,6 @@ importers:
 
   apps/mobile:
     dependencies:
-      '@actober/act-prompts':
-        specifier: workspace:*
-        version: link:../../packages/act-prompts
       '@expo-google-fonts/geist':
         specifier: ^0.4.2
         version: 0.4.2
@@ -160,12 +157,6 @@ importers:
         version: 5.9.3
 
   packages/act-kb:
-    devDependencies:
-      typescript:
-        specifier: ^5.4.0
-        version: 5.9.3
-
-  packages/act-prompts:
     devDependencies:
       typescript:
         specifier: ^5.4.0
