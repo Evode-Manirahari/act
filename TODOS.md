@@ -23,19 +23,6 @@ from `/plan-eng-review` on 2026-05-29.
   exists, so the wiring is the work, not the dependency.
 - **Depends on:** Nothing. Becomes urgent when pilot expands past one operator.
 
-## P3 — Replace hardcoded stats on PilotHomeScreen
-
-- **What:** `apps/mobile/src/screens/PilotHomeScreen.tsx:12-15` hardcodes
-  "3 shops / 20 jobs / 50 cards". Fetch real numbers from `GET /dashboard/summary`
-  (already implemented in `act-api/app/routes/library.py`).
-- **Why:** The numbers are fake and are leftover old-frame ("3 shops") copy from the
-  pre-reframe solo-shop plan. In a live demo to an operator they read as either fake
-  or wrong-buyer.
-- **Pros:** Demo shows real pilot progress; removes stale old-frame text.
-- **Cons:** Trivial; not blocking.
-- **Context:** `/dashboard/summary` returns counts already. ~20 min of work.
-- **Depends on:** Nothing.
-
 ## P3 — Freeze or remove the legacy copilot surface
 
 - **What:** Remove (or clearly quarantine) the dead "live copilot" surface:

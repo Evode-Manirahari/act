@@ -53,6 +53,21 @@ export interface ExpertAnswer {
 }
 
 
+export interface DashboardSummary {
+  recordings_total: number;
+  recordings_ready: number;
+  moments_proposed: number;
+  moments_approved: number;
+  knowledge_objects_published: number;
+  training_events_total: number;
+  training_events_last_7_days: number;
+  quiz_attempts: number;
+  quiz_correct: number;
+  callbacks: number;
+  jobs_with_outcomes: number;
+}
+
+
 export type TrainingEventType =
   | 'viewed'
   | 'quiz_attempted'
@@ -145,6 +160,11 @@ export async function publishKnowledgeObject(
     `/knowledge-objects/${knowledgeObjectId}/publish`,
     { method: 'POST' },
   );
+}
+
+
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  return jsonFetch<DashboardSummary>('/dashboard/summary');
 }
 
 

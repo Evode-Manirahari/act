@@ -1,26 +1,55 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { getDashboardSummary, type DashboardSummary } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 
-// Pilot targets (goal, not live counts — live counts come from /dashboard/summary later).
-const targetStats = [
-  { label: 'pilot days', value: '60' },
-  { label: 'jobs captured', value: '20' },
-  { label: 'cards published', value: '50' },
-];
+// 60-day concierge pilot targets (PILOT.md). Live counts come from /dashboard/summary.
+const PILOT_TARGETS = { jobsCaptured: 20, cardsPublished: 50 };
 
 const workflow = ['Record', 'Mark', 'Review', 'Teach', 'Measure'];
 
 export default function PilotHomeScreen() {
   const navigation = useNavigation<NavProp>();
+  const [summary, setSummary] = useState<DashboardSummary | null>(null);
+
+  const refresh = useCallback(async () => {
+    try {
+      setSummary(await getDashboardSummary());
+    } catch {
+      // Offline or API down: tiles stay at "—". Never show made-up counts.
+    }
+  }, []);
+
+  // Refresh whenever the screen regains focus so a just-uploaded job or
+  // just-published card shows up without a reload.
+  useFocusEffect(
+    useCallback(() => {
+      void refresh();
+    }, [refresh]),
+  );
+
+  const progressStats = [
+    {
+      label: `jobs captured / ${PILOT_TARGETS.jobsCaptured}`,
+      value: summary ? String(summary.recordings_total) : '—',
+    },
+    {
+      label: `cards published / ${PILOT_TARGETS.cardsPublished}`,
+      value: summary ? String(summary.knowledge_objects_published) : '—',
+    },
+    {
+      label: 'outcomes logged',
+      value: summary ? String(summary.jobs_with_outcomes) : '—',
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -57,9 +86,9 @@ export default function PilotHomeScreen() {
           />
         </View>
 
-        <Text style={styles.sectionLabel}>Pilot target</Text>
+        <Text style={styles.sectionLabel}>Pilot progress</Text>
         <View style={styles.statsRow}>
-          {targetStats.map((stat) => (
+          {progressStats.map((stat) => (
             <View key={stat.label} style={styles.statTile}>
               <Text style={styles.statValue}>{stat.value}</Text>
               <Text style={styles.statLabel}>{stat.label}</Text>
