@@ -49,7 +49,7 @@ Total ≈ 71s of footage + transitions ≈ 80s final.
 
 **Claude:**
 1. Seed demo data so no screen shows zero (recording with marks, approved moment with answered question, published card, dashboard counts).
-2. Capture shots 6–7 from the admin app (browse tooling, clean 1280×800, cursor visible).
+2. Capture shots 6–7 from the admin app (headless browser tooling, clean 1280×800, cursor visible).
 3. Make title/end cards (shots 1, 10) in Field Instrument style.
 4. Assemble: ffmpeg trim/stitch/captions; export 1080p MP4 + a square crop for DMs.
 
