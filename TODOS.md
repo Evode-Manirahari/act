@@ -1,25 +1,17 @@
 # ACT — TODOS
 
-Deferred work, with the reasoning preserved. None of these block the 60-day
-concierge pilot (decision: ship existing code as-is, measure by hand). Captured
-from `/plan-eng-review` on 2026-05-29.
+All three items from the 2026-05-29 `/plan-eng-review` are done:
 
-## P3 — Durable job queue for the recording pipeline
+- **Replace hardcoded PilotHome stats** — done 2026-06-09 (act#37, live
+  `/dashboard/summary` counts).
+- **Remove the legacy copilot surface** — done 2026-06-09 (act#38 +
+  act-api#18, including dropping the `turns`/`frames` tables).
+- **Durable job queue for the recording pipeline** — done 2026-06-10
+  (act-api#20). Built on Postgres (`processing_jobs` + SKIP LOCKED +
+  heartbeat/reclaim + backoff retries), not Redis: same durability,
+  zero new infra at one-operator volume. Revisit a dedicated
+  Redis/worker split when a second operator lands or ffmpeg starts
+  starving the web process.
 
-- **What:** Replace the in-process FastAPI `BackgroundTask` that runs the capture
-  pipeline (`app/routes/recordings.py:242` → `app/services/processing.py`) with a
-  durable job queue using the Redis already declared in `act-api/app/config.py:18`
-  (currently imported nowhere).
-- **Why:** The pipeline (ffmpeg audio extract → Deepgram → frame sampling → Claude)
-  runs in the web process. If the Fly machine restarts, redeploys, or OOMs on a long
-  recording mid-pipeline, that recording is stranded in `processing` forever with no
-  retry. Techs lose trust when captures silently vanish.
-- **Pros:** Durable, retryable, survives deploys; decouples heavy work from the web
-  process so long videos don't compete with request handling.
-- **Cons:** Real infra work (~1-2 days); pre-demand if still at one operator.
-- **Context:** Accepted operationally for the pilot — at one-operator volume the
-  founder watches for stuck recordings and re-POSTs `/recordings/{id}/process`. Build
-  this the moment a second operator or higher volume lands. Redis config already
-  exists, so the wiring is the work, not the dependency.
-- **Depends on:** Nothing. Becomes urgent when pilot expands past one operator.
-
+Engineering is not the gate. The gate is demand: an ops director asking
+"what would this cost me" unprompted.
