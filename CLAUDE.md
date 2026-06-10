@@ -59,7 +59,7 @@ Removed 2026-06-09: the legacy copilot surface — `AskActScreen.tsx` (photo →
 - **Mobile**: React Native (Expo SDK 51), TypeScript, Zustand
 - **Backend** (in `../act-api/`): Python 3.13 + FastAPI + async SQLAlchemy 2.0 + Alembic
 - **Database**: PostgreSQL (async via `asyncpg`)
-- **Cache / queue**: Redis
+- **Pipeline queue**: Postgres-backed durable job table (`processing_jobs`, SKIP LOCKED + heartbeat reclaim + backoff) worked in-process — no Redis
 - **Object storage**: Cloudflare R2 (video uploads, extracted frames)
 - **AI**: Claude `claude-sonnet-4-6` via `anthropic` Python SDK — vision + streaming, prompt caching on system prompts
 - **Speech-to-text**: Deepgram (`nova-3`)

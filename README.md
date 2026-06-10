@@ -101,7 +101,7 @@ Active branch: **`capture-mvp`** — where the new capture flow is being built.
 ## Stack
 
 - **Mobile**: React Native (Expo SDK 51), TypeScript, Zustand
-- **Backend** (`act-api/`): Python 3.13, FastAPI, async SQLAlchemy 2.0, Alembic, PostgreSQL, Redis
+- **Backend** (`act-api/`): Python 3.13, FastAPI, async SQLAlchemy 2.0, Alembic, PostgreSQL (Neon)
 - **AI**: Claude `claude-sonnet-4-6` via Anthropic Python SDK (vision + streaming, prompt caching)
 - **Speech-to-text**: Deepgram (`nova-3`)
 - **Monorepo (mobile only)**: pnpm workspaces
