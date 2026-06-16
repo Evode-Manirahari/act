@@ -6,11 +6,16 @@
  * before being sent so they survive flaky connectivity and app kills. The
  * recorded video is uploaded via the queue, which retries with backoff and
  * resumes on next app launch.
+ *
+ * UX intent: while recording, the tech sees ONE obvious, glove-friendly
+ * action — a dominant MARK THIS slab. The mark taxonomy and notes are tucked
+ * behind a long-press / "+" affordance so working never forces a choice.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,7 +33,10 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { colors } from '../theme/colors';
-import MarkButton, { MarkType } from '../components/MarkButton';
+import { fonts, labelStyle } from '../theme/typography';
+import ActAppShell from '../components/ActAppShell';
+import { MarkType } from '../components/MarkButton';
+import CaptureMarkButton from '../components/CaptureMarkButton';
 import UploadStatusPill, { UploadStatus } from '../components/UploadStatusPill';
 import {
   createRecording,
@@ -81,7 +89,6 @@ const CONSENT_OPTIONS: Array<{
 ];
 
 const LAST_RECORDING_KEY = 'act_capture_last_recording_id';
-const CAPTURE_PHASES = ['Consent', 'Capture', 'Review'] as const;
 
 export default function CaptureJobScreen() {
   const navigation = useNavigation<NavProp>();
@@ -230,6 +237,19 @@ export default function CaptureJobScreen() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   }
 
+  // Confirm before stopping — Stop is danger-coded and should never fire by
+  // accident with gloves on. Keeps handleStop's behavior intact.
+  function confirmStop() {
+    Alert.alert(
+      'Stop capture?',
+      'This ends the recording and starts the upload. You can review moments after it processes.',
+      [
+        { text: 'Keep recording', style: 'cancel' },
+        { text: 'Stop & upload', style: 'destructive', onPress: handleStop },
+      ],
+    );
+  }
+
   async function enqueueUpload(
     rec: RecordingOut,
     fileUri: string,
@@ -305,13 +325,49 @@ export default function CaptureJobScreen() {
     })();
   }
 
+  // Default tap path — drops a mark at the active type. Same local-first
+  // queue behavior as before; now routed through persistMark so the note
+  // path reuses one persistence implementation.
   async function handleMark(kind: MarkType) {
+    await persistMark(kind);
+  }
+
+  // Same persistence path as handleMark, but stamps a typed note. Uses the
+  // platform Alert prompt where available (iOS); elsewhere it falls back to a
+  // plain teachable mark so the moment is never lost. No new dependency.
+  function handleAddNote() {
+    if (!isRecording || !recording) return;
+    if (Platform.OS === 'ios' && typeof Alert.prompt === 'function') {
+      Alert.prompt(
+        'Add a note to this mark',
+        'A short reason — what made this moment teachable?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Save mark',
+            onPress: (text?: string) => void persistMark('teachable', text?.trim() || undefined),
+          },
+        ],
+        'plain-text',
+      );
+    } else {
+      // Android / unsupported: drop the mark now so it isn't lost; the note
+      // can be added during review.
+      void persistMark('teachable');
+      Alert.alert('Mark saved', 'Add the note during review on this device.');
+    }
+  }
+
+  // Persist a mark (optionally with a note) via the exact same local-first
+  // queue path as handleMark.
+  async function persistMark(kind: MarkType, note?: string) {
     if (!isRecording || !recording) return;
     const timestamp = (Date.now() - recordingStartRef.current) / 1000;
     const local: LocalMark = {
       id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       timestampSeconds: timestamp,
       markType: kind,
+      note,
     };
     setMarks((prev) => {
       const next = [...prev, local];
@@ -323,202 +379,272 @@ export default function CaptureJobScreen() {
       recordingId: recording.id,
       timestampSeconds: timestamp,
       markType: kind,
+      note,
       createdBy: session?.user_id,
     });
     void captureQueue.flush();
   }
 
   const canRecord = !!session && !!camPerm?.granted && consentState !== 'do_not_share';
-  const headerLabel = session ? `Job ${session.job_id.slice(0, 8)}` : 'Starting session…';
   const reviewRecordingId = recording?.id ?? lastRecordingId;
   const canReviewCurrent = status.kind === 'ready' && !!recording?.id;
-  const activePhase = canReviewCurrent
-    ? 'Review'
-    : isRecording || recording
-      ? 'Capture'
-      : 'Consent';
+  const blocked = consentState === 'do_not_share';
+
+  // Drive the status pill: live timer while recording, queue depth otherwise.
+  const pillStatus: UploadStatus = isRecording
+    ? { kind: 'recording', seconds: elapsedSeconds }
+    : pending.length > 0
+      ? { kind: 'uploading', remaining: pending.length }
+      : status;
+
+  const shellMode = isRecording ? 'Recording' : 'Capture';
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() =>
-            navigation.canGoBack()
-              ? navigation.goBack()
-              : navigation.navigate('PilotHome')
-          }
-          hitSlop={12}
-        >
-          <Text style={styles.headerBack}>
-            {navigation.canGoBack() ? '‹ Back' : 'Pilot'}
-          </Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Expert Capture</Text>
-        <Pressable
-          disabled={!reviewRecordingId}
-          onPress={() =>
-            reviewRecordingId &&
-            navigation.navigate('PilotReview', { recordingId: reviewRecordingId })
-          }
-          hitSlop={12}
-        >
-          <Text style={[styles.headerAction, !reviewRecordingId && styles.headerActionDisabled]}>
-            Review
-          </Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.subHeader}>
-        <Text style={styles.subHeaderText}>{headerLabel}</Text>
-        <UploadStatusPill
-          status={
-            isRecording
-              ? { kind: 'recording', seconds: elapsedSeconds }
-              : pending.length > 0
-                ? { kind: 'uploading', remaining: pending.length }
-                : status
-          }
-        />
-      </View>
-
-      <View style={styles.phaseRail}>
-        {CAPTURE_PHASES.map((phase) => {
-          const active = activePhase === phase;
-          return (
-            <View key={phase} style={styles.phaseItem}>
-              <View style={[styles.phaseBar, active && styles.phaseBarActive]} />
-              <Text style={[styles.phaseText, active && styles.phaseTextActive]}>{phase}</Text>
-            </View>
-          );
-        })}
-      </View>
-
+    <ActAppShell
+      mode={shellMode}
+      rightLabel={reviewRecordingId ? 'Review' : undefined}
+      onRightPress={() =>
+        reviewRecordingId &&
+        navigation.navigate('PilotReview', { recordingId: reviewRecordingId })
+      }
+      onMenuPress={() =>
+        navigation.canGoBack() ? navigation.goBack() : navigation.navigate('PilotHome')
+      }
+    >
       <ScrollView
         style={styles.body}
         contentContainerStyle={styles.bodyContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.consentPanel}>
-          <Text style={styles.consentTitle}>Consent</Text>
-          <View style={styles.consentGrid}>
-            {CONSENT_OPTIONS.map((option) => {
-              const selected = consentState === option.value;
-              return (
-                <Pressable
-                  key={option.value}
-                  style={({ pressed }) => [
-                    styles.consentOption,
-                    selected && styles.consentOptionSelected,
-                    option.blocksRecording && selected && styles.consentOptionBlocked,
-                    pressed && styles.consentOptionPressed,
-                  ]}
-                  onPress={() => setConsentState(option.value)}
-                >
-                  <Text
-                    style={[
-                      styles.consentOptionLabel,
-                      selected && styles.consentOptionLabelSelected,
-                      option.blocksRecording && selected && styles.consentOptionLabelBlocked,
-                    ]}
-                  >
-                    {option.label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.consentOptionDetail,
-                      selected && styles.consentOptionDetailSelected,
-                      option.blocksRecording && selected && styles.consentOptionDetailBlocked,
-                    ]}
-                  >
-                    {option.detail}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
+        {/* ---- Status strip: job id + live status pill ---- */}
+        <View style={styles.statusStrip}>
+          <Text style={styles.jobLabel}>
+            {session ? `JOB ${session.job_id.slice(0, 8)}` : 'STARTING SESSION…'}
+          </Text>
+          <UploadStatusPill status={pillStatus} />
         </View>
 
-        <View style={styles.cameraWrap}>
-          {camPerm?.granted ? (
-            <CameraView
-              ref={cameraRef}
-              style={styles.camera}
-              mode="video"
-              facing="back"
-              videoQuality="720p"
-            />
-          ) : (
-            <View style={styles.cameraPlaceholder}>
-              <Text style={styles.placeholderText}>Camera permission required</Text>
-              <Pressable style={styles.permButton} onPress={ensurePermissions}>
-                <Text style={styles.permButtonText}>Grant access</Text>
-              </Pressable>
+        {isRecording ? (
+          /* ================= RECORDING STATE ================= */
+          <View style={styles.gap}>
+            {/* Instrument readout: timer + marks-saved count */}
+            <View style={styles.readoutRow}>
+              <View style={styles.readoutTile}>
+                <Text style={styles.readoutValue}>{formatTimestamp(elapsedSeconds)}</Text>
+                <Text style={styles.readoutLabel}>elapsed</Text>
+              </View>
+              <View style={styles.readoutTile}>
+                <Text style={styles.readoutValue}>
+                  {marks.length.toString().padStart(2, '0')}
+                </Text>
+                <Text style={styles.readoutLabel}>marks saved</Text>
+              </View>
             </View>
-          )}
-        </View>
 
-        <View style={styles.controls}>
-          <View style={styles.markRow}>
-            <MarkButton disabled={!isRecording} onMark={handleMark} />
-          </View>
+            {camPerm?.granted ? (
+              <View style={styles.cameraWrap}>
+                <CameraView
+                  ref={cameraRef}
+                  style={styles.camera}
+                  mode="video"
+                  facing="back"
+                  videoQuality="720p"
+                />
+                <View style={styles.recBadge}>
+                  <View style={styles.recDot} />
+                  <Text style={styles.recBadgeText}>REC</Text>
+                </View>
+              </View>
+            ) : null}
 
-          <View style={styles.bottomRow}>
-            {isRecording ? (
-              <Pressable style={[styles.recordBtn, styles.stopBtn]} onPress={handleStop}>
-                <Text style={styles.recordBtnText}>Stop</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                style={[styles.recordBtn, !canRecord && styles.disabledBtn]}
-                disabled={!canRecord}
-                onPress={handleStart}
-              >
-                {consentState === 'do_not_share' ? (
-                  <Text style={styles.recordBtnText}>Recording blocked</Text>
-                ) : session ? (
-                  <Text style={styles.recordBtnText}>Start capture</Text>
-                ) : (
-                  <ActivityIndicator color="#fff" />
-                )}
-              </Pressable>
-            )}
-          </View>
+            {/* THE one obvious action */}
+            <CaptureMarkButton disabled={!isRecording} onMark={handleMark} onAddNote={handleAddNote} />
 
-          {canReviewCurrent && (
+            {/* Mic placeholder — audio is captured by the recorder; this is a
+                cue that the tech's voice is being recorded. */}
+            <View style={styles.micRow}>
+              <View style={styles.micGlyph}>
+                <View style={styles.micCapsule} />
+                <View style={styles.micStand} />
+              </View>
+              <Text style={styles.micText}>Mic live · narrate what you see and why</Text>
+            </View>
+
+            {/* STOP — visually secondary, danger-coded, confirm-gated. */}
             <Pressable
-              style={({ pressed }) => [styles.reviewReadyButton, pressed && styles.pressed]}
+              accessibilityRole="button"
+              accessibilityLabel="Stop capture"
+              style={({ pressed }) => [styles.stopButton, pressed && styles.pressed]}
+              onPress={confirmStop}
+            >
+              <View style={styles.stopSquare} />
+              <Text style={styles.stopText}>STOP CAPTURE</Text>
+            </Pressable>
+
+            <MarksList marks={marks} />
+          </View>
+        ) : canReviewCurrent ? (
+          /* ================= REVIEW-READY STATE ================= */
+          <View style={styles.gap}>
+            <View style={styles.readyPanel}>
+              <Text style={styles.readyKicker}>UPLOAD COMPLETE · PROCESSED</Text>
+              <Text style={styles.readyTitle}>Capture ready for review</Text>
+              <Text style={styles.readyDetail}>
+                {marks.length} mark{marks.length === 1 ? '' : 's'} captured. Approve the
+                teachable moments before any card publishes.
+              </Text>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Review for training"
+              style={({ pressed }) => [styles.reviewButton, pressed && styles.pressed]}
               onPress={() =>
-                navigation.navigate('PilotReview', { recordingId: recording.id })
+                recording && navigation.navigate('PilotReview', { recordingId: recording.id })
               }
             >
-              <Text style={styles.reviewReadyTitle}>Review for training</Text>
-              <Text style={styles.reviewReadyDetail}>Approve moments before cards publish</Text>
+              <Text style={styles.reviewButtonText}>REVIEW FOR TRAINING</Text>
+              <Text style={styles.reviewButtonDetail}>Approve moments before cards publish</Text>
             </Pressable>
-          )}
 
-          <View style={styles.marksList}>
-            <Text style={styles.marksHeader}>
-              Teachable marks ({marks.length})
-            </Text>
-            <ScrollView style={styles.marksScroll} nestedScrollEnabled>
-              {marks.length === 0 ? (
-                <Text style={styles.marksEmpty}>
-                  Waiting for the first teachable mark.
-                </Text>
-              ) : (
-                marks
-                  .slice()
-                  .reverse()
-                  .map((m) => (
-                    <View key={m.id} style={styles.markRowItem}>
-                      <Text style={styles.markTime}>{formatTimestamp(m.timestampSeconds)}</Text>
-                      <Text style={styles.markKind}>{formatMarkType(m.markType)}</Text>
-                    </View>
-                  ))
-              )}
-            </ScrollView>
+            <MarksList marks={marks} />
           </View>
-        </View>
+        ) : (
+          /* ================= IDLE STATE ================= */
+          <View style={styles.gap}>
+            <View style={styles.idleHeader}>
+              <Text style={styles.idleKicker}>HVAC · FIELD CAPTURE</Text>
+              <Text style={styles.idleTitle}>Ready to capture senior tech knowledge</Text>
+              <Text style={styles.idleSubtitle}>
+                Record the job and tap MARK THIS at the teachable moments. Everything saves
+                locally first, then uploads — even on flaky service.
+              </Text>
+            </View>
+
+            {/* Consent selector — required before capture. */}
+            <View style={styles.consentPanel}>
+              <Text style={styles.consentTitle}>CONSENT</Text>
+              <View style={styles.consentGrid}>
+                {CONSENT_OPTIONS.map((option) => {
+                  const selected = consentState === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      style={({ pressed }) => [
+                        styles.consentOption,
+                        selected && styles.consentOptionSelected,
+                        option.blocksRecording && selected && styles.consentOptionBlocked,
+                        pressed && styles.consentOptionPressed,
+                      ]}
+                      onPress={() => setConsentState(option.value)}
+                    >
+                      <Text
+                        style={[
+                          styles.consentOptionLabel,
+                          selected && styles.consentOptionLabelSelected,
+                          option.blocksRecording && selected && styles.consentOptionLabelBlocked,
+                        ]}
+                      >
+                        {option.label}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.consentOptionDetail,
+                          selected && styles.consentOptionDetailSelected,
+                          option.blocksRecording && selected && styles.consentOptionDetailBlocked,
+                        ]}
+                      >
+                        {option.detail}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Camera preview / permission gate. */}
+            {camPerm?.granted ? (
+              <View style={styles.cameraWrap}>
+                <CameraView
+                  ref={cameraRef}
+                  style={styles.camera}
+                  mode="video"
+                  facing="back"
+                  videoQuality="720p"
+                />
+              </View>
+            ) : (
+              <View style={[styles.cameraWrap, styles.cameraPlaceholder]}>
+                <Text style={styles.placeholderText}>Camera permission required</Text>
+                <Pressable style={styles.permButton} onPress={ensurePermissions}>
+                  <Text style={styles.permButtonText}>Grant access</Text>
+                </Pressable>
+              </View>
+            )}
+
+            {/* Start capture — the single primary action in idle. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Start capture"
+              style={({ pressed }) => [
+                styles.startButton,
+                blocked && styles.startButtonBlocked,
+                !canRecord && !blocked && styles.startButtonDisabled,
+                pressed && styles.pressed,
+              ]}
+              disabled={!canRecord}
+              onPress={handleStart}
+            >
+              {blocked ? (
+                <Text style={styles.startButtonText}>RECORDING BLOCKED</Text>
+              ) : session ? (
+                <>
+                  <Text style={styles.startButtonText}>START CAPTURE</Text>
+                  <Text style={styles.startButtonDetail}>Camera + mic · 30 min max</Text>
+                </>
+              ) : (
+                <ActivityIndicator color="#fff" />
+              )}
+            </Pressable>
+
+            {/* If a prior recording is uploading/processing, keep its list +
+                review handoff visible. */}
+            {(pending.length > 0 || status.kind !== 'idle') && marks.length > 0 && (
+              <MarksList marks={marks} />
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </ActAppShell>
+  );
+}
+
+
+function MarksList({ marks }: { marks: LocalMark[] }) {
+  return (
+    <View style={styles.marksList}>
+      <Text style={styles.marksHeader}>TEACHABLE MARKS ({marks.length})</Text>
+      <ScrollView style={styles.marksScroll} nestedScrollEnabled>
+        {marks.length === 0 ? (
+          <Text style={styles.marksEmpty}>Waiting for the first teachable mark.</Text>
+        ) : (
+          marks
+            .slice()
+            .reverse()
+            .map((m) => (
+              <View key={m.id} style={styles.markRowItem}>
+                <Text style={styles.markTime}>{formatTimestamp(m.timestampSeconds)}</Text>
+                <View style={styles.markRowRight}>
+                  <Text style={styles.markKind}>{formatMarkType(m.markType)}</Text>
+                  {m.note ? (
+                    <Text style={styles.markNote} numberOfLines={1}>
+                      {m.note}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+            ))
+        )}
       </ScrollView>
     </View>
   );
@@ -543,231 +669,207 @@ function formatMarkType(kind: MarkType): string {
 
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: {
+  body: { flex: 1 },
+  bodyContent: { padding: 16, paddingBottom: 28 },
+  gap: { gap: 14 },
+
+  statusStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 12,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    marginBottom: 14,
   },
-  headerBack: { fontSize: 16, color: colors.primary, fontWeight: '700' },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
-  headerAction: {
-    minWidth: 60,
-    textAlign: 'right',
-    fontSize: 16,
-    color: colors.primary,
-    fontWeight: '800',
+  jobLabel: { ...labelStyle, color: colors.steel500, fontSize: 11 },
+
+  // ---- Idle ----
+  idleHeader: { gap: 8 },
+  idleKicker: { ...labelStyle, color: colors.primary, fontSize: 12 },
+  idleTitle: { color: colors.ink, fontSize: 26, lineHeight: 32, fontFamily: fonts.display },
+  idleSubtitle: {
+    color: colors.steel500,
+    fontSize: 15,
+    lineHeight: 22,
+    maxWidth: 360,
+    fontFamily: fonts.body,
   },
-  headerActionDisabled: {
-    color: colors.textLight,
-  },
-  subHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
-  },
-  subHeaderText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
-  phaseRail: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  phaseItem: {
-    flex: 1,
-    gap: 5,
-  },
-  phaseBar: {
-    height: 3,
-    borderRadius: 3,
-    backgroundColor: colors.border,
-  },
-  phaseBarActive: {
-    backgroundColor: colors.primary,
-  },
-  phaseText: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  phaseTextActive: {
-    color: colors.text,
-  },
-  body: {
-    flex: 1,
-  },
-  bodyContent: {
-    paddingBottom: 20,
-  },
+
   consentPanel: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surface,
-    padding: 12,
+    padding: 14,
     gap: 10,
   },
-  consentTitle: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  consentGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  consentTitle: { ...labelStyle, color: colors.steel700, fontSize: 11 },
+  consentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   consentOption: {
     width: '48%',
     minHeight: 58,
-    borderRadius: 8,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.background,
-    paddingHorizontal: 10,
-    paddingVertical: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     justifyContent: 'center',
   },
-  consentOptionSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  consentOptionBlocked: {
-    borderColor: colors.error,
-    backgroundColor: '#FEE2E2',
-  },
-  consentOptionPressed: {
-    opacity: 0.72,
-  },
-  consentOptionLabel: {
-    color: colors.text,
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  consentOptionLabelSelected: {
-    color: colors.primary,
-  },
-  consentOptionLabelBlocked: {
-    color: colors.error,
-  },
-  consentOptionDetail: {
-    color: colors.textMuted,
-    fontSize: 11,
-    marginTop: 3,
-  },
-  consentOptionDetailSelected: {
-    color: colors.text,
-  },
-  consentOptionDetailBlocked: {
-    color: colors.error,
-  },
+  consentOptionSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  consentOptionBlocked: { borderColor: colors.error, backgroundColor: colors.errorLight },
+  consentOptionPressed: { opacity: 0.72 },
+  consentOptionLabel: { color: colors.text, fontSize: 14, fontFamily: fonts.semibold },
+  consentOptionLabelSelected: { color: colors.primary },
+  consentOptionLabelBlocked: { color: colors.error },
+  consentOptionDetail: { color: colors.textMuted, fontSize: 12, marginTop: 3, fontFamily: fonts.body },
+  consentOptionDetailSelected: { color: colors.text },
+  consentOptionDetailBlocked: { color: colors.error },
+
+  // ---- Camera ----
   cameraWrap: {
-    height: 230,
-    margin: 16,
-    borderRadius: 16,
+    height: 220,
+    borderRadius: 6,
     overflow: 'hidden',
     backgroundColor: '#000',
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
   },
   camera: { flex: 1 },
   cameraPlaceholder: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surfaceAlt,
     padding: 24,
     gap: 12,
   },
-  placeholderText: { color: colors.textMuted, fontSize: 14, textAlign: 'center' },
+  placeholderText: { color: colors.textMuted, fontSize: 14, textAlign: 'center', fontFamily: fonts.body },
   permButton: {
+    minHeight: 48,
     paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 22,
+    justifyContent: 'center',
+    borderRadius: 6,
     backgroundColor: colors.primary,
   },
-  permButtonText: { color: '#fff', fontWeight: '700' },
-  controls: { paddingHorizontal: 16, gap: 14 },
-  markRow: { alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
-  bottomRow: { alignItems: 'center' },
-  recordBtn: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    minWidth: 220,
+  permButtonText: { color: '#fff', fontFamily: fonts.semibold, fontSize: 15 },
+  recBadge: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: 'rgba(0,0,0,0.55)',
   },
-  stopBtn: { backgroundColor: colors.error },
-  disabledBtn: { opacity: 0.5 },
-  recordBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-  pressed: {
-    opacity: 0.76,
-  },
-  reviewReadyButton: {
-    minHeight: 62,
-    borderRadius: 8,
+  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.error },
+  recBadgeText: { color: '#fff', fontFamily: fonts.monoSemibold, fontSize: 11, letterSpacing: 1 },
+
+  // ---- Recording readout ----
+  readoutRow: { flexDirection: 'row', gap: 12 },
+  readoutTile: {
+    flex: 1,
+    minHeight: 72,
+    borderRadius: 6,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: colors.success,
-    backgroundColor: colors.successLight,
+    borderColor: colors.border,
+    borderTopWidth: 3,
+    borderTopColor: colors.primary,
     paddingHorizontal: 14,
     paddingVertical: 10,
     justifyContent: 'center',
   },
-  reviewReadyTitle: {
-    color: '#065F46',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  reviewReadyDetail: {
-    color: '#047857',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  marksList: {
-    minHeight: 132,
+  readoutValue: { color: colors.ink, fontSize: 28, fontFamily: fonts.mono },
+  readoutLabel: { ...labelStyle, color: colors.steel500, fontSize: 10, marginTop: 4 },
+
+  micRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  micGlyph: { width: 18, alignItems: 'center', gap: 2 },
+  micCapsule: { width: 10, height: 14, borderRadius: 5, backgroundColor: colors.steel500 },
+  micStand: { width: 13, height: 2, borderRadius: 1, backgroundColor: colors.steel500 },
+  micText: { color: colors.textMuted, fontSize: 13, fontFamily: fonts.body, flexShrink: 1 },
+
+  // ---- Stop (secondary, danger-coded) ----
+  stopButton: {
+    minHeight: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: colors.error,
     backgroundColor: colors.surface,
-    borderRadius: 14,
+  },
+  stopSquare: { width: 14, height: 14, borderRadius: 2, backgroundColor: colors.error },
+  stopText: { color: colors.error, fontFamily: fonts.bold, fontSize: 15, letterSpacing: 1 },
+
+  // ---- Start ----
+  startButton: {
+    minHeight: 76,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.primaryPressed,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  startButtonDisabled: { opacity: 0.5 },
+  startButtonBlocked: { backgroundColor: colors.error, borderColor: colors.error },
+  startButtonText: { color: '#fff', fontSize: 19, letterSpacing: 1, fontFamily: fonts.bold },
+  startButtonDetail: { color: 'rgba(255,255,255,0.88)', fontSize: 13, marginTop: 4, fontFamily: fonts.medium },
+
+  // ---- Review-ready ----
+  readyPanel: {
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.success,
+    backgroundColor: colors.successLight,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.success,
+    padding: 14,
+    gap: 4,
+  },
+  readyKicker: { ...labelStyle, color: '#065F46', fontSize: 10 },
+  readyTitle: { color: '#065F46', fontSize: 19, fontFamily: fonts.semibold },
+  readyDetail: { color: '#047857', fontSize: 14, lineHeight: 20, fontFamily: fonts.body },
+  reviewButton: {
+    minHeight: 72,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+    borderWidth: 1,
+    borderColor: colors.primaryPressed,
+    paddingHorizontal: 16,
+    justifyContent: 'center',
+  },
+  reviewButtonText: { color: '#fff', fontSize: 17, letterSpacing: 1, fontFamily: fonts.bold },
+  reviewButtonDetail: { color: 'rgba(255,255,255,0.88)', fontSize: 13, marginTop: 4, fontFamily: fonts.medium },
+
+  // ---- Shared ----
+  pressed: { opacity: 0.78 },
+  marksList: {
+    minHeight: 120,
+    backgroundColor: colors.surface,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 12,
+    padding: 14,
   },
-  marksHeader: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
+  marksHeader: { ...labelStyle, color: colors.steel500, fontSize: 11, marginBottom: 8 },
   marksScroll: { maxHeight: 190 },
-  marksEmpty: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
+  marksEmpty: { fontSize: 13, color: colors.textMuted, lineHeight: 18, fontFamily: fonts.body },
   markRowItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    paddingVertical: 9,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    gap: 12,
   },
-  markTime: { fontSize: 14, fontWeight: '700', color: colors.text, fontVariant: ['tabular-nums'] },
-  markKind: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.primary,
-    textTransform: 'uppercase',
-  },
+  markTime: { fontSize: 15, color: colors.text, fontFamily: fonts.monoSemibold },
+  markRowRight: { alignItems: 'flex-end', flexShrink: 1 },
+  markKind: { ...labelStyle, color: colors.primary, fontSize: 11 },
+  markNote: { color: colors.textMuted, fontSize: 12, fontFamily: fonts.body, marginTop: 2, maxWidth: 200 },
 });

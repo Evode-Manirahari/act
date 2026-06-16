@@ -24,13 +24,32 @@ import {
   publishKnowledgeObject,
   submitExpertAnswer,
 } from '../api/libraryApi';
-import type { KnowledgeObject } from '../api/libraryApi';
+import type { ElicitationQuestion, KnowledgeObject } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
+import ActAppShell from '../components/ActAppShell';
+import ReviewMomentCard from '../components/ReviewMomentCard';
+import type { DebriefStep } from '../components/ReviewDebriefPanel';
 import { colors } from '../theme/colors';
+import { fonts, labelStyle } from '../theme/typography';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 type ReviewRoute = RouteProp<PilotStackParamList, 'PilotReview'>;
 type PublishStage = 'approving' | 'answering' | 'drafting' | 'publishing';
+
+/** Per-moment state for the post-job debrief loop. */
+type DebriefState = {
+  question: ElicitationQuestion | null;
+  draft: KnowledgeObject | null;
+  busyStep: DebriefStep;
+  published: boolean;
+};
+
+const EMPTY_DEBRIEF: DebriefState = {
+  question: null,
+  draft: null,
+  busyStep: 'idle',
+  published: false,
+};
 
 export default function PilotReviewScreen() {
   const navigation = useNavigation<NavProp>();
@@ -44,6 +63,7 @@ export default function PilotReviewScreen() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [publishedCards, setPublishedCards] = useState<Record<string, KnowledgeObject>>({});
   const [publishStages, setPublishStages] = useState<Record<string, PublishStage>>({});
+  const [debriefs, setDebriefs] = useState<Record<string, DebriefState>>({});
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -64,6 +84,18 @@ export default function PilotReviewScreen() {
     void refresh();
   }, [refresh]);
 
+  function getDebrief(momentId: string): DebriefState {
+    return debriefs[momentId] ?? EMPTY_DEBRIEF;
+  }
+
+  function patchDebrief(momentId: string, patch: Partial<DebriefState>) {
+    setDebriefs((prev) => ({
+      ...prev,
+      [momentId]: { ...(prev[momentId] ?? EMPTY_DEBRIEF), ...patch },
+    }));
+  }
+
+  // --- PRESERVED: review status actions (approve / reject / needs_more_info) -
   async function actOnMoment(
     momentId: string,
     status: 'approved' | 'rejected' | 'needs_more_info',
@@ -89,6 +121,7 @@ export default function PilotReviewScreen() {
     }
   }
 
+  // --- PRESERVED: one-tap approve + publish fallback path --------------------
   async function approveAndPublish(moment: MomentOut) {
     setActingId(moment.id);
     setError(null);
@@ -143,28 +176,108 @@ export default function PilotReviewScreen() {
     });
   }
 
+  // --- NEW: debrief loop (approve -> question -> answer -> draft -> publish) --
+  async function approveForDebrief(moment: MomentOut) {
+    setActingId(moment.id);
+    setError(null);
+    try {
+      const updated = moment.status === 'approved'
+        ? moment
+        : await reviewMoment({ momentId: moment.id, status: 'approved' });
+      setMoments((prev) =>
+        prev.map((current) => (current.id === moment.id ? updated : current)),
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'approve failed');
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  async function generateQuestion(momentId: string) {
+    patchDebrief(momentId, { busyStep: 'questioning' });
+    setError(null);
+    try {
+      const question = await generateMomentQuestion(momentId);
+      patchDebrief(momentId, { question, busyStep: 'idle' });
+    } catch (err) {
+      patchDebrief(momentId, { busyStep: 'idle' });
+      setError(err instanceof Error ? err.message : 'could not generate question');
+    }
+  }
+
+  async function submitAnswer(momentId: string, answerText: string) {
+    const state = getDebrief(momentId);
+    if (!state.question) {
+      setError('Generate a question before saving an answer.');
+      return;
+    }
+    patchDebrief(momentId, { busyStep: 'answering' });
+    setError(null);
+    try {
+      await submitExpertAnswer({
+        questionId: state.question.id,
+        transcript: answerText,
+        approvedByExpert: true,
+        expertUserId: recording?.user_id ?? null,
+      });
+      patchDebrief(momentId, { busyStep: 'idle' });
+    } catch (err) {
+      patchDebrief(momentId, { busyStep: 'idle' });
+      setError(err instanceof Error ? err.message : 'could not save answer');
+    }
+  }
+
+  async function compileDraft(momentId: string) {
+    patchDebrief(momentId, { busyStep: 'drafting' });
+    setError(null);
+    try {
+      const trade = recording?.trade ?? 'hvac';
+      const draft = await compileMoment({ momentId, trade });
+      patchDebrief(momentId, {
+        draft,
+        published: draft.status === 'published',
+        busyStep: 'idle',
+      });
+    } catch (err) {
+      patchDebrief(momentId, { busyStep: 'idle' });
+      setError(err instanceof Error ? err.message : 'could not compile draft');
+    }
+  }
+
+  async function publishDraft(momentId: string) {
+    const state = getDebrief(momentId);
+    if (!state.draft) {
+      setError('Compile a draft before publishing.');
+      return;
+    }
+    patchDebrief(momentId, { busyStep: 'publishing' });
+    setError(null);
+    try {
+      const published = state.draft.status === 'published'
+        ? state.draft
+        : await publishKnowledgeObject(state.draft.id);
+      patchDebrief(momentId, { draft: published, published: true, busyStep: 'idle' });
+    } catch (err) {
+      patchDebrief(momentId, { busyStep: 'idle' });
+      setError(err instanceof Error ? err.message : 'publish failed');
+    }
+  }
+
   const status = recording?.status ?? 'loading';
   const ready = status === 'ready';
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Pressable
-          onPress={() =>
-            navigation.canGoBack()
-              ? navigation.goBack()
-              : navigation.navigate('CaptureJob')
-          }
-          hitSlop={12}
-        >
-          <Text style={styles.headerBack}>‹ Capture</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Review Moments</Text>
-        <Pressable onPress={() => navigation.navigate('Learn', undefined)} hitSlop={12}>
-          <Text style={styles.headerAction}>Training</Text>
-        </Pressable>
-      </View>
-
+    <ActAppShell
+      mode="Review"
+      rightLabel="Training"
+      onRightPress={() => navigation.navigate('Learn', undefined)}
+      onMenuPress={() =>
+        navigation.canGoBack()
+          ? navigation.goBack()
+          : navigation.navigate('CaptureJob')
+      }
+    >
       <View style={styles.summary}>
         <View style={styles.summaryTop}>
           <Text style={styles.summaryLabel}>Recording</Text>
@@ -176,10 +289,13 @@ export default function PilotReviewScreen() {
           </View>
         </View>
         <Text style={styles.summaryHelp}>
-          Approve + publish sends reviewed moments into Apprentice Training. Outcome logging closes the measurement loop for this job.
+          Approve a moment, then debrief the expert — generate the question, capture
+          the answer, compile, and publish into Apprentice Training. The debrief always
+          happens after the job, never in the tech&rsquo;s ear.
         </Text>
-        {recording?.job_id && (
+        {recording?.job_id ? (
           <Pressable
+            accessibilityRole="button"
             style={({ pressed }) => [styles.outcomeLink, pressed && styles.pressed]}
             onPress={() =>
               navigation.navigate('PilotOutcome', {
@@ -191,14 +307,15 @@ export default function PilotReviewScreen() {
           >
             <Text style={styles.outcomeLinkText}>Log job outcome</Text>
           </Pressable>
-        )}
+        ) : null}
       </View>
 
-      {error && (
+      {error ? (
         <View style={styles.errorBox}>
+          <Text style={styles.errorLabel}>Action failed</Text>
           <Text style={styles.errorText}>{error}</Text>
         </View>
-      )}
+      ) : null}
 
       {loading ? (
         <View style={styles.center}>
@@ -231,132 +348,33 @@ export default function PilotReviewScreen() {
               </Text>
             </View>
           }
-          renderItem={({ item }) => (
-            <MomentCard
-              moment={item}
-              busy={actingId === item.id}
-              publishStage={publishStages[item.id]}
-              publishedCard={publishedCards[item.id]}
-              onApproveAndPublish={() => void approveAndPublish(item)}
-              onOpenCard={(card) => navigation.navigate('Learn', { card, cardId: card.id })}
-              onReject={() => void actOnMoment(item.id, 'rejected')}
-              onNeedsInfo={() => void actOnMoment(item.id, 'needs_more_info')}
-            />
-          )}
+          renderItem={({ item }) => {
+            const debrief = getDebrief(item.id);
+            return (
+              <ReviewMomentCard
+                moment={item}
+                busy={actingId === item.id}
+                publishStageLabel={formatPublishStage(publishStages[item.id])}
+                publishedCard={publishedCards[item.id]}
+                debriefQuestion={debrief.question}
+                debriefDraft={debrief.draft}
+                debriefBusyStep={debrief.busyStep}
+                debriefPublished={debrief.published}
+                onApproveAndPublish={() => void approveAndPublish(item)}
+                onApprove={() => void approveForDebrief(item)}
+                onReject={() => void actOnMoment(item.id, 'rejected')}
+                onNeedsInfo={() => void actOnMoment(item.id, 'needs_more_info')}
+                onOpenCard={(card) => navigation.navigate('Learn', { card, cardId: card.id })}
+                onGenerateQuestion={() => void generateQuestion(item.id)}
+                onSubmitAnswer={(_question, answer) => void submitAnswer(item.id, answer)}
+                onCompileDraft={() => void compileDraft(item.id)}
+                onPublishDraft={() => void publishDraft(item.id)}
+              />
+            );
+          }}
         />
       )}
-    </View>
-  );
-}
-
-function MomentCard({
-  moment,
-  busy,
-  publishStage,
-  publishedCard,
-  onApproveAndPublish,
-  onOpenCard,
-  onReject,
-  onNeedsInfo,
-}: {
-  moment: MomentOut;
-  busy: boolean;
-  publishStage?: PublishStage;
-  publishedCard?: KnowledgeObject;
-  onApproveAndPublish: () => void;
-  onOpenCard: (card: KnowledgeObject) => void;
-  onReject: () => void;
-  onNeedsInfo: () => void;
-}) {
-  return (
-    <View style={styles.card}>
-      <View style={styles.cardTop}>
-        <View>
-          <Text style={styles.cardTitle}>{humanizeMomentType(moment.moment_type)}</Text>
-          <Text style={styles.cardTime}>
-            {formatTimestamp(moment.start_s)}-{formatTimestamp(moment.end_s)}
-          </Text>
-        </View>
-        <View style={styles.scorePill}>
-          <Text style={styles.scoreText}>{Math.round(moment.score)}</Text>
-        </View>
-      </View>
-
-      {moment.why_it_matters && (
-        <Text style={styles.cardBody}>{moment.why_it_matters}</Text>
-      )}
-
-      <View style={styles.metaRow}>
-        <View style={styles.metaPill}>
-          <Text style={styles.metaText}>{moment.status}</Text>
-        </View>
-        {moment.do_not_interrupt && (
-          <View style={[styles.metaPill, styles.warnPill]}>
-            <Text style={[styles.metaText, styles.warnText]}>post-job only</Text>
-          </View>
-        )}
-        {publishedCard && (
-          <View style={[styles.metaPill, styles.publishedPill]}>
-            <Text style={[styles.metaText, styles.publishedText]}>published</Text>
-          </View>
-        )}
-      </View>
-
-      {publishedCard && (
-        <Pressable
-          style={({ pressed }) => [styles.publishedBand, pressed && styles.pressed]}
-          onPress={() => onOpenCard(publishedCard)}
-        >
-          <Text style={styles.publishedBandLabel}>Apprentice card</Text>
-          <Text style={styles.publishedBandTitle}>{publishedCard.title}</Text>
-        </Pressable>
-      )}
-
-      <View style={styles.actionRow}>
-        <Pressable
-          disabled={busy}
-          style={({ pressed }) => [
-            styles.actionButton,
-            styles.approveButton,
-            styles.approveActionButton,
-            pressed && styles.pressed,
-            busy && styles.disabled,
-          ]}
-          onPress={() => (publishedCard ? onOpenCard(publishedCard) : onApproveAndPublish())}
-        >
-          <Text numberOfLines={1} style={styles.approveText}>
-            {publishedCard
-              ? 'Open card'
-              : busy
-                ? formatPublishStage(publishStage)
-                : 'Approve + publish'}
-          </Text>
-        </Pressable>
-        <Pressable
-          disabled={busy || !!publishedCard}
-          style={({ pressed }) => [
-            styles.actionButton,
-            pressed && styles.pressed,
-            (busy || !!publishedCard) && styles.disabled,
-          ]}
-          onPress={onNeedsInfo}
-        >
-          <Text style={styles.actionText}>Follow-up</Text>
-        </Pressable>
-        <Pressable
-          disabled={busy || !!publishedCard}
-          style={({ pressed }) => [
-            styles.actionButton,
-            styles.rejectButton,
-            pressed && styles.pressed,
-            (busy || !!publishedCard) && styles.disabled,
-          ]}
-          onPress={onReject}
-        >
-          <Text style={styles.rejectText}>Reject</Text>
-        </Pressable>
-      </View>
-    </View>
+    </ActAppShell>
   );
 }
 
@@ -368,14 +386,6 @@ function formatPublishStage(stage: PublishStage | undefined): string {
   return 'Saving';
 }
 
-function humanizeMomentType(value: string): string {
-  return value
-    .split(/[_-]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
 function formatStatus(status: string): string {
   if (status === 'ready') return 'Ready for review';
   if (status === 'processing') return 'Processing';
@@ -385,38 +395,47 @@ function formatStatus(status: string): string {
   return status;
 }
 
-function formatTimestamp(seconds: number): string {
-  const mm = Math.floor(seconds / 60)
-    .toString()
-    .padStart(2, '0');
-  const ss = Math.floor(seconds % 60)
-    .toString()
-    .padStart(2, '0');
-  return `${mm}:${ss}`;
-}
-
+/**
+ * Fallback expert-answer text used only by the one-tap approve+publish path
+ * when the backend needs a question answered before it will compile. The
+ * debrief loop uses the reviewer's typed answer instead.
+ */
 function buildExpertAnswer(moment: MomentOut): string {
   const parts = [
-    `Moment: ${humanizeMomentType(moment.moment_type)} from ${formatTimestamp(moment.start_s)} to ${formatTimestamp(moment.end_s)}.`,
+    `Moment: ${humanizeType(moment.moment_type)} from ${fmt(moment.start_s)} to ${fmt(moment.end_s)}.`,
     moment.why_it_matters ? `Why it matters: ${moment.why_it_matters}` : null,
-    summarizeEvidence(moment.evidence_json),
+    summarizeEvidenceText(moment.evidence_json),
   ].filter(Boolean);
   return parts.join('\n');
 }
 
-function summarizeEvidence(evidence: MomentOut['evidence_json']): string | null {
+function humanizeType(value: string): string {
+  return value
+    .split(/[_-]/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function fmt(seconds: number): string {
+  const mm = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const ss = Math.floor(seconds % 60).toString().padStart(2, '0');
+  return `${mm}:${ss}`;
+}
+
+function summarizeEvidenceText(evidence: MomentOut['evidence_json']): string | null {
   if (!evidence) return null;
   if (typeof evidence === 'string') {
     return evidence.trim() ? `Evidence: ${evidence.slice(0, 700)}` : null;
   }
   const entries = Object.entries(evidence)
-    .map(([key, value]) => `${key}: ${formatEvidenceValue(value)}`)
+    .map(([key, value]) => `${key}: ${formatValue(value)}`)
     .filter((entry) => entry.length > 0)
     .slice(0, 6);
   return entries.length > 0 ? `Evidence: ${entries.join('; ')}` : null;
 }
 
-function formatEvidenceValue(value: unknown): string {
+function formatValue(value: unknown): string {
   if (value == null) return '';
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
@@ -428,36 +447,6 @@ function formatEvidenceValue(value: unknown): string {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 56,
-    paddingBottom: 12,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerBack: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  headerTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  headerAction: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '900',
-  },
   summary: {
     margin: 16,
     borderRadius: 8,
@@ -473,24 +462,24 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   summaryLabel: {
+    ...labelStyle,
     color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
+    fontSize: 11,
   },
   recordingId: {
     color: colors.text,
+    fontFamily: fonts.monoSemibold,
     fontSize: 15,
-    fontWeight: '900',
     flex: 1,
   },
   summaryHelp: {
     color: colors.textMuted,
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,
   },
   outcomeLink: {
-    minHeight: 42,
+    minHeight: 48,
     borderRadius: 8,
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
@@ -499,8 +488,8 @@ const styles = StyleSheet.create({
   },
   outcomeLinkText: {
     color: colors.primary,
+    fontFamily: fonts.bold,
     fontSize: 13,
-    fontWeight: '900',
   },
   statusPill: {
     borderRadius: 999,
@@ -513,32 +502,35 @@ const styles = StyleSheet.create({
     borderColor: colors.success,
   },
   statusPending: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FCD34D',
+    backgroundColor: colors.cautionLight,
+    borderColor: colors.caution,
   },
   statusText: {
-    fontSize: 12,
-    fontWeight: '900',
+    ...labelStyle,
+    fontSize: 10,
   },
-  statusReadyText: {
-    color: '#065F46',
-  },
-  statusPendingText: {
-    color: '#92400E',
-  },
+  statusReadyText: { color: '#065F46' },
+  statusPendingText: { color: '#92400E' },
   errorBox: {
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 8,
-    backgroundColor: '#FEE2E2',
+    backgroundColor: colors.errorLight,
     borderWidth: 1,
-    borderColor: '#FCA5A5',
+    borderColor: colors.error,
     padding: 12,
+    gap: 3,
+  },
+  errorLabel: {
+    ...labelStyle,
+    color: colors.error,
+    fontSize: 10,
   },
   errorText: {
-    color: '#991B1B',
+    color: '#7A1212',
+    fontFamily: fonts.medium,
     fontSize: 13,
-    fontWeight: '700',
+    lineHeight: 18,
   },
   center: {
     flex: 1,
@@ -559,150 +551,15 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: colors.text,
+    fontFamily: fonts.bold,
     fontSize: 16,
-    fontWeight: '900',
   },
   emptyBody: {
     color: colors.textMuted,
+    fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 19,
     marginTop: 6,
   },
-  card: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 14,
-    gap: 12,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 10,
-  },
-  cardTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  cardTime: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  scorePill: {
-    minWidth: 42,
-    minHeight: 34,
-    borderRadius: 8,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scoreText: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  cardBody: {
-    color: colors.text,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  metaPill: {
-    borderRadius: 999,
-    backgroundColor: colors.surfaceAlt,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  metaText: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  warnPill: {
-    backgroundColor: '#FEF3C7',
-  },
-  warnText: {
-    color: '#92400E',
-  },
-  publishedPill: {
-    backgroundColor: colors.successLight,
-  },
-  publishedText: {
-    color: '#065F46',
-  },
-  publishedBand: {
-    borderRadius: 8,
-    backgroundColor: colors.successLight,
-    padding: 12,
-    gap: 3,
-  },
-  publishedBandLabel: {
-    color: '#065F46',
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  publishedBandTitle: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '800',
-    lineHeight: 19,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    minHeight: 42,
-    flex: 1,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  approveButton: {
-    backgroundColor: colors.success,
-    borderColor: colors.success,
-  },
-  approveActionButton: {
-    flex: 1.35,
-  },
-  rejectButton: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#FCA5A5',
-  },
-  actionText: {
-    color: colors.text,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  approveText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  rejectText: {
-    color: colors.error,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  pressed: {
-    opacity: 0.76,
-  },
-  disabled: {
-    opacity: 0.54,
-  },
+  pressed: { opacity: 0.76 },
 });

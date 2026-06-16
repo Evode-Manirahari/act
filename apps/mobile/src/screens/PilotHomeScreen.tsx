@@ -2,8 +2,8 @@ import React, { useCallback, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SafeAreaView } from 'react-native-safe-area-context';
-
+import ActAppShell from '../components/ActAppShell';
+import ActBottomBar from '../components/ActBottomBar';
 import { getDashboardSummary, type DashboardSummary } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { colors } from '../theme/colors';
@@ -52,7 +52,12 @@ export default function PilotHomeScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <ActAppShell
+      mode="Capture"
+      rightLabel="Record"
+      onRightPress={() => navigation.navigate('CaptureJob')}
+      bottomBar={<ActBottomBar />}
+    >
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -109,7 +114,7 @@ export default function PilotHomeScreen() {
         </View>
 
       </ScrollView>
-    </SafeAreaView>
+    </ActAppShell>
   );
 }
 

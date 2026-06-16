@@ -11,7 +11,9 @@ import { colors } from '../theme/colors';
 
 export type MarkType = 'teachable' | 'safety' | 'verification' | 'sensory' | 'counterfactual';
 
-const MARK_CYCLE: MarkType[] = [
+// Exported so the redesigned CaptureMarkButton can reuse the SAME mark
+// taxonomy, labels, hints, and colors — keeping the data model single-source.
+export const MARK_CYCLE: MarkType[] = [
   'teachable',
   'safety',
   'verification',
@@ -19,7 +21,7 @@ const MARK_CYCLE: MarkType[] = [
   'counterfactual',
 ];
 
-const MARK_LABEL: Record<MarkType, string> = {
+export const MARK_LABEL: Record<MarkType, string> = {
   teachable: 'Mark this',
   safety: 'Safety',
   verification: 'Verified',
@@ -27,7 +29,7 @@ const MARK_LABEL: Record<MarkType, string> = {
   counterfactual: 'Avoid this',
 };
 
-const MARK_HINT: Record<MarkType, string> = {
+export const MARK_HINT: Record<MarkType, string> = {
   teachable: 'teachable moment',
   safety: 'safety boundary',
   verification: 'proof step',
@@ -35,7 +37,7 @@ const MARK_HINT: Record<MarkType, string> = {
   counterfactual: 'wrong turn avoided',
 };
 
-const MARK_CHIP_LABEL: Record<MarkType, string> = {
+export const MARK_CHIP_LABEL: Record<MarkType, string> = {
   teachable: 'Teach',
   safety: 'Safe',
   verification: 'Verify',
@@ -43,7 +45,7 @@ const MARK_CHIP_LABEL: Record<MarkType, string> = {
   counterfactual: 'Avoid',
 };
 
-const MARK_COLOR: Record<MarkType, string> = {
+export const MARK_COLOR: Record<MarkType, string> = {
   teachable: colors.primary,
   safety: colors.error,
   verification: colors.success,
