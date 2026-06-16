@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,8 +15,6 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { createDemoSession } from '../api/captureApi';
-import type { DemoSession } from '../api/captureApi';
 import { upsertJobOutcome } from '../api/captureApi';
 import type { JobOutcomeOut } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
@@ -39,38 +37,19 @@ const progressLabels: Record<ProgressState, string> = {
 export default function PilotOutcomeScreen() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<OutcomeRoute>();
-  const [session, setSession] = useState<DemoSession | null>(null);
-  const [diagnosis, setDiagnosis] = useState('Capacitor failure');
-  const [fix, setFix] = useState('Replaced run capacitor and verified operation');
+  const [diagnosis, setDiagnosis] = useState('');
+  const [fix, setFix] = useState('');
   const [firstFix, setFirstFix] = useState<FirstFixState>('yes');
-  const [diagnosisMinutes, setDiagnosisMinutes] = useState('30');
-  const [progress, setProgress] = useState<ProgressState>('reviewed_card');
+  const [diagnosisMinutes, setDiagnosisMinutes] = useState('');
+  const [progress, setProgress] = useState<ProgressState>('not_observed');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedOutcome, setSavedOutcome] = useState<JobOutcomeOut | null>(null);
 
-  const jobId = route.params?.jobId ?? session?.job_id;
-  const recordedBy = route.params?.recordedBy ?? session?.user_id;
+  const jobId = route.params?.jobId;
+  const recordedBy = route.params?.recordedBy;
   const callback = firstFix === 'no';
-
-  useEffect(() => {
-    if (route.params?.jobId) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const next = await createDemoSession();
-        if (!cancelled) setSession(next);
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Could not create demo job.');
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [route.params?.jobId]);
 
   const managerNotes = useMemo(
     () =>
@@ -140,8 +119,19 @@ export default function PilotOutcomeScreen() {
             </Text>
           </View>
 
+          {!jobId && (
+            <View style={[styles.notice, styles.noticeError]}>
+              <Text style={[styles.noticeTitle, styles.noticeTitleError]}>
+                No field job selected
+              </Text>
+              <Text style={styles.noticeBody}>
+                Open outcome logging from a reviewed recording so this attaches to real capture data.
+              </Text>
+            </View>
+          )}
+
           <View style={styles.metricsRow}>
-            <Metric label="job" value={jobId ? jobId.slice(0, 8) : 'loading'} />
+            <Metric label="job" value={jobId ? jobId.slice(0, 8) : 'none'} />
             <Metric label="callback" value={callback ? 'yes' : 'no'} tone={callback ? 'warn' : 'good'} />
             <Metric label="diagnosis" value={`${diagnosisMinutes || '0'} min`} />
           </View>
@@ -553,6 +543,9 @@ const styles = StyleSheet.create({
     color: '#065F46',
     fontSize: 13,
     fontWeight: '900',
+  },
+  noticeTitleError: {
+    color: colors.error,
   },
   noticeBody: {
     color: colors.text,

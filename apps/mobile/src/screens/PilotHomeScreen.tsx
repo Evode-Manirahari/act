@@ -81,8 +81,8 @@ export default function PilotHomeScreen() {
           />
           <ActionButton
             label="Measure outcome"
-            detail="Log first-time fix, callback, and ramp"
-            onPress={() => navigation.navigate('PilotOutcome', undefined)}
+            detail="Available after review from a recorded job"
+            disabled
           />
         </View>
 
@@ -118,26 +118,42 @@ function ActionButton({
   detail,
   variant = 'secondary',
   onPress,
+  disabled = false,
 }: {
   label: string;
   detail: string;
   variant?: 'primary' | 'secondary';
-  onPress: () => void;
+  onPress?: () => void;
+  disabled?: boolean;
 }) {
   const primary = variant === 'primary';
   return (
     <Pressable
+      disabled={disabled}
       style={({ pressed }) => [
         styles.actionButton,
         primary ? styles.primaryAction : styles.secondaryAction,
+        disabled && styles.disabledAction,
         pressed && styles.pressed,
       ]}
       onPress={onPress}
     >
-      <Text style={[styles.actionLabel, primary && styles.primaryActionText]}>
+      <Text
+        style={[
+          styles.actionLabel,
+          primary && styles.primaryActionText,
+          disabled && styles.disabledActionText,
+        ]}
+      >
         {label}
       </Text>
-      <Text style={[styles.actionDetail, primary && styles.primaryActionDetail]}>
+      <Text
+        style={[
+          styles.actionDetail,
+          primary && styles.primaryActionDetail,
+          disabled && styles.disabledActionDetail,
+        ]}
+      >
         {detail}
       </Text>
     </Pressable>
@@ -181,10 +197,15 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: colors.steel300,
   },
+  disabledAction: {
+    opacity: 0.58,
+  },
   actionLabel: { color: colors.ink, fontSize: 19, fontFamily: fonts.semibold },
   actionDetail: { color: colors.steel500, fontSize: 14, marginTop: 5, fontFamily: fonts.body },
   primaryActionText: { color: '#FFFFFF' },
   primaryActionDetail: { color: 'rgba(255,255,255,0.85)' },
+  disabledActionText: { color: colors.steel500 },
+  disabledActionDetail: { color: colors.textMuted },
   pressed: { opacity: 0.8 },
   sectionLabel: { ...labelStyle, color: colors.steel500, marginBottom: -6 },
   statsRow: { flexDirection: 'row', gap: 10 },

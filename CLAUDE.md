@@ -43,7 +43,7 @@ This repo (`act/`) contains the mobile client only. The backend lives in a sibli
   - `src/screens/CaptureJobScreen.tsx` — heart of ACT Capture: record, mark teachable moments, upload with retry
   - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
   - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
-  - `src/screens/LearnScreen.tsx` — apprentice-facing learning surface with a seeded HVAC demo card
+  - `src/screens/LearnScreen.tsx` — apprentice-facing learning surface backed by live reviewed cards
 - `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
 - `../act-api/` — Python FastAPI backend (sibling repo, not a workspace member)
 
@@ -92,8 +92,8 @@ The mobile app has been progressively rewiring from the pre-pivot consumer-DIY p
 - `App.tsx` now launches into the HVAC training-capture shell
 - `CaptureJobScreen` includes a consent selector before recording; `do_not_share` blocks capture
 - `PilotReviewScreen` lets the pilot reviewer approve/reject proposed moments for the latest recording
-- `LearnScreen` is the apprentice-facing surface and includes a seeded HVAC training card, quiz-event logging, and completion logging so demos can show the published-card output before live cards exist
-- `PilotOutcomeScreen` logs final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, and apprentice progress against `/jobs/{job_id}/outcomes`
+- `LearnScreen` is the apprentice-facing surface and includes live reviewed cards, quiz-event logging, completion logging, and an honest empty state when no card exists
+- `PilotOutcomeScreen` logs final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, and apprentice progress against `/jobs/{job_id}/outcomes`; it must be launched with a real captured job id
 - Status polling + auto-process closes the loop after upload
 
 The mobile API client (`apps/mobile/src/api/actApi.ts`) talks to the deployed FastAPI service at `https://act-api-evode.fly.dev`.

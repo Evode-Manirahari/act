@@ -102,6 +102,24 @@ describe('library publishing API', () => {
       note: 'Completed after quiz: correct',
     });
   });
+
+  it('logs anonymous training events without requiring a demo session user', async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse({ id: 'event-1' }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await logTrainingEvent({
+      knowledgeObjectId: 'ko-1',
+      eventType: 'viewed',
+    });
+
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({
+      knowledge_object_id: 'ko-1',
+      user_id: null,
+      event_type: 'viewed',
+      score: null,
+      note: null,
+    });
+  });
 });
 
 function jsonResponse(body: unknown): Response {

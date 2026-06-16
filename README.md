@@ -71,14 +71,14 @@ Earlier electrician customer-discovery work is preserved as input but is not the
 
 | Spec principle | Current state |
 | --- | --- |
-| HVAC wedge | Implemented in docs, app copy, seeded training card, and pilot shell. |
+| HVAC wedge | Implemented in docs, app copy, live library copy, and pilot shell. |
 | Capture from phone | Implemented in `CaptureJobScreen` with camera/audio recording, consent state, marks, upload queue, and retry. |
 | Moment marking | Implemented with explicit mark types: teachable, safety, verification, sensory, counterfactual. |
 | Safe post-job review | Implemented as `PilotReviewScreen`; current mobile copy focuses on review/publish after capture. |
 | Structured training cards | Implemented in `LearnScreen` and mobile API calls for compile/publish. |
 | Expert approval | Implemented as mobile review actions before publish. |
-| Apprentice library + quiz | Implemented with live library search, seeded HVAC demo card, quiz events, and completion tracking. |
-| Outcome tracking | Implemented in `PilotOutcomeScreen`: final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, apprentice-progress note, and one-row-per-job outcome upsert. |
+| Apprentice library + quiz | Implemented with live library search, quiz events, completion tracking, and an honest empty state when no reviewed card exists. |
+| Outcome tracking | Implemented in `PilotOutcomeScreen`: final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, apprentice-progress note, and one-row-per-job outcome upsert for a real captured job. |
 | Fully automatic moment detection | Not a day-one requirement; backend proposed moments are supported, but human marks remain the MVP control. |
 
 ## Repo layout
@@ -90,8 +90,8 @@ This repo contains the **mobile client only**. The backend lives in a sibling re
   - `src/screens/CaptureJobScreen.tsx` — capture-mvp flow: record, mark teachable moments, upload with retry
   - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
   - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
-  - `src/screens/LearnScreen.tsx` — apprentice-facing published-card library with a seeded HVAC demo card
-  - `src/screens/PilotOutcomeScreen.tsx` — manager-facing outcome capture for callback signal, diagnosis time, and apprentice progress
+  - `src/screens/LearnScreen.tsx` — apprentice-facing published-card library backed by live `/library/search` results
+  - `src/screens/PilotOutcomeScreen.tsx` — manager-facing outcome capture for callback signal, diagnosis time, and apprentice progress on a selected job
   - `src/api/captureApi.ts`, `src/api/libraryApi.ts` — typed clients for the deployed backend
 - `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
 - `../act-api/` — Python FastAPI backend, deployed at https://act-api-evode.fly.dev ([sibling repo](https://github.com/Evode-Manirahari/act-api))
