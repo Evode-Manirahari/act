@@ -52,6 +52,42 @@ export interface ExpertAnswer {
   created_at: string;
 }
 
+export interface ReviewChecklist {
+  id: string;
+  knowledge_object_id: string;
+  moment_id: string | null;
+  reviewer_id: string | null;
+  evidence_checked: boolean;
+  safety_reviewed: boolean;
+  novice_trap_clear: boolean;
+  quiz_answer_correct: boolean;
+  approved_by: string | null;
+  notes: string | null;
+  completed_at: string | null;
+  created_at: string;
+}
+
+export interface LibraryAskCitation {
+  card_id: string;
+  title: string;
+}
+
+export interface LibraryAskResponse {
+  answer: string;
+  citations: LibraryAskCitation[];
+  refusal_reason: string | null;
+}
+
+export interface PilotWeeklyReport {
+  week: string;
+  generated_at: string;
+  summary: string;
+  metrics: Record<string, number | string | null>;
+  examples: LibraryAskCitation[];
+  risks: string[];
+  next_actions: string[];
+}
+
 
 export interface DashboardSummary {
   recordings_total: number;
@@ -127,6 +163,22 @@ export async function generateMomentQuestion(
   });
 }
 
+export async function editMomentQuestion(input: {
+  questionId: string;
+  question?: string;
+  reason?: string | null;
+  status?: 'proposed' | 'asked' | 'answered' | 'dismissed';
+}): Promise<ElicitationQuestion> {
+  return jsonFetch<ElicitationQuestion>(`/questions/${input.questionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      question: input.question,
+      reason: input.reason,
+      status: input.status,
+    }),
+  });
+}
+
 export async function submitExpertAnswer(input: {
   questionId: string;
   transcript: string;
@@ -162,9 +214,62 @@ export async function publishKnowledgeObject(
   );
 }
 
+export async function upsertReviewChecklist(input: {
+  knowledgeObjectId: string;
+  reviewerId?: string | null;
+  evidenceChecked?: boolean;
+  safetyReviewed?: boolean;
+  noviceTrapClear?: boolean;
+  quizAnswerCorrect?: boolean;
+  approvedBy?: string | null;
+  notes?: string | null;
+}): Promise<ReviewChecklist> {
+  return jsonFetch<ReviewChecklist>(
+    `/knowledge-objects/${input.knowledgeObjectId}/review-checklist`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        reviewer_id: input.reviewerId ?? null,
+        evidence_checked: input.evidenceChecked ?? true,
+        safety_reviewed: input.safetyReviewed ?? true,
+        novice_trap_clear: input.noviceTrapClear ?? true,
+        quiz_answer_correct: input.quizAnswerCorrect ?? true,
+        approved_by: input.approvedBy ?? input.reviewerId ?? null,
+        notes: input.notes ?? null,
+      }),
+    },
+  );
+}
+
+export async function askLibrary(input: {
+  query: string;
+  trade?: string;
+  accountId?: string;
+  limit?: number;
+}): Promise<LibraryAskResponse> {
+  return jsonFetch<LibraryAskResponse>('/library/ask', {
+    method: 'POST',
+    body: JSON.stringify({
+      query: input.query,
+      trade: input.trade ?? null,
+      account_id: input.accountId ?? null,
+      limit: input.limit ?? 3,
+    }),
+  });
+}
+
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   return jsonFetch<DashboardSummary>('/dashboard/summary');
+}
+
+export async function getPilotWeeklyReport(input: {
+  baselineRate?: number;
+} = {}): Promise<PilotWeeklyReport> {
+  const params = new URLSearchParams();
+  if (input.baselineRate != null) params.set('baseline_rate', String(input.baselineRate));
+  const suffix = params.toString() ? `?${params}` : '';
+  return jsonFetch<PilotWeeklyReport>(`/pilot/reports/weekly${suffix}`);
 }
 
 

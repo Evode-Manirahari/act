@@ -21,6 +21,7 @@ export interface DemoSession {
   job_id: string;
   user_id: string;
   account_id: string;
+  role?: string;
 }
 
 export async function createDemoSession(): Promise<DemoSession> {
@@ -120,6 +121,16 @@ export interface MomentOut {
   reviewed_at: string | null;
   review_note: string | null;
   created_at: string;
+}
+
+export interface ReviewQueueItem extends MomentOut {
+  job_id: string | null;
+  trade: string | null;
+  recording_status: string | null;
+  system_type: string | null;
+  equipment_make: string | null;
+  equipment_model: string | null;
+  customer_site_label: string | null;
 }
 
 export interface JobOutcomeOut {
@@ -237,6 +248,23 @@ export async function listRecordingMoments(input: {
     `/recordings/${input.recordingId}/moments${suffix}`,
     { method: 'GET' },
   );
+}
+
+export async function listReviewQueue(input: {
+  status?: string;
+  trade?: string;
+  includeUnready?: boolean;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<ReviewQueueItem[]> {
+  const params = new URLSearchParams();
+  if (input.status) params.set('status', input.status);
+  if (input.trade) params.set('trade', input.trade);
+  if (input.includeUnready) params.set('include_unready', 'true');
+  if (input.limit) params.set('limit', String(input.limit));
+  if (input.offset) params.set('offset', String(input.offset));
+  const suffix = params.toString() ? `?${params}` : '';
+  return jsonFetch<ReviewQueueItem[]>(`/moments/review${suffix}`, { method: 'GET' });
 }
 
 export async function reviewMoment(input: {

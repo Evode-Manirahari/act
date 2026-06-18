@@ -5,7 +5,7 @@ jest.mock('expo-file-system/legacy', () => ({
     BINARY_CONTENT: 'BINARY_CONTENT',
     MULTIPART: 'MULTIPART',
   },
-}));
+}), { virtual: true });
 
 import {
   getJobOutcome,

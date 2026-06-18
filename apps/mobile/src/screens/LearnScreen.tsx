@@ -16,9 +16,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { useFocusEffect, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import ActAppShell from '../components/ActAppShell';
+import ActAskPanel from '../components/ActAskPanel';
+import ActBottomBar from '../components/ActBottomBar';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
 import {
@@ -34,15 +38,18 @@ import {
 } from './learnScreenModel';
 
 type LearnRoute = RouteProp<PilotStackParamList, 'Learn'>;
+type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 
 
 export default function LearnScreen() {
   const route = useRoute<LearnRoute>();
+  const navigation = useNavigation<NavProp>();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<KnowledgeObject[]>([]);
   const [selected, setSelected] = useState<TrainingCard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -84,91 +91,100 @@ export default function LearnScreen() {
     if (match) setSelected(match);
   }, [cards, route.params?.card, route.params?.cardId]);
 
-  if (selected) {
-    return (
-      <CardDetail
-        card={selected}
-        userId={undefined}
-        onBack={() => setSelected(null)}
-      />
-    );
-  }
-
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Apprentice Training</Text>
-        <Text style={styles.headerSub}>
-          Reviewed cards from senior-tech captures.
-        </Text>
-      </View>
-
-      <View style={styles.searchRow}>
-        <TextInput
-          style={styles.searchInput}
-          value={query}
-          onChangeText={setQuery}
-          placeholder="Search symptom, equipment, hazard"
-          placeholderTextColor={colors.textLight}
-          returnKeyType="search"
-          onSubmitEditing={refresh}
+    <ActAppShell
+      mode="Training"
+      rightLabel="Capture"
+      onRightPress={() => navigation.navigate('CaptureJob')}
+      onMenuPress={() =>
+        navigation.canGoBack() ? navigation.goBack() : navigation.navigate('PilotHome')
+      }
+      bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
+    >
+      <ActAskPanel visible={askOpen} onClose={() => setAskOpen(false)} />
+      {selected ? (
+        <CardDetail
+          card={selected}
+          userId={undefined}
+          onBack={() => setSelected(null)}
         />
-      </View>
-
-      {error && (
-        <View style={[styles.notice, styles.noticeError]}>
-          <Text style={styles.noticeText}>{error}</Text>
-        </View>
-      )}
-
-      {showingEmpty && (
-        <View style={styles.empty}>
-          <Text style={styles.emptyTitle}>No reviewed cards yet</Text>
-          <Text style={styles.emptyBody}>
-            Publish a reviewed moment from the capture flow and it will appear here.
-          </Text>
-        </View>
-      )}
-
-      {loading ? (
-        <ActivityIndicator style={styles.loading} color={colors.primary} />
       ) : (
-        <FlatList
-          data={cards}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => {
-                setSelected(item);
-                void logTrainingEvent({
-                  knowledgeObjectId: item.id,
-                  eventType: 'viewed',
-                });
-              }}
-              style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
-            >
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <View style={styles.cardMeta}>
-                <View style={styles.pill}>
-                  <Text style={styles.pillText}>{item.trade}</Text>
-                </View>
-                {item.tags_json?.slice(0, 3).map((tag) => (
-                  <View key={tag} style={styles.pillLight}>
-                    <Text style={styles.pillLightText}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
-              {item.novice_trap && (
-                <Text numberOfLines={2} style={styles.cardBody}>
-                  Novice trap: {item.novice_trap}
-                </Text>
-              )}
-            </Pressable>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>Apprentice Training</Text>
+            <Text style={styles.headerSub}>
+              Reviewed cards from senior-tech captures.
+            </Text>
+          </View>
+
+          <View style={styles.searchRow}>
+            <TextInput
+              style={styles.searchInput}
+              value={query}
+              onChangeText={setQuery}
+              placeholder="Search symptom, equipment, hazard"
+              placeholderTextColor={colors.textLight}
+              returnKeyType="search"
+              onSubmitEditing={refresh}
+            />
+          </View>
+
+          {error && (
+            <View style={[styles.notice, styles.noticeError]}>
+              <Text style={styles.noticeText}>{error}</Text>
+            </View>
           )}
-          contentContainerStyle={styles.listContent}
-        />
+
+          {showingEmpty && (
+            <View style={styles.empty}>
+              <Text style={styles.emptyTitle}>No reviewed cards yet</Text>
+              <Text style={styles.emptyBody}>
+                Publish a reviewed moment from the capture flow and it will appear here.
+              </Text>
+            </View>
+          )}
+
+          {loading ? (
+            <ActivityIndicator style={styles.loading} color={colors.primary} />
+          ) : (
+            <FlatList
+              data={cards}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => {
+                    setSelected(item);
+                    void logTrainingEvent({
+                      knowledgeObjectId: item.id,
+                      eventType: 'viewed',
+                    });
+                  }}
+                  style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                >
+                  <Text style={styles.cardTitle}>{item.title}</Text>
+                  <View style={styles.cardMeta}>
+                    <View style={styles.pill}>
+                      <Text style={styles.pillText}>{item.trade}</Text>
+                    </View>
+                    {item.tags_json?.slice(0, 3).map((tag) => (
+                      <View key={tag} style={styles.pillLight}>
+                        <Text style={styles.pillLightText}>{tag}</Text>
+                      </View>
+                    ))}
+                  </View>
+                  {item.novice_trap && (
+                    <Text numberOfLines={2} style={styles.cardBody}>
+                      Novice trap: {item.novice_trap}
+                    </Text>
+                  )}
+                </Pressable>
+              )}
+              contentContainerStyle={styles.listContent}
+            />
+          )}
+        </View>
       )}
-    </View>
+    </ActAppShell>
   );
 }
 
@@ -417,7 +433,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   header: {
     paddingHorizontal: 16,
-    paddingTop: 56,
+    paddingTop: 16,
     paddingBottom: 12,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
@@ -472,7 +488,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   pillLightText: { fontSize: 11, fontWeight: '600', color: colors.textMuted },
-  detailHeader: { paddingTop: 56, paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  detailHeader: { paddingTop: 12, paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   backText: { fontSize: 16, fontWeight: '700', color: colors.primary },
   detailBody: { padding: 16, gap: 12 },
   detailTitle: { fontSize: 22, fontWeight: '800', color: colors.ink, lineHeight: 28, fontFamily: fonts.display },

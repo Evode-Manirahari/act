@@ -13,8 +13,10 @@ import {
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
+import ActAppShell from '../components/ActAppShell';
+import ActAskPanel from '../components/ActAskPanel';
+import ActBottomBar from '../components/ActBottomBar';
 import { upsertJobOutcome } from '../api/captureApi';
 import type { JobOutcomeOut } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
@@ -46,6 +48,7 @@ export default function PilotOutcomeScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedOutcome, setSavedOutcome] = useState<JobOutcomeOut | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
 
   const jobId = route.params?.jobId;
   const recordedBy = route.params?.recordedBy;
@@ -84,28 +87,22 @@ export default function PilotOutcomeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <ActAppShell
+      mode="Outcome"
+      rightLabel="Training"
+      onRightPress={() => navigation.navigate('Learn', undefined)}
+      onMenuPress={() =>
+        navigation.canGoBack()
+          ? navigation.goBack()
+          : navigation.navigate('PilotHome')
+      }
+      bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
+    >
+      <ActAskPanel visible={askOpen} onClose={() => setAskOpen(false)} />
       <KeyboardAvoidingView
         style={styles.safe}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <View style={styles.header}>
-          <Pressable
-            onPress={() =>
-              navigation.canGoBack()
-                ? navigation.goBack()
-                : navigation.navigate('PilotHome')
-            }
-            hitSlop={12}
-          >
-            <Text style={styles.headerBack}>‹ Back</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>Job Outcome</Text>
-          <Pressable onPress={() => navigation.navigate('Learn', undefined)} hitSlop={12}>
-            <Text style={styles.headerAction}>Training</Text>
-          </Pressable>
-        </View>
-
         <ScrollView
           style={styles.container}
           contentContainerStyle={styles.content}
@@ -248,7 +245,7 @@ export default function PilotOutcomeScreen() {
           </Pressable>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </ActAppShell>
   );
 }
 

@@ -11,7 +11,7 @@ import type { KnowledgeObject } from '../api/libraryApi';
 export type PilotStackParamList = {
   PilotHome: undefined;
   CaptureJob: undefined;
-  PilotReview: { recordingId: string };
+  PilotReview: { recordingId?: string; queue?: boolean } | undefined;
   Learn: { card?: KnowledgeObject; cardId?: string } | undefined;
   PilotOutcome: { jobId?: string; recordedBy?: string; sourceRecordingId?: string } | undefined;
 };

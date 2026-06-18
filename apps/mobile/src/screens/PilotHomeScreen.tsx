@@ -3,8 +3,14 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ActAppShell from '../components/ActAppShell';
+import ActAskPanel from '../components/ActAskPanel';
 import ActBottomBar from '../components/ActBottomBar';
-import { getDashboardSummary, type DashboardSummary } from '../api/libraryApi';
+import {
+  getDashboardSummary,
+  getPilotWeeklyReport,
+  type DashboardSummary,
+  type PilotWeeklyReport,
+} from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
@@ -19,12 +25,20 @@ const workflow = ['Record', 'Mark', 'Review', 'Teach', 'Measure'];
 export default function PilotHomeScreen() {
   const navigation = useNavigation<NavProp>();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
+  const [report, setReport] = useState<PilotWeeklyReport | null>(null);
+  const [askOpen, setAskOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       setSummary(await getDashboardSummary());
     } catch {
       // Offline or API down: tiles stay at "—". Never show made-up counts.
+    }
+
+    try {
+      setReport(await getPilotWeeklyReport());
+    } catch {
+      // Report is additive; older API deployments should not hide the live summary.
     }
   }, []);
 
@@ -56,8 +70,9 @@ export default function PilotHomeScreen() {
       mode="Capture"
       rightLabel="Record"
       onRightPress={() => navigation.navigate('CaptureJob')}
-      bottomBar={<ActBottomBar />}
+      bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
     >
+      <ActAskPanel visible={askOpen} onClose={() => setAskOpen(false)} />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -85,6 +100,11 @@ export default function PilotHomeScreen() {
             onPress={() => navigation.navigate('Learn')}
           />
           <ActionButton
+            label="Review queue"
+            detail="Approve moments across ready recordings"
+            onPress={() => navigation.navigate('PilotReview', { queue: true })}
+          />
+          <ActionButton
             label="Measure outcome"
             detail="Available after review from a recorded job"
             disabled
@@ -100,6 +120,18 @@ export default function PilotHomeScreen() {
             </View>
           ))}
         </View>
+
+        {report ? (
+          <View style={styles.reportCard}>
+            <Text style={styles.sectionLabel}>{report.week} pilot report</Text>
+            <Text style={styles.reportSummary}>{report.summary}</Text>
+            {report.risks.slice(0, 2).map((risk) => (
+              <Text key={risk} style={styles.reportRisk}>
+                {risk}
+              </Text>
+            ))}
+          </View>
+        ) : null}
 
         <View style={styles.workflowBand}>
           {workflow.map((step, index) => (
@@ -228,6 +260,16 @@ const styles = StyleSheet.create({
   },
   statValue: { color: colors.ink, fontSize: 26, fontFamily: fonts.mono }, // mono = instrument
   statLabel: { ...labelStyle, color: colors.steel500, fontSize: 10, marginTop: 4 },
+  reportCard: {
+    gap: 8,
+    padding: 14,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  reportSummary: { color: colors.steel700, fontSize: 14, lineHeight: 20, fontFamily: fonts.body },
+  reportRisk: { color: colors.caution, fontSize: 12, lineHeight: 17, fontFamily: fonts.medium },
   workflowBand: {
     minHeight: 80,
     borderRadius: 6,
