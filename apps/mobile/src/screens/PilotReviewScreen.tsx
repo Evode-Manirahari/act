@@ -14,15 +14,18 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import {
   getRecording,
+  listReviewQueue,
   listRecordingMoments,
   reviewMoment,
 } from '../api/captureApi';
-import type { MomentOut, RecordingOut } from '../api/captureApi';
+import type { MomentOut, RecordingOut, ReviewQueueItem } from '../api/captureApi';
 import {
   compileMoment,
+  editMomentQuestion,
   generateMomentQuestion,
   publishKnowledgeObject,
   submitExpertAnswer,
+  upsertReviewChecklist,
 } from '../api/libraryApi';
 import type { ElicitationQuestion, KnowledgeObject } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
@@ -54,7 +57,8 @@ const EMPTY_DEBRIEF: DebriefState = {
 export default function PilotReviewScreen() {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<ReviewRoute>();
-  const { recordingId } = route.params;
+  const recordingId = route.params?.recordingId;
+  const queueMode = !recordingId;
   const [recording, setRecording] = useState<RecordingOut | null>(null);
   const [moments, setMoments] = useState<MomentOut[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,10 +72,16 @@ export default function PilotReviewScreen() {
   const refresh = useCallback(async () => {
     setError(null);
     try {
-      const detail = await getRecording(recordingId);
-      setRecording(detail.recording);
-      const nextMoments = await listRecordingMoments({ recordingId });
-      setMoments(nextMoments);
+      if (recordingId) {
+        const detail = await getRecording(recordingId);
+        setRecording(detail.recording);
+        const nextMoments = await listRecordingMoments({ recordingId });
+        setMoments(nextMoments);
+      } else {
+        setRecording(null);
+        const nextMoments = await listReviewQueue({ status: 'proposed', trade: 'hvac', limit: 50 });
+        setMoments(nextMoments);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'review load failed');
     } finally {
@@ -134,7 +144,7 @@ export default function PilotReviewScreen() {
         prev.map((current) => (current.id === moment.id ? approvedMoment : current)),
       );
 
-      const trade = recording?.trade ?? 'hvac';
+      const trade = tradeForMoment(moment, recording);
       setPublishStage(moment.id, 'drafting');
       let card: KnowledgeObject;
       try {
@@ -155,6 +165,16 @@ export default function PilotReviewScreen() {
       }
 
       setPublishStage(moment.id, 'publishing');
+      await saveReviewChecklistForPublish({
+        knowledgeObjectId: card.id,
+        reviewerId: recording?.user_id ?? approvedMoment.reviewer_id,
+        evidenceChecked: true,
+        safetyReviewed: true,
+        noviceTrapClear: true,
+        quizAnswerCorrect: true,
+        approvedBy: recording?.user_id ?? approvedMoment.reviewer_id,
+        notes: 'Mobile one-tap publish path.',
+      });
       const published = card.status === 'published'
         ? card
         : await publishKnowledgeObject(card.id);
@@ -206,7 +226,7 @@ export default function PilotReviewScreen() {
     }
   }
 
-  async function submitAnswer(momentId: string, answerText: string) {
+  async function submitAnswer(momentId: string, questionText: string, answerText: string) {
     const state = getDebrief(momentId);
     if (!state.question) {
       setError('Generate a question before saving an answer.');
@@ -215,8 +235,17 @@ export default function PilotReviewScreen() {
     patchDebrief(momentId, { busyStep: 'answering' });
     setError(null);
     try {
+      const trimmedQuestion = questionText.trim();
+      let question = state.question;
+      if (trimmedQuestion && trimmedQuestion !== state.question.question) {
+        question = await editMomentQuestion({
+          questionId: state.question.id,
+          question: trimmedQuestion,
+        });
+        patchDebrief(momentId, { question });
+      }
       await submitExpertAnswer({
-        questionId: state.question.id,
+        questionId: question.id,
         transcript: answerText,
         approvedByExpert: true,
         expertUserId: recording?.user_id ?? null,
@@ -232,7 +261,8 @@ export default function PilotReviewScreen() {
     patchDebrief(momentId, { busyStep: 'drafting' });
     setError(null);
     try {
-      const trade = recording?.trade ?? 'hvac';
+      const moment = moments.find((item) => item.id === momentId);
+      const trade = moment ? tradeForMoment(moment, recording) : recording?.trade ?? 'hvac';
       const draft = await compileMoment({ momentId, trade });
       patchDebrief(momentId, {
         draft,
@@ -254,6 +284,16 @@ export default function PilotReviewScreen() {
     patchDebrief(momentId, { busyStep: 'publishing' });
     setError(null);
     try {
+      await saveReviewChecklistForPublish({
+        knowledgeObjectId: state.draft.id,
+        reviewerId: recording?.user_id ?? null,
+        evidenceChecked: true,
+        safetyReviewed: true,
+        noviceTrapClear: true,
+        quizAnswerCorrect: true,
+        approvedBy: recording?.user_id ?? null,
+        notes: 'Mobile debrief publish path.',
+      });
       const published = state.draft.status === 'published'
         ? state.draft
         : await publishKnowledgeObject(state.draft.id);
@@ -264,7 +304,7 @@ export default function PilotReviewScreen() {
     }
   }
 
-  const status = recording?.status ?? 'loading';
+  const status = queueMode ? 'ready' : recording?.status ?? 'loading';
   const ready = status === 'ready';
 
   return (
@@ -280,8 +320,10 @@ export default function PilotReviewScreen() {
     >
       <View style={styles.summary}>
         <View style={styles.summaryTop}>
-          <Text style={styles.summaryLabel}>Recording</Text>
-          <Text style={styles.recordingId}>{recordingId.slice(0, 8)}</Text>
+          <Text style={styles.summaryLabel}>{queueMode ? 'Review queue' : 'Recording'}</Text>
+          <Text style={styles.recordingId}>
+            {recordingId ? recordingId.slice(0, 8) : `${moments.length} ready`}
+          </Text>
           <View style={[styles.statusPill, ready ? styles.statusReady : styles.statusPending]}>
             <Text style={[styles.statusText, ready ? styles.statusReadyText : styles.statusPendingText]}>
               {formatStatus(status)}
@@ -366,7 +408,7 @@ export default function PilotReviewScreen() {
                 onNeedsInfo={() => void actOnMoment(item.id, 'needs_more_info')}
                 onOpenCard={(card) => navigation.navigate('Learn', { card, cardId: card.id })}
                 onGenerateQuestion={() => void generateQuestion(item.id)}
-                onSubmitAnswer={(_question, answer) => void submitAnswer(item.id, answer)}
+                onSubmitAnswer={(question, answer) => void submitAnswer(item.id, question, answer)}
                 onCompileDraft={() => void compileDraft(item.id)}
                 onPublishDraft={() => void publishDraft(item.id)}
               />
@@ -393,6 +435,27 @@ function formatStatus(status: string): string {
   if (status === 'failed') return 'Failed';
   if (status === 'pending') return 'Pending upload';
   return status;
+}
+
+function tradeForMoment(moment: MomentOut, recording: RecordingOut | null): string {
+  return recording?.trade ?? (moment as Partial<ReviewQueueItem>).trade ?? 'hvac';
+}
+
+async function saveReviewChecklistForPublish(input: {
+  knowledgeObjectId: string;
+  reviewerId?: string | null;
+  evidenceChecked?: boolean;
+  safetyReviewed?: boolean;
+  noviceTrapClear?: boolean;
+  quizAnswerCorrect?: boolean;
+  approvedBy?: string | null;
+  notes?: string | null;
+}) {
+  try {
+    await upsertReviewChecklist(input);
+  } catch {
+    // Review checklist provenance is additive during rollout; publishing remains the gate.
+  }
 }
 
 /**

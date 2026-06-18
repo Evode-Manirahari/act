@@ -1,9 +1,13 @@
 import {
+  askLibrary,
   compileMoment,
+  editMomentQuestion,
   generateMomentQuestion,
+  getPilotWeeklyReport,
   logTrainingEvent,
   publishKnowledgeObject,
   submitExpertAnswer,
+  upsertReviewChecklist,
 } from '../libraryApi';
 
 describe('library publishing API', () => {
@@ -119,6 +123,97 @@ describe('library publishing API', () => {
       score: null,
       note: null,
     });
+  });
+
+  it('calls debrief, checklist, ask, and report endpoints with expected payloads', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({
+        id: 'q-1',
+        moment_id: 'm-1',
+        question: 'What made this a safety moment?',
+        reason: null,
+        status: 'asked',
+        asked_at: null,
+        created_at: '2026-05-28T00:00:00.000Z',
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        id: 'rc-1',
+        knowledge_object_id: 'ko-1',
+        moment_id: 'm-1',
+        reviewer_id: 'u-1',
+        evidence_checked: true,
+        safety_reviewed: true,
+        novice_trap_clear: true,
+        quiz_answer_correct: true,
+        approved_by: 'u-1',
+        notes: 'Ready.',
+        completed_at: '2026-05-28T00:02:00.000Z',
+        created_at: '2026-05-28T00:00:00.000Z',
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        answer: 'Reviewed card answer.',
+        citations: [{ card_id: 'ko-1', title: 'Check airflow before charge' }],
+        refusal_reason: null,
+      }))
+      .mockResolvedValueOnce(jsonResponse({
+        week: '2026-W22',
+        generated_at: '2026-05-28T00:00:00.000Z',
+        summary: 'Pilot is moving.',
+        metrics: { cards_published: 1 },
+        examples: [{ card_id: 'ko-1', title: 'Check airflow before charge' }],
+        risks: [],
+        next_actions: [],
+      }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await editMomentQuestion({
+      questionId: 'q-1',
+      question: 'What made this a safety moment?',
+      status: 'asked',
+    });
+    await upsertReviewChecklist({
+      knowledgeObjectId: 'ko-1',
+      reviewerId: 'u-1',
+      notes: 'Ready.',
+    });
+    await askLibrary({ query: 'What cards mention airflow?', trade: 'hvac', limit: 2 });
+    await getPilotWeeklyReport({ baselineRate: 5 });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      expect.stringContaining('/questions/q-1'),
+      expect.objectContaining({ method: 'PATCH' }),
+    );
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({
+      question: 'What made this a safety moment?',
+      status: 'asked',
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      expect.stringContaining('/knowledge-objects/ko-1/review-checklist'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(JSON.parse((fetchMock.mock.calls[1][1] as RequestInit).body as string)).toEqual({
+      reviewer_id: 'u-1',
+      evidence_checked: true,
+      safety_reviewed: true,
+      novice_trap_clear: true,
+      quiz_answer_correct: true,
+      approved_by: 'u-1',
+      notes: 'Ready.',
+    });
+    expect(JSON.parse((fetchMock.mock.calls[2][1] as RequestInit).body as string)).toEqual({
+      query: 'What cards mention airflow?',
+      trade: 'hvac',
+      account_id: null,
+      limit: 2,
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      4,
+      expect.stringContaining('/pilot/reports/weekly?baseline_rate=5'),
+      expect.objectContaining({ headers: expect.any(Object) }),
+    );
   });
 });
 
