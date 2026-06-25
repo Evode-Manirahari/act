@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ActAppShell from '../components/ActAppShell';
 import ActAskPanel from '../components/ActAskPanel';
 import ActBottomBar from '../components/ActBottomBar';
-import { upsertJobOutcome } from '../api/captureApi';
+import { logJobEvent, upsertJobOutcome } from '../api/captureApi';
 import type { JobOutcomeOut } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { colors } from '../theme/colors';
@@ -79,6 +79,18 @@ export default function PilotOutcomeScreen() {
         recordedBy,
       });
       setSavedOutcome(outcome);
+      void logJobEvent({
+        eventType: 'outcome_logged',
+        actorId: recordedBy ?? null,
+        jobId,
+        payload: {
+          callback: outcome.callback,
+          diagnosis_minutes: diagnosisMinutes || null,
+          progress,
+        },
+      }).catch(() => {
+        // Outcome save already succeeded; event logging is additive.
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Outcome save failed.');
     } finally {

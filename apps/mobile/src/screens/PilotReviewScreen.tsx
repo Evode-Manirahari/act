@@ -16,6 +16,7 @@ import {
   getRecording,
   listReviewQueue,
   listRecordingMoments,
+  logJobEvent,
   reviewMoment,
 } from '../api/captureApi';
 import type { MomentOut, RecordingOut, ReviewQueueItem } from '../api/captureApi';
@@ -24,6 +25,8 @@ import {
   editMomentQuestion,
   generateMomentQuestion,
   publishKnowledgeObject,
+  safetyCheckKnowledgeObject,
+  submitExpertAudioAnswer,
   submitExpertAnswer,
   upsertReviewChecklist,
 } from '../api/libraryApi';
@@ -105,6 +108,25 @@ export default function PilotReviewScreen() {
     }));
   }
 
+  function emitReviewEvent(
+    eventType: string,
+    moment: MomentOut,
+    payload?: Record<string, unknown>,
+  ) {
+    void logJobEvent({
+      eventType,
+      actorId: recording?.user_id ?? moment.reviewer_id ?? null,
+      jobId: recording?.job_id ?? (moment as Partial<ReviewQueueItem>).job_id ?? null,
+      recordingId: moment.recording_id,
+      payload: {
+        moment_id: moment.id,
+        ...payload,
+      },
+    }).catch(() => {
+      // Workflow telemetry should never block review/publish.
+    });
+  }
+
   // --- PRESERVED: review status actions (approve / reject / needs_more_info) -
   async function actOnMoment(
     momentId: string,
@@ -113,10 +135,14 @@ export default function PilotReviewScreen() {
     setActingId(momentId);
     setError(null);
     try {
+      const current = moments.find((moment) => moment.id === momentId);
       const updated = await reviewMoment({ momentId, status });
       setMoments((prev) =>
         prev.map((moment) => (moment.id === momentId ? updated : moment)),
       );
+      emitReviewEvent('review_decision', current ?? updated, {
+        status,
+      });
       if (status !== 'approved') {
         setPublishedCards((prev) => {
           const next = { ...prev };
@@ -143,6 +169,7 @@ export default function PilotReviewScreen() {
       setMoments((prev) =>
         prev.map((current) => (current.id === moment.id ? approvedMoment : current)),
       );
+      emitReviewEvent('review_decision', approvedMoment, { status: 'approved' });
 
       const trade = tradeForMoment(moment, recording);
       setPublishStage(moment.id, 'drafting');
@@ -164,6 +191,7 @@ export default function PilotReviewScreen() {
         card = await compileMoment({ momentId: moment.id, trade });
       }
 
+      card = await requireSafetyReady(card);
       setPublishStage(moment.id, 'publishing');
       await saveReviewChecklistForPublish({
         knowledgeObjectId: card.id,
@@ -179,6 +207,10 @@ export default function PilotReviewScreen() {
         ? card
         : await publishKnowledgeObject(card.id);
       setPublishedCards((prev) => ({ ...prev, [moment.id]: published }));
+      emitReviewEvent('card_published', approvedMoment, {
+        knowledge_object_id: published.id,
+        path: 'one_tap',
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'publish failed');
     } finally {
@@ -207,6 +239,7 @@ export default function PilotReviewScreen() {
       setMoments((prev) =>
         prev.map((current) => (current.id === moment.id ? updated : current)),
       );
+      emitReviewEvent('review_decision', updated, { status: 'approved' });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'approve failed');
     } finally {
@@ -257,6 +290,44 @@ export default function PilotReviewScreen() {
     }
   }
 
+  async function submitAudioAnswer(
+    momentId: string,
+    questionText: string,
+    audioUri: string,
+  ): Promise<string | null> {
+    const state = getDebrief(momentId);
+    if (!state.question) {
+      setError('Generate a question before saving an answer.');
+      return null;
+    }
+    patchDebrief(momentId, { busyStep: 'answering' });
+    setError(null);
+    try {
+      const trimmedQuestion = questionText.trim();
+      let question = state.question;
+      if (trimmedQuestion && trimmedQuestion !== state.question.question) {
+        question = await editMomentQuestion({
+          questionId: state.question.id,
+          question: trimmedQuestion,
+        });
+        patchDebrief(momentId, { question });
+      }
+      const answer = await submitExpertAudioAnswer({
+        questionId: question.id,
+        uri: audioUri,
+        approvedByExpert: true,
+        expertUserId: recording?.user_id ?? null,
+      });
+      patchDebrief(momentId, { busyStep: 'idle' });
+      return answer.transcript;
+    } catch (err) {
+      patchDebrief(momentId, { busyStep: 'idle' });
+      const message = err instanceof Error ? err.message : 'could not save voice answer';
+      setError(message);
+      throw err;
+    }
+  }
+
   async function compileDraft(momentId: string) {
     patchDebrief(momentId, { busyStep: 'drafting' });
     setError(null);
@@ -284,8 +355,10 @@ export default function PilotReviewScreen() {
     patchDebrief(momentId, { busyStep: 'publishing' });
     setError(null);
     try {
+      const checkedDraft = await requireSafetyReady(state.draft);
+      patchDebrief(momentId, { draft: checkedDraft });
       await saveReviewChecklistForPublish({
-        knowledgeObjectId: state.draft.id,
+        knowledgeObjectId: checkedDraft.id,
         reviewerId: recording?.user_id ?? null,
         evidenceChecked: true,
         safetyReviewed: true,
@@ -294,10 +367,17 @@ export default function PilotReviewScreen() {
         approvedBy: recording?.user_id ?? null,
         notes: 'Mobile debrief publish path.',
       });
-      const published = state.draft.status === 'published'
-        ? state.draft
-        : await publishKnowledgeObject(state.draft.id);
+      const published = checkedDraft.status === 'published'
+        ? checkedDraft
+        : await publishKnowledgeObject(checkedDraft.id);
       patchDebrief(momentId, { draft: published, published: true, busyStep: 'idle' });
+      const moment = moments.find((item) => item.id === momentId);
+      if (moment) {
+        emitReviewEvent('card_published', moment, {
+          knowledge_object_id: published.id,
+          path: 'debrief',
+        });
+      }
     } catch (err) {
       patchDebrief(momentId, { busyStep: 'idle' });
       setError(err instanceof Error ? err.message : 'publish failed');
@@ -409,6 +489,9 @@ export default function PilotReviewScreen() {
                 onOpenCard={(card) => navigation.navigate('Learn', { card, cardId: card.id })}
                 onGenerateQuestion={() => void generateQuestion(item.id)}
                 onSubmitAnswer={(question, answer) => void submitAnswer(item.id, question, answer)}
+                onSubmitAudioAnswer={(question, audioUri) =>
+                  submitAudioAnswer(item.id, question, audioUri)
+                }
                 onCompileDraft={() => void compileDraft(item.id)}
                 onPublishDraft={() => void publishDraft(item.id)}
               />
@@ -451,11 +534,18 @@ async function saveReviewChecklistForPublish(input: {
   approvedBy?: string | null;
   notes?: string | null;
 }) {
-  try {
-    await upsertReviewChecklist(input);
-  } catch {
-    // Review checklist provenance is additive during rollout; publishing remains the gate.
+  await upsertReviewChecklist(input);
+}
+
+async function requireSafetyReady(card: KnowledgeObject): Promise<KnowledgeObject> {
+  const checked = await safetyCheckKnowledgeObject(card.id);
+  if (checked.safety_recommendation !== 'ready') {
+    const risk = checked.safety_risk ? ` (${checked.safety_risk})` : '';
+    throw new Error(
+      `Safety review blocked publishing${risk}. Edit the card and run review again.`,
+    );
   }
+  return checked;
 }
 
 /**

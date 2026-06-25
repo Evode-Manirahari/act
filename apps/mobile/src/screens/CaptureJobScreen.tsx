@@ -41,6 +41,7 @@ import UploadStatusPill, { UploadStatus } from '../components/UploadStatusPill';
 import {
   createRecording,
   getRecording,
+  logJobEvent,
 } from '../api/captureApi';
 import type { ConsentState, RecordingOut, RecordingStatus } from '../api/captureApi';
 import { captureQueue } from '../lib/offlineUploadQueue';
@@ -207,6 +208,10 @@ export default function CaptureJobScreen() {
         deviceMeta: { camera: 'phone_chest_or_handheld' },
       });
       setRecording(created.recording);
+      emitCaptureEvent('recording_started', created.recording, {
+        consent_state: consentState,
+        trade: created.recording.trade,
+      });
       setLastRecordingId(created.recording.id);
       void AsyncStorage.setItem(LAST_RECORDING_KEY, created.recording.id);
       marksRef.current = [];
@@ -250,6 +255,23 @@ export default function CaptureJobScreen() {
     );
   }
 
+  function emitCaptureEvent(
+    eventType: string,
+    rec?: RecordingOut | null,
+    payload?: Record<string, unknown>,
+  ) {
+    const target = rec ?? recording;
+    void logJobEvent({
+      eventType,
+      actorId: session?.user_id ?? null,
+      jobId: target?.job_id ?? session?.job_id ?? null,
+      recordingId: target?.id ?? null,
+      payload: payload ?? null,
+    }).catch(() => {
+      // Event telemetry should never break capture in a machine room.
+    });
+  }
+
   async function enqueueUpload(
     rec: RecordingOut,
     fileUri: string,
@@ -257,6 +279,10 @@ export default function CaptureJobScreen() {
   ) {
     setStatus({ kind: 'saved_local', marks: marksRef.current.length });
     const duration = (Date.now() - recordingStartRef.current) / 1000;
+    emitCaptureEvent('recording_completed', rec, {
+      duration_s: duration,
+      marks: marksRef.current.length,
+    });
 
     // Duration + endedAt ride on the upload item so the queue's post-upload
     // complete records them in one step. Enqueuing a separate complete here
@@ -272,10 +298,14 @@ export default function CaptureJobScreen() {
     // Auto-kick the server pipeline as soon as the upload + complete
     // land. The queue treats a 409 as success, so re-trying is safe.
     await captureQueue.enqueueProcess({ recordingId: rec.id });
+    emitCaptureEvent('process_queued', rec, { source: 'mobile_queue' });
 
     const result = await captureQueue.flush();
     if (result.remaining === 0) {
       setStatus({ kind: 'uploaded' });
+      emitCaptureEvent('upload_completed', rec, {
+        marks: marksRef.current.length,
+      });
       // Start polling the server status — the BG pipeline runs in act-api
       // and will move us through processing → ready (or failed).
       startStatusPolling(rec.id);
@@ -381,6 +411,11 @@ export default function CaptureJobScreen() {
       markType: kind,
       note,
       createdBy: session?.user_id,
+    });
+    emitCaptureEvent('mark_added', recording, {
+      timestamp_s: timestamp,
+      mark_type: kind,
+      has_note: !!note,
     });
     void captureQueue.flush();
   }

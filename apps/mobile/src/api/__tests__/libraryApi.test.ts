@@ -6,6 +6,8 @@ import {
   getPilotWeeklyReport,
   logTrainingEvent,
   publishKnowledgeObject,
+  safetyCheckKnowledgeObject,
+  submitExpertAudioAnswer,
   submitExpertAnswer,
   upsertReviewChecklist,
 } from '../libraryApi';
@@ -125,6 +127,33 @@ describe('library publishing API', () => {
     });
   });
 
+  it('submits expert audio answers as multipart form data', async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse({
+      id: 'a-1',
+      question_id: 'q-1',
+      transcript: 'I checked static pressure first.',
+      audio_key: 'questions/q-1/answers/audio.m4a',
+      approved_by_expert: true,
+      expert_user_id: 'u-1',
+      created_at: '2026-05-28T00:00:00.000Z',
+    }));
+    global.fetch = fetchMock as typeof fetch;
+
+    await submitExpertAudioAnswer({
+      questionId: 'q-1',
+      uri: 'file:///tmp/answer.m4a',
+      expertUserId: 'u-1',
+    });
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/questions/q-1/answers/audio'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(init.headers).toEqual({ Accept: 'application/json' });
+    expect(init.body).toBeInstanceOf(FormData);
+  });
+
   it('calls debrief, checklist, ask, and report endpoints with expected payloads', async () => {
     const fetchMock = jest
       .fn()
@@ -151,6 +180,10 @@ describe('library publishing API', () => {
         completed_at: '2026-05-28T00:02:00.000Z',
         created_at: '2026-05-28T00:00:00.000Z',
       }))
+      .mockResolvedValueOnce(jsonResponse(trainingCard({
+        id: 'ko-1',
+        status: 'draft',
+      })))
       .mockResolvedValueOnce(jsonResponse({
         answer: 'Reviewed card answer.',
         citations: [{ card_id: 'ko-1', title: 'Check airflow before charge' }],
@@ -158,12 +191,24 @@ describe('library publishing API', () => {
       }))
       .mockResolvedValueOnce(jsonResponse({
         week: '2026-W22',
-        generated_at: '2026-05-28T00:00:00.000Z',
         summary: 'Pilot is moving.',
-        metrics: { cards_published: 1 },
-        examples: [{ card_id: 'ko-1', title: 'Check airflow before charge' }],
+        metrics: {
+          jobs_captured: 1,
+          recordings_ready: 1,
+          moments_detected: 1,
+          moments_approved: 1,
+          moments_rejected: 0,
+          cards_published: 1,
+          training_events: 1,
+          quiz_attempts: 1,
+          quiz_correct: 1,
+          outcomes_logged: 1,
+          callbacks: 0,
+        },
+        wins: [],
         risks: [],
-        next_actions: [],
+        operator_questions: [],
+        narrative_ok: true,
       }));
     global.fetch = fetchMock as typeof fetch;
 
@@ -177,8 +222,9 @@ describe('library publishing API', () => {
       reviewerId: 'u-1',
       notes: 'Ready.',
     });
+    await safetyCheckKnowledgeObject('ko-1');
     await askLibrary({ query: 'What cards mention airflow?', trade: 'hvac', limit: 2 });
-    await getPilotWeeklyReport({ baselineRate: 5 });
+    await getPilotWeeklyReport({ accountId: 'acct-1', baselineRate: 5 });
 
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
@@ -203,15 +249,20 @@ describe('library publishing API', () => {
       approved_by: 'u-1',
       notes: 'Ready.',
     });
-    expect(JSON.parse((fetchMock.mock.calls[2][1] as RequestInit).body as string)).toEqual({
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining('/knowledge-objects/ko-1/safety-check'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(JSON.parse((fetchMock.mock.calls[3][1] as RequestInit).body as string)).toEqual({
       query: 'What cards mention airflow?',
       trade: 'hvac',
       account_id: null,
       limit: 2,
     });
     expect(fetchMock).toHaveBeenNthCalledWith(
-      4,
-      expect.stringContaining('/pilot/reports/weekly?baseline_rate=5'),
+      5,
+      expect.stringContaining('/dashboard/weekly-report?account_id=acct-1&baseline_rate=5'),
       expect.objectContaining({ headers: expect.any(Object) }),
     );
   });

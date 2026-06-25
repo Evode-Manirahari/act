@@ -30,6 +30,10 @@ export interface KnowledgeObject {
   created_by: string | null;
   published_at: string | null;
   created_at: string;
+  safety_recommendation?: string | null;
+  safety_risk?: string | null;
+  safety_review_json?: Record<string, unknown> | null;
+  safety_reviewed_at?: string | null;
 }
 
 export interface ElicitationQuestion {
@@ -80,12 +84,24 @@ export interface LibraryAskResponse {
 
 export interface PilotWeeklyReport {
   week: string;
-  generated_at: string;
   summary: string;
-  metrics: Record<string, number | string | null>;
-  examples: LibraryAskCitation[];
+  metrics: {
+    jobs_captured: number;
+    recordings_ready: number;
+    moments_detected: number;
+    moments_approved: number;
+    moments_rejected: number;
+    cards_published: number;
+    training_events: number;
+    quiz_attempts: number;
+    quiz_correct: number;
+    outcomes_logged: number;
+    callbacks: number;
+  };
+  wins: string[];
   risks: string[];
-  next_actions: string[];
+  operator_questions: string[];
+  narrative_ok: boolean;
 }
 
 
@@ -195,6 +211,40 @@ export async function submitExpertAnswer(input: {
   });
 }
 
+export async function submitExpertAudioAnswer(input: {
+  questionId: string;
+  uri: string;
+  approvedByExpert?: boolean;
+  expertUserId?: string | null;
+  contentType?: string;
+  fileName?: string;
+}): Promise<ExpertAnswer> {
+  const form = new FormData();
+  form.append('audio', {
+    uri: input.uri,
+    name: input.fileName ?? 'expert-answer.m4a',
+    type: input.contentType ?? 'audio/m4a',
+  } as unknown as Blob);
+  form.append('approved_by_expert', String(input.approvedByExpert ?? true));
+  if (input.expertUserId) {
+    form.append('expert_user_id', input.expertUserId);
+  }
+
+  const response = await fetch(`${API_BASE}/questions/${input.questionId}/answers/audio`, {
+    method: 'POST',
+    headers: { Accept: 'application/json' },
+    body: form,
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new LibraryApiError(
+      `POST /questions/${input.questionId}/answers/audio -> ${response.status}: ${body.slice(0, 200)}`,
+      response.status,
+    );
+  }
+  return (await response.json()) as ExpertAnswer;
+}
+
 export async function compileMoment(input: {
   momentId: string;
   trade?: string;
@@ -210,6 +260,15 @@ export async function publishKnowledgeObject(
 ): Promise<KnowledgeObject> {
   return jsonFetch<KnowledgeObject>(
     `/knowledge-objects/${knowledgeObjectId}/publish`,
+    { method: 'POST' },
+  );
+}
+
+export async function safetyCheckKnowledgeObject(
+  knowledgeObjectId: string,
+): Promise<KnowledgeObject> {
+  return jsonFetch<KnowledgeObject>(
+    `/knowledge-objects/${knowledgeObjectId}/safety-check`,
     { method: 'POST' },
   );
 }
@@ -264,12 +323,16 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 }
 
 export async function getPilotWeeklyReport(input: {
+  accountId?: string;
+  week?: string;
   baselineRate?: number;
 } = {}): Promise<PilotWeeklyReport> {
   const params = new URLSearchParams();
+  if (input.accountId) params.set('account_id', input.accountId);
+  if (input.week) params.set('week', input.week);
   if (input.baselineRate != null) params.set('baseline_rate', String(input.baselineRate));
   const suffix = params.toString() ? `?${params}` : '';
-  return jsonFetch<PilotWeeklyReport>(`/pilot/reports/weekly${suffix}`);
+  return jsonFetch<PilotWeeklyReport>(`/dashboard/weekly-report${suffix}`);
 }
 
 

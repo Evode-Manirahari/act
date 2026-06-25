@@ -14,7 +14,7 @@
  * Every API client call goes through the screen's handlers so error states stay
  * visible and centralized; this component only owns local UI/text state.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -23,6 +23,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Audio } from 'expo-av';
 
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
@@ -53,6 +54,8 @@ export type ReviewDebriefPanelProps = {
   onGenerateQuestion: () => void;
   /** Step 3: submit the expert's answer text for the current question. */
   onSubmitAnswer: (questionText: string, answerText: string) => void;
+  /** Optional Step 3 voice path: submit recorded expert audio, then use transcript. */
+  onSubmitAudioAnswer?: (questionText: string, audioUri: string) => Promise<string | null>;
   /** Step 4: compile the answered moment into a draft card. */
   onCompileDraft: () => void;
   /** Step 5: publish the compiled draft. */
@@ -69,6 +72,7 @@ export default function ReviewDebriefPanel({
   published,
   onGenerateQuestion,
   onSubmitAnswer,
+  onSubmitAudioAnswer,
   onCompileDraft,
   onPublish,
   onOpenCard,
@@ -78,6 +82,9 @@ export default function ReviewDebriefPanel({
   // prompt so the reviewer can sharpen ACT's question before answering.
   const [questionText, setQuestionText] = useState<string | null>(null);
   const [answerText, setAnswerText] = useState('');
+  const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
+  const [voiceBusy, setVoiceBusy] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   // Sync the editable buffer the first time a server question arrives or when
   // it changes id (regenerate). Local edits after that are preserved.
@@ -85,6 +92,60 @@ export default function ReviewDebriefPanel({
     questionText ?? question?.question ?? '';
 
   const busy = busyStep !== 'idle';
+  const voiceDisabled = busy || published || !question || !onSubmitAudioAnswer || voiceBusy;
+
+  useEffect(() => {
+    return () => {
+      if (voiceRecording) {
+        void voiceRecording.stopAndUnloadAsync().catch(() => undefined);
+      }
+    };
+  }, [voiceRecording]);
+
+  async function startVoiceAnswer() {
+    if (voiceDisabled || voiceRecording) return;
+    setVoiceError(null);
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (!permission.granted) {
+        setVoiceError('Microphone permission is required for voice answers.');
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const rec = new Audio.Recording();
+      await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      await rec.startAsync();
+      setVoiceRecording(rec);
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : 'Could not start voice answer.');
+    }
+  }
+
+  async function stopAndSubmitVoiceAnswer() {
+    if (!voiceRecording || !onSubmitAudioAnswer) return;
+    setVoiceBusy(true);
+    setVoiceError(null);
+    try {
+      await voiceRecording.stopAndUnloadAsync();
+      const uri = voiceRecording.getURI();
+      setVoiceRecording(null);
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      if (!uri) {
+        throw new Error('Voice answer did not save.');
+      }
+      const transcript = await onSubmitAudioAnswer(effectiveQuestion, uri);
+      if (transcript) {
+        setAnswerText(transcript);
+      }
+    } catch (err) {
+      setVoiceError(err instanceof Error ? err.message : 'Could not save voice answer.');
+    } finally {
+      setVoiceBusy(false);
+    }
+  }
 
   return (
     <View style={styles.panel}>
@@ -164,6 +225,41 @@ export default function ReviewDebriefPanel({
               <Text style={styles.secondaryButtonText}>Save expert answer</Text>
             )}
           </Pressable>
+          {onSubmitAudioAnswer ? (
+            <>
+              <Pressable
+                accessibilityRole="button"
+                disabled={voiceDisabled && !voiceRecording}
+                onPress={() =>
+                  voiceRecording
+                    ? void stopAndSubmitVoiceAnswer()
+                    : void startVoiceAnswer()
+                }
+                style={({ pressed }) => [
+                  styles.voiceButton,
+                  voiceRecording && styles.voiceButtonRecording,
+                  pressed && styles.pressed,
+                  (voiceDisabled && !voiceRecording) && styles.disabled,
+                ]}
+              >
+                {voiceBusy ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <Text
+                    style={[
+                      styles.voiceButtonText,
+                      voiceRecording && styles.voiceButtonRecordingText,
+                    ]}
+                  >
+                    {voiceRecording ? 'Stop and save voice answer' : 'Record voice answer'}
+                  </Text>
+                )}
+              </Pressable>
+              {voiceError ? (
+                <Text style={styles.voiceError}>{voiceError}</Text>
+              ) : null}
+            </>
+          ) : null}
         </>
       )}
 
@@ -403,6 +499,34 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: fonts.bold,
     fontSize: 14,
+  },
+  voiceButton: {
+    minHeight: 48,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+  },
+  voiceButtonRecording: {
+    borderColor: colors.error,
+    backgroundColor: colors.errorLight,
+  },
+  voiceButtonText: {
+    color: colors.steel700,
+    fontFamily: fonts.bold,
+    fontSize: 14,
+  },
+  voiceButtonRecordingText: {
+    color: colors.error,
+  },
+  voiceError: {
+    color: colors.error,
+    fontFamily: fonts.semibold,
+    fontSize: 12,
+    lineHeight: 17,
   },
   draftBand: {
     borderRadius: 8,

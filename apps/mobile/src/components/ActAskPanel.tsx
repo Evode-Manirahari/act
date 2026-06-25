@@ -10,15 +10,17 @@ import {
 } from 'react-native';
 
 import { askLibrary, type LibraryAskResponse } from '../api/libraryApi';
+import { getDemoContext } from '../api/captureApi';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
 
 type Props = {
   visible: boolean;
   onClose: () => void;
+  accountId?: string | null;
 };
 
-export default function ActAskPanel({ visible, onClose }: Props) {
+export default function ActAskPanel({ visible, onClose, accountId }: Props) {
   const [query, setQuery] = useState('');
   const [answer, setAnswer] = useState<LibraryAskResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -30,7 +32,20 @@ export default function ActAskPanel({ visible, onClose }: Props) {
     setLoading(true);
     setError(null);
     try {
-      setAnswer(await askLibrary({ query: trimmed, trade: 'hvac', limit: 3 }));
+      let scopedAccountId = accountId ?? null;
+      if (!scopedAccountId) {
+        try {
+          scopedAccountId = (await getDemoContext()).account_id;
+        } catch {
+          scopedAccountId = null;
+        }
+      }
+      setAnswer(await askLibrary({
+        query: trimmed,
+        trade: 'hvac',
+        accountId: scopedAccountId ?? undefined,
+        limit: 3,
+      }));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ask ACT failed');
     } finally {

@@ -24,6 +24,21 @@ export interface DemoSession {
   role?: string;
 }
 
+export interface DemoContext {
+  user_id: string;
+  account_id: string;
+  role?: string;
+}
+
+export async function getDemoContext(): Promise<DemoContext> {
+  const response = await fetch(`${API_BASE}/demo/context`);
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Demo context ${response.status}: ${body.slice(0, 200)}`);
+  }
+  return response.json();
+}
+
 export async function createDemoSession(): Promise<DemoSession> {
   const response = await fetch(`${API_BASE}/demo/session`, { method: 'POST' });
   if (!response.ok) {
@@ -142,6 +157,19 @@ export interface JobOutcomeOut {
   callback_at: string | null;
   manager_notes: string | null;
   recorded_by: string | null;
+  created_at: string;
+}
+
+export interface JobEventOut {
+  id: string;
+  account_id: string | null;
+  actor_id: string | null;
+  job_id: string | null;
+  recording_id: string | null;
+  event_type: string;
+  source: string;
+  payload_json: Record<string, unknown> | null;
+  occurred_at: string;
   created_at: string;
 }
 
@@ -295,6 +323,27 @@ export async function upsertJobOutcome(
       callback_at: input.callbackAt ?? null,
       manager_notes: input.managerNotes ?? null,
       recorded_by: input.recordedBy ?? null,
+    }),
+  });
+}
+
+export async function logJobEvent(input: {
+  eventType: string;
+  actorId?: string | null;
+  jobId?: string | null;
+  recordingId?: string | null;
+  payload?: Record<string, unknown> | null;
+  source?: string;
+}): Promise<JobEventOut> {
+  return jsonFetch<JobEventOut>('/job-events', {
+    method: 'POST',
+    body: JSON.stringify({
+      event_type: input.eventType,
+      actor_id: input.actorId ?? null,
+      job_id: input.jobId ?? null,
+      recording_id: input.recordingId ?? null,
+      source: input.source ?? 'mobile',
+      payload_json: input.payload ?? null,
     }),
   });
 }

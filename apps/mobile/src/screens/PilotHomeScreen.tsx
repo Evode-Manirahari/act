@@ -11,6 +11,7 @@ import {
   type DashboardSummary,
   type PilotWeeklyReport,
 } from '../api/libraryApi';
+import { getDemoContext } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
@@ -26,9 +27,21 @@ export default function PilotHomeScreen() {
   const navigation = useNavigation<NavProp>();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [report, setReport] = useState<PilotWeeklyReport | null>(null);
+  const [accountId, setAccountId] = useState<string | null>(null);
   const [askOpen, setAskOpen] = useState(false);
 
   const refresh = useCallback(async () => {
+    let scopedAccountId = accountId;
+    if (!scopedAccountId) {
+      try {
+        const context = await getDemoContext();
+        scopedAccountId = context.account_id;
+        setAccountId(context.account_id);
+      } catch {
+        scopedAccountId = null;
+      }
+    }
+
     try {
       setSummary(await getDashboardSummary());
     } catch {
@@ -36,11 +49,13 @@ export default function PilotHomeScreen() {
     }
 
     try {
-      setReport(await getPilotWeeklyReport());
+      if (scopedAccountId) {
+        setReport(await getPilotWeeklyReport({ accountId: scopedAccountId }));
+      }
     } catch {
       // Report is additive; older API deployments should not hide the live summary.
     }
-  }, []);
+  }, [accountId]);
 
   // Refresh whenever the screen regains focus so a just-uploaded job or
   // just-published card shows up without a reload.
@@ -72,7 +87,11 @@ export default function PilotHomeScreen() {
       onRightPress={() => navigation.navigate('CaptureJob')}
       bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
     >
-      <ActAskPanel visible={askOpen} onClose={() => setAskOpen(false)} />
+      <ActAskPanel
+        visible={askOpen}
+        onClose={() => setAskOpen(false)}
+        accountId={accountId}
+      />
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
@@ -125,6 +144,10 @@ export default function PilotHomeScreen() {
           <View style={styles.reportCard}>
             <Text style={styles.sectionLabel}>{report.week} pilot report</Text>
             <Text style={styles.reportSummary}>{report.summary}</Text>
+            <Text style={styles.reportSummary}>
+              {report.metrics.cards_published} cards · {report.metrics.callbacks}/
+              {report.metrics.outcomes_logged} callbacks · {report.metrics.training_events} training events
+            </Text>
             {report.risks.slice(0, 2).map((risk) => (
               <Text key={risk} style={styles.reportRisk}>
                 {risk}

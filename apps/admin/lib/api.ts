@@ -104,6 +104,10 @@ export interface KnowledgeObjectOut {
   created_by: string | null;
   published_at: string | null;
   created_at: string;
+  safety_recommendation?: string | null;
+  safety_risk?: string | null;
+  safety_review_json?: Record<string, unknown> | null;
+  safety_reviewed_at?: string | null;
 }
 
 export interface DashboardSummary {
@@ -182,6 +186,27 @@ export const api = {
       `/knowledge-objects/${knowledgeObjectId}/publish`,
       { method: 'POST' },
     ),
+  safetyCheck: (knowledgeObjectId: string) =>
+    json<KnowledgeObjectOut>(
+      `/knowledge-objects/${knowledgeObjectId}/safety-check`,
+      { method: 'POST' },
+    ),
+  reviewChecklist: (
+    knowledgeObjectId: string,
+    body: {
+      reviewer_id?: string | null;
+      evidence_checked: boolean;
+      safety_reviewed: boolean;
+      novice_trap_clear: boolean;
+      quiz_answer_correct: boolean;
+      approved_by?: string | null;
+      notes?: string | null;
+    },
+  ) =>
+    json(`/knowledge-objects/${knowledgeObjectId}/review-checklist`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   editQuestion: (
     questionId: string,
     body: { question?: string; reason?: string; status?: string },

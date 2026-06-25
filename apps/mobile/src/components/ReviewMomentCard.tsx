@@ -47,6 +47,7 @@ export type ReviewMomentCardProps = {
   /** Debrief loop actions (wired to the API clients in the screen). */
   onGenerateQuestion: () => void;
   onSubmitAnswer: (questionText: string, answerText: string) => void;
+  onSubmitAudioAnswer?: (questionText: string, audioUri: string) => Promise<string | null>;
   onCompileDraft: () => void;
   onPublishDraft: () => void;
 };
@@ -67,6 +68,7 @@ export default function ReviewMomentCard({
   onOpenCard,
   onGenerateQuestion,
   onSubmitAnswer,
+  onSubmitAudioAnswer,
   onCompileDraft,
   onPublishDraft,
 }: ReviewMomentCardProps) {
@@ -263,6 +265,7 @@ export default function ReviewMomentCard({
           published={debriefPublished}
           onGenerateQuestion={onGenerateQuestion}
           onSubmitAnswer={onSubmitAnswer}
+          onSubmitAudioAnswer={onSubmitAudioAnswer}
           onCompileDraft={onCompileDraft}
           onPublish={onPublishDraft}
           onOpenCard={onOpenCard}

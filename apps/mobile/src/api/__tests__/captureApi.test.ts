@@ -8,7 +8,9 @@ jest.mock('expo-file-system/legacy', () => ({
 }), { virtual: true });
 
 import {
+  getDemoContext,
   getJobOutcome,
+  logJobEvent,
   upsertJobOutcome,
 } from '../captureApi';
 
@@ -78,6 +80,53 @@ describe('capture outcome API', () => {
       expect.stringContaining('/jobs/job-1/outcomes'),
       expect.objectContaining({ method: 'GET' }),
     );
+  });
+
+  it('fetches demo context without creating a field job', async () => {
+    const context = { account_id: 'acct-1', user_id: 'user-1', role: 'senior_tech' };
+    const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse(context));
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(getDemoContext()).resolves.toEqual(context);
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/demo/context'));
+  });
+
+  it('logs workflow events with the normalized backend payload', async () => {
+    const event = {
+      id: 'event-1',
+      account_id: 'acct-1',
+      actor_id: 'user-1',
+      job_id: 'job-1',
+      recording_id: 'rec-1',
+      event_type: 'mark_added',
+      source: 'mobile',
+      payload_json: { mark_type: 'safety' },
+      occurred_at: '2026-06-24T00:00:00.000Z',
+      created_at: '2026-06-24T00:00:00.000Z',
+    };
+    const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse(event));
+    global.fetch = fetchMock as typeof fetch;
+
+    await logJobEvent({
+      eventType: 'mark_added',
+      actorId: 'user-1',
+      jobId: 'job-1',
+      recordingId: 'rec-1',
+      payload: { mark_type: 'safety' },
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/job-events'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({
+      event_type: 'mark_added',
+      actor_id: 'user-1',
+      job_id: 'job-1',
+      recording_id: 'rec-1',
+      source: 'mobile',
+      payload_json: { mark_type: 'safety' },
+    });
   });
 });
 
