@@ -11,7 +11,7 @@
  *     is safety-related, gating publish on the reviewer confirming the checks.
  *
  * Once approved, the embedded ReviewDebriefPanel walks the post-job debrief
- * loop. A one-tap "Approve + publish" fallback is preserved alongside it.
+ * loop. Publishing is only available after an expert answer and compiled draft.
  */
 import React, { useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -27,19 +27,14 @@ import ReviewDebriefPanel, { type DebriefStep } from './ReviewDebriefPanel';
 
 export type ReviewMomentCardProps = {
   moment: MomentOut;
-  /** True when the legacy one-tap approve+publish path is in flight. */
+  /** True when a review action is in flight. */
   busy: boolean;
-  /** Label for the one-tap publish path while it runs. */
-  publishStageLabel: string;
-  /** Published card from the one-tap path, if any. */
-  publishedCard?: KnowledgeObject;
   /** Debrief loop state for this moment (owned by the screen). */
   debriefQuestion: ElicitationQuestion | null;
   debriefDraft: KnowledgeObject | null;
   debriefBusyStep: DebriefStep;
   debriefPublished: boolean;
   /** Existing review actions — preserved from the original screen. */
-  onApproveAndPublish: () => void;
   onApprove: () => void;
   onReject: () => void;
   onNeedsInfo: () => void;
@@ -55,13 +50,10 @@ export type ReviewMomentCardProps = {
 export default function ReviewMomentCard({
   moment,
   busy,
-  publishStageLabel,
-  publishedCard,
   debriefQuestion,
   debriefDraft,
   debriefBusyStep,
   debriefPublished,
-  onApproveAndPublish,
   onApprove,
   onReject,
   onNeedsInfo,
@@ -163,7 +155,7 @@ export default function ReviewMomentCard({
             <Text style={[styles.metaText, styles.warnText]}>post-job only</Text>
           </View>
         ) : null}
-        {publishedCard || debriefPublished ? (
+        {debriefPublished ? (
           <View style={[styles.metaPill, styles.publishedPill]}>
             <Text style={[styles.metaText, styles.publishedText]}>published</Text>
           </View>
@@ -186,38 +178,21 @@ export default function ReviewMomentCard({
           />
           {!safetyChecked ? (
             <Text style={styles.checklistHint}>
-              Confirm the checks to unlock approve + publish.
+              Confirm the checks to unlock the debrief.
             </Text>
           ) : null}
         </View>
       ) : null}
 
-      {/* One-tap fallback path (preserved) */}
       {!approved ? (
         <View style={styles.actionRow}>
           <Pressable
             accessibilityRole="button"
-            disabled={busy || !safetyCleared}
-            style={({ pressed }) => [
-              styles.actionButton,
-              styles.approveButton,
-              styles.approveActionButton,
-              pressed && styles.pressed,
-              (busy || !safetyCleared) && styles.disabled,
-            ]}
-            onPress={() => (publishedCard ? onOpenCard(publishedCard) : onApproveAndPublish())}
-          >
-            <Text numberOfLines={1} style={styles.approveText}>
-              {publishedCard ? 'Open card' : busy ? publishStageLabel : 'Approve + publish'}
-            </Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy || !!publishedCard}
+            disabled={busy}
             style={({ pressed }) => [
               styles.actionButton,
               pressed && styles.pressed,
-              (busy || !!publishedCard) && styles.disabled,
+              busy && styles.disabled,
             ]}
             onPress={onNeedsInfo}
           >
@@ -225,12 +200,12 @@ export default function ReviewMomentCard({
           </Pressable>
           <Pressable
             accessibilityRole="button"
-            disabled={busy || !!publishedCard}
+            disabled={busy}
             style={({ pressed }) => [
               styles.actionButton,
               styles.rejectButton,
               pressed && styles.pressed,
-              (busy || !!publishedCard) && styles.disabled,
+              busy && styles.disabled,
             ]}
             onPress={onReject}
           >
@@ -256,7 +231,7 @@ export default function ReviewMomentCard({
       ) : null}
 
       {/* Debrief loop — visible after approve */}
-      {approved && !publishedCard ? (
+      {approved ? (
         <ReviewDebriefPanel
           momentId={moment.id}
           question={debriefQuestion}
@@ -272,17 +247,6 @@ export default function ReviewMomentCard({
         />
       ) : null}
 
-      {/* If the one-tap path already published, link to the card */}
-      {publishedCard ? (
-        <Pressable
-          accessibilityRole="button"
-          style={({ pressed }) => [styles.publishedBand, pressed && styles.pressed]}
-          onPress={() => onOpenCard(publishedCard)}
-        >
-          <Text style={styles.publishedBandLabel}>Apprentice card</Text>
-          <Text style={styles.publishedBandTitle}>{publishedCard.title}</Text>
-        </Pressable>
-      ) : null}
     </View>
   );
 }
@@ -647,22 +611,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 8,
   },
-  approveButton: {
-    backgroundColor: colors.success,
-    borderColor: colors.success,
-  },
-  approveActionButton: { flex: 1.35 },
   rejectButton: {
     backgroundColor: colors.errorLight,
     borderColor: colors.error,
   },
   actionText: {
     color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 12,
-  },
-  approveText: {
-    color: '#FFFFFF',
     fontFamily: fonts.bold,
     fontSize: 12,
   },
@@ -684,23 +638,6 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: fonts.bold,
     fontSize: 14,
-  },
-  publishedBand: {
-    borderRadius: 8,
-    backgroundColor: colors.successLight,
-    padding: 12,
-    gap: 3,
-  },
-  publishedBandLabel: {
-    ...labelStyle,
-    color: '#065F46',
-    fontSize: 10,
-  },
-  publishedBandTitle: {
-    color: colors.text,
-    fontFamily: fonts.semibold,
-    fontSize: 14,
-    lineHeight: 19,
   },
   pressed: { opacity: 0.76 },
   disabled: { opacity: 0.5 },

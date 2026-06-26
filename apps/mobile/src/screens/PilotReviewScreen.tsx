@@ -40,7 +40,6 @@ import { fonts, labelStyle } from '../theme/typography';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 type ReviewRoute = RouteProp<PilotStackParamList, 'PilotReview'>;
-type PublishStage = 'approving' | 'answering' | 'drafting' | 'publishing';
 
 /** Per-moment state for the post-job debrief loop. */
 type DebriefState = {
@@ -68,8 +67,6 @@ export default function PilotReviewScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [publishedCards, setPublishedCards] = useState<Record<string, KnowledgeObject>>({});
-  const [publishStages, setPublishStages] = useState<Record<string, PublishStage>>({});
   const [debriefs, setDebriefs] = useState<Record<string, DebriefState>>({});
 
   const refresh = useCallback(async () => {
@@ -143,13 +140,6 @@ export default function PilotReviewScreen() {
       emitReviewEvent('review_decision', current ?? updated, {
         status,
       });
-      if (status !== 'approved') {
-        setPublishedCards((prev) => {
-          const next = { ...prev };
-          delete next[momentId];
-          return next;
-        });
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'review action failed');
     } finally {
@@ -157,78 +147,7 @@ export default function PilotReviewScreen() {
     }
   }
 
-  // --- PRESERVED: one-tap approve + publish fallback path --------------------
-  async function approveAndPublish(moment: MomentOut) {
-    setActingId(moment.id);
-    setError(null);
-    try {
-      setPublishStage(moment.id, 'approving');
-      const approvedMoment = moment.status === 'approved'
-        ? moment
-        : await reviewMoment({ momentId: moment.id, status: 'approved' });
-      setMoments((prev) =>
-        prev.map((current) => (current.id === moment.id ? approvedMoment : current)),
-      );
-      emitReviewEvent('review_decision', approvedMoment, { status: 'approved' });
-
-      const trade = tradeForMoment(moment, recording);
-      setPublishStage(moment.id, 'drafting');
-      let card: KnowledgeObject;
-      try {
-        card = await compileMoment({ momentId: moment.id, trade });
-      } catch (compileError) {
-        const transcript = buildExpertAnswer(approvedMoment);
-        if (!transcript) throw compileError;
-        setPublishStage(moment.id, 'answering');
-        const question = await generateMomentQuestion(moment.id);
-        await submitExpertAnswer({
-          questionId: question.id,
-          transcript,
-          approvedByExpert: true,
-          expertUserId: recording?.user_id ?? approvedMoment.reviewer_id,
-        });
-        setPublishStage(moment.id, 'drafting');
-        card = await compileMoment({ momentId: moment.id, trade });
-      }
-
-      card = await requireSafetyReady(card);
-      setPublishStage(moment.id, 'publishing');
-      await saveReviewChecklistForPublish({
-        knowledgeObjectId: card.id,
-        reviewerId: recording?.user_id ?? approvedMoment.reviewer_id,
-        evidenceChecked: true,
-        safetyReviewed: true,
-        noviceTrapClear: true,
-        quizAnswerCorrect: true,
-        approvedBy: recording?.user_id ?? approvedMoment.reviewer_id,
-        notes: 'Mobile one-tap publish path.',
-      });
-      const published = card.status === 'published'
-        ? card
-        : await publishKnowledgeObject(card.id);
-      setPublishedCards((prev) => ({ ...prev, [moment.id]: published }));
-      emitReviewEvent('card_published', approvedMoment, {
-        knowledge_object_id: published.id,
-        path: 'one_tap',
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'publish failed');
-    } finally {
-      setActingId(null);
-      setPublishStage(moment.id, undefined);
-    }
-  }
-
-  function setPublishStage(momentId: string, stage: PublishStage | undefined) {
-    setPublishStages((prev) => {
-      const next = { ...prev };
-      if (stage) next[momentId] = stage;
-      else delete next[momentId];
-      return next;
-    });
-  }
-
-  // --- NEW: debrief loop (approve -> question -> answer -> draft -> publish) --
+  // --- Debrief loop (approve -> question -> answer -> draft -> publish) -------
   async function approveForDebrief(moment: MomentOut) {
     setActingId(moment.id);
     setError(null);
@@ -476,13 +395,10 @@ export default function PilotReviewScreen() {
               <ReviewMomentCard
                 moment={item}
                 busy={actingId === item.id}
-                publishStageLabel={formatPublishStage(publishStages[item.id])}
-                publishedCard={publishedCards[item.id]}
                 debriefQuestion={debrief.question}
                 debriefDraft={debrief.draft}
                 debriefBusyStep={debrief.busyStep}
                 debriefPublished={debrief.published}
-                onApproveAndPublish={() => void approveAndPublish(item)}
                 onApprove={() => void approveForDebrief(item)}
                 onReject={() => void actOnMoment(item.id, 'rejected')}
                 onNeedsInfo={() => void actOnMoment(item.id, 'needs_more_info')}
@@ -501,14 +417,6 @@ export default function PilotReviewScreen() {
       )}
     </ActAppShell>
   );
-}
-
-function formatPublishStage(stage: PublishStage | undefined): string {
-  if (stage === 'approving') return 'Approving';
-  if (stage === 'answering') return 'Adding answer';
-  if (stage === 'drafting') return 'Drafting card';
-  if (stage === 'publishing') return 'Publishing';
-  return 'Saving';
 }
 
 function formatStatus(status: string): string {
@@ -546,57 +454,6 @@ async function requireSafetyReady(card: KnowledgeObject): Promise<KnowledgeObjec
     );
   }
   return checked;
-}
-
-/**
- * Fallback expert-answer text used only by the one-tap approve+publish path
- * when the backend needs a question answered before it will compile. The
- * debrief loop uses the reviewer's typed answer instead.
- */
-function buildExpertAnswer(moment: MomentOut): string {
-  const parts = [
-    `Moment: ${humanizeType(moment.moment_type)} from ${fmt(moment.start_s)} to ${fmt(moment.end_s)}.`,
-    moment.why_it_matters ? `Why it matters: ${moment.why_it_matters}` : null,
-    summarizeEvidenceText(moment.evidence_json),
-  ].filter(Boolean);
-  return parts.join('\n');
-}
-
-function humanizeType(value: string): string {
-  return value
-    .split(/[_-]/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function fmt(seconds: number): string {
-  const mm = Math.floor(seconds / 60).toString().padStart(2, '0');
-  const ss = Math.floor(seconds % 60).toString().padStart(2, '0');
-  return `${mm}:${ss}`;
-}
-
-function summarizeEvidenceText(evidence: MomentOut['evidence_json']): string | null {
-  if (!evidence) return null;
-  if (typeof evidence === 'string') {
-    return evidence.trim() ? `Evidence: ${evidence.slice(0, 700)}` : null;
-  }
-  const entries = Object.entries(evidence)
-    .map(([key, value]) => `${key}: ${formatValue(value)}`)
-    .filter((entry) => entry.length > 0)
-    .slice(0, 6);
-  return entries.length > 0 ? `Evidence: ${entries.join('; ')}` : null;
-}
-
-function formatValue(value: unknown): string {
-  if (value == null) return '';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  try {
-    return JSON.stringify(value).slice(0, 180);
-  } catch {
-    return String(value);
-  }
 }
 
 const styles = StyleSheet.create({

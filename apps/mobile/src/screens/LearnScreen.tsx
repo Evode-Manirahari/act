@@ -23,6 +23,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ActAppShell from '../components/ActAppShell';
 import ActAskPanel from '../components/ActAskPanel';
 import ActBottomBar from '../components/ActBottomBar';
+import { getDemoContext } from '../api/captureApi';
+import type { DemoContext } from '../api/captureApi';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
 import {
@@ -49,7 +51,25 @@ export default function LearnScreen() {
   const [selected, setSelected] = useState<TrainingCard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [learnerContext, setLearnerContext] = useState<DemoContext | null>(null);
+  const [learnerLoading, setLearnerLoading] = useState(true);
+  const [learnerError, setLearnerError] = useState<string | null>(null);
   const [askOpen, setAskOpen] = useState(false);
+
+  const loadLearnerContext = useCallback(async () => {
+    setLearnerLoading(true);
+    setLearnerError(null);
+    try {
+      setLearnerContext(await getDemoContext());
+    } catch (err) {
+      setLearnerContext(null);
+      setLearnerError(
+        err instanceof Error ? err.message : 'apprentice identity failed',
+      );
+    } finally {
+      setLearnerLoading(false);
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -69,10 +89,12 @@ export default function LearnScreen() {
   useFocusEffect(
     useCallback(() => {
       void refresh();
-    }, [refresh]),
+      void loadLearnerContext();
+    }, [loadLearnerContext, refresh]),
   );
 
   const cards = getVisibleTrainingCards(results);
+  const learnerId = learnerContext?.user_id;
   const showingEmpty = shouldShowEmptyState({
     loading,
     error,
@@ -101,11 +123,15 @@ export default function LearnScreen() {
       }
       bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
     >
-      <ActAskPanel visible={askOpen} onClose={() => setAskOpen(false)} />
+      <ActAskPanel
+        visible={askOpen}
+        onClose={() => setAskOpen(false)}
+        accountId={learnerContext?.account_id}
+      />
       {selected ? (
         <CardDetail
           card={selected}
-          userId={undefined}
+          userId={learnerId}
           onBack={() => setSelected(null)}
         />
       ) : (
@@ -134,6 +160,18 @@ export default function LearnScreen() {
               <Text style={styles.noticeText}>{error}</Text>
             </View>
           )}
+          {learnerError && (
+            <View style={[styles.notice, styles.noticeError]}>
+              <Text style={styles.noticeText}>
+                Apprentice identity is required to measure transfer: {learnerError}
+              </Text>
+            </View>
+          )}
+          {learnerLoading && !learnerId && (
+            <View style={styles.notice}>
+              <Text style={styles.noticeTextMuted}>Loading apprentice identity…</Text>
+            </View>
+          )}
 
           {showingEmpty && (
             <View style={styles.empty}>
@@ -153,13 +191,27 @@ export default function LearnScreen() {
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => {
+                    if (!learnerId) {
+                      setLearnerError('identity has not loaded yet');
+                      return;
+                    }
                     setSelected(item);
                     void logTrainingEvent({
                       knowledgeObjectId: item.id,
+                      userId: learnerId,
                       eventType: 'viewed',
+                    }).catch((err) => {
+                      setLearnerError(
+                        err instanceof Error ? err.message : 'view event failed',
+                      );
                     });
                   }}
-                  style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+                  disabled={!learnerId}
+                  style={({ pressed }) => [
+                    styles.card,
+                    !learnerId && styles.cardDisabled,
+                    pressed && styles.cardPressed,
+                  ]}
                 >
                   <Text style={styles.cardTitle}>{item.title}</Text>
                   <View style={styles.cardMeta}>
@@ -200,9 +252,10 @@ function CardDetail({
 }) {
   const [selectedChoice, setSelectedChoice] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [quizSaving, setQuizSaving] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [completionSaving, setCompletionSaving] = useState(false);
-  const [completionError, setCompletionError] = useState<string | null>(null);
+  const [trackingError, setTrackingError] = useState<string | null>(null);
 
   const quiz = card.quiz_json;
   const isCorrect = useMemo(
@@ -212,27 +265,43 @@ function CardDetail({
 
   async function submit() {
     if (!selectedChoice || !quiz) return;
-    setSubmitted(true);
+    if (!userId) {
+      setTrackingError('Apprentice identity is required before logging progress.');
+      return;
+    }
+    setQuizSaving(true);
+    setTrackingError(null);
     // Log the attempt and the outcome. Two events on purpose — the
     // attempt count and the correct count are useful separately on the
     // dashboard.
-    void logTrainingEvent({
-      knowledgeObjectId: card.id,
-      userId,
-      eventType: 'quiz_attempted',
-    });
-    void logTrainingEvent({
-      knowledgeObjectId: card.id,
-      userId,
-      eventType: isCorrect ? 'quiz_correct' : 'quiz_wrong',
-      score: isCorrect ? 1.0 : 0.0,
-    });
+    try {
+      await logTrainingEvent({
+        knowledgeObjectId: card.id,
+        userId,
+        eventType: 'quiz_attempted',
+      });
+      await logTrainingEvent({
+        knowledgeObjectId: card.id,
+        userId,
+        eventType: isCorrect ? 'quiz_correct' : 'quiz_wrong',
+        score: isCorrect ? 1.0 : 0.0,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      setTrackingError(err instanceof Error ? err.message : 'quiz event failed');
+    } finally {
+      setQuizSaving(false);
+    }
   }
 
   async function markComplete() {
     if (completed || completionSaving) return;
+    if (!userId) {
+      setTrackingError('Apprentice identity is required before logging progress.');
+      return;
+    }
     setCompletionSaving(true);
-    setCompletionError(null);
+    setTrackingError(null);
     try {
       await logTrainingEvent({
         knowledgeObjectId: card.id,
@@ -245,7 +314,7 @@ function CardDetail({
       });
       setCompleted(true);
     } catch (err) {
-      setCompletionError(err instanceof Error ? err.message : 'completion save failed');
+      setTrackingError(err instanceof Error ? err.message : 'completion save failed');
     } finally {
       setCompletionSaving(false);
     }
@@ -323,12 +392,14 @@ function CardDetail({
                   <Pressable
                     style={[
                       styles.submit,
-                      !selectedChoice && styles.submitDisabled,
+                      (!selectedChoice || quizSaving || !userId) && styles.submitDisabled,
                     ]}
-                    disabled={!selectedChoice}
+                    disabled={!selectedChoice || quizSaving || !userId}
                     onPress={submit}
                   >
-                    <Text style={styles.submitText}>Submit answer</Text>
+                    <Text style={styles.submitText}>
+                      {quizSaving ? 'Saving answer' : 'Submit answer'}
+                    </Text>
                   </Pressable>
                 ) : (
                   <View
@@ -374,10 +445,10 @@ function CardDetail({
                         : 'Mark complete'}
                   </Text>
                 </Pressable>
-                {completionError && (
-                  <Text style={styles.completeErrorText}>{completionError}</Text>
-                )}
               </View>
+            )}
+            {trackingError && (
+              <Text style={styles.completeErrorText}>{trackingError}</Text>
             )}
           </View>
         )}
@@ -456,6 +527,7 @@ const styles = StyleSheet.create({
   notice: { padding: 12, margin: 12, borderRadius: 8 },
   noticeError: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5' },
   noticeText: { fontSize: 13, color: colors.error },
+  noticeTextMuted: { fontSize: 13, color: colors.textMuted },
   empty: { padding: 32, alignItems: 'center' },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 },
   emptyBody: { fontSize: 13, color: colors.textMuted, textAlign: 'center', lineHeight: 18 },
@@ -468,6 +540,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     gap: 8,
   },
+  cardDisabled: { opacity: 0.48 },
   cardPressed: { opacity: 0.6 },
   cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
   cardMeta: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
