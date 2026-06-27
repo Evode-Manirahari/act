@@ -34,6 +34,8 @@ export type ReviewMomentCardProps = {
   debriefDraft: KnowledgeObject | null;
   debriefBusyStep: DebriefStep;
   debriefPublished: boolean;
+  debriefAnswered: boolean;
+  debriefVoiceComplete: boolean;
   /** Existing review actions — preserved from the original screen. */
   onApprove: () => void;
   onReject: () => void;
@@ -54,6 +56,8 @@ export default function ReviewMomentCard({
   debriefDraft,
   debriefBusyStep,
   debriefPublished,
+  debriefAnswered,
+  debriefVoiceComplete,
   onApprove,
   onReject,
   onNeedsInfo,
@@ -238,6 +242,8 @@ export default function ReviewMomentCard({
           draft={debriefDraft}
           busyStep={debriefBusyStep}
           published={debriefPublished}
+          answered={debriefAnswered}
+          voiceComplete={debriefVoiceComplete}
           onGenerateQuestion={onGenerateQuestion}
           onSubmitAnswer={onSubmitAnswer}
           onSubmitAudioAnswer={onSubmitAudioAnswer}

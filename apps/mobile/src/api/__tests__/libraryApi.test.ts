@@ -1,6 +1,7 @@
 import {
   askLibrary,
   compileMoment,
+  debriefNext,
   editMomentQuestion,
   generateMomentQuestion,
   getPilotWeeklyReport,
@@ -154,7 +155,28 @@ describe('library publishing API', () => {
     expect(init.body).toBeInstanceOf(FormData);
   });
 
-  it('calls debrief, checklist, ask, and report endpoints with expected payloads', async () => {
+  it('requests the turn-based debrief agent with spoken questions enabled', async () => {
+    const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse({
+      complete: false,
+      turn: 1,
+      max_turns: 3,
+      question_id: 'q-1',
+      question: 'What told you to check airflow first?',
+      reason: 'captures expert diagnostic reasoning',
+      question_audio_url: 'https://cdn.example.test/debrief/q-1.mp3',
+    }));
+    global.fetch = fetchMock as typeof fetch;
+
+    const turn = await debriefNext('m-1', { speak: true });
+
+    expect(turn.question_id).toBe('q-1');
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/moments/m-1/debrief/next?speak=true'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+
+  it('calls question edit, checklist, ask, and report endpoints with expected payloads', async () => {
     const fetchMock = jest
       .fn()
       .mockResolvedValueOnce(jsonResponse({

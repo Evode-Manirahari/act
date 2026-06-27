@@ -6,7 +6,7 @@
  * moment through:
  *
  *   1. Generate question  -> generateMomentQuestion(momentId)
- *   2. Review/edit the question text (local state; no edit endpoint required)
+ *   2. Review/edit the question text
  *   3. Expert answer text -> submitExpertAnswer({ questionId, transcript })
  *   4. Compile draft       -> compileMoment({ momentId })
  *   5. Publish after review -> publishKnowledgeObject(knowledgeObjectId)
@@ -50,6 +50,10 @@ export type ReviewDebriefPanelProps = {
   busyStep: DebriefStep;
   /** True once the draft's knowledge object is published. */
   published: boolean;
+  /** True once a text/audio answer has been saved for this debrief question. */
+  answered: boolean;
+  /** True once the turn-based voice agent has captured enough expert context. */
+  voiceComplete: boolean;
   /** Step 1: ask the server for a debrief question. */
   onGenerateQuestion: () => void;
   /** Step 3: submit the expert's answer text for the current question. */
@@ -70,6 +74,8 @@ export default function ReviewDebriefPanel({
   draft,
   busyStep,
   published,
+  answered,
+  voiceComplete,
   onGenerateQuestion,
   onSubmitAnswer,
   onSubmitAudioAnswer,
@@ -77,9 +83,8 @@ export default function ReviewDebriefPanel({
   onPublish,
   onOpenCard,
 }: ReviewDebriefPanelProps) {
-  // Question text is editable locally — there is no edit endpoint, and the
-  // expert answer is what actually flows to compile. We keep the edited
-  // prompt so the reviewer can sharpen ACT's question before answering.
+  // We keep the edited prompt locally until save; the screen persists any edits
+  // before submitting the expert answer.
   const [questionText, setQuestionText] = useState<string | null>(null);
   const [answerText, setAnswerText] = useState('');
   const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
@@ -93,6 +98,8 @@ export default function ReviewDebriefPanel({
 
   const busy = busyStep !== 'idle';
   const voiceDisabled = busy || published || !question || !onSubmitAudioAnswer || voiceBusy;
+  const answerReady = answered || voiceComplete;
+  const canShowCompile = answerReady && (!!question || voiceComplete);
 
   useEffect(() => {
     return () => {
@@ -163,8 +170,8 @@ export default function ReviewDebriefPanel({
       </Text>
 
       {/* Step 1 — generate the question */}
-      <StepHeader index={1} label="Generate question" done={!!question} />
-      {!question ? (
+      <StepHeader index={1} label="Generate question" done={!!question || voiceComplete} />
+      {!question && !voiceComplete ? (
         <Pressable
           accessibilityRole="button"
           disabled={busy}
@@ -181,10 +188,22 @@ export default function ReviewDebriefPanel({
             <Text style={styles.primaryButtonText}>Generate debrief question</Text>
           )}
         </Pressable>
-      ) : (
+      ) : null}
+
+      {voiceComplete && !question ? (
+        <View style={styles.voiceCompleteBand}>
+          <Text style={styles.voiceCompleteTitle}>Voice debrief captured</Text>
+          <Text style={styles.voiceCompleteBody}>
+            The expert's answers were saved by the voice agent. Compile the draft
+            from those answers, then review before publishing.
+          </Text>
+        </View>
+      ) : null}
+
+      {question ? (
         <>
           {/* Step 2 — review / edit the question (local text state only) */}
-          <StepHeader index={2} label="Review the question" done={answerText.trim().length > 0} />
+          <StepHeader index={2} label="Review the question" done={answerReady} />
           {question.reason ? (
             <Text style={styles.questionReason}>Why ACT asked: {question.reason}</Text>
           ) : null}
@@ -199,7 +218,7 @@ export default function ReviewDebriefPanel({
           />
 
           {/* Step 3 — expert answer text */}
-          <StepHeader index={3} label="Expert's answer" done={!!draft} />
+          <StepHeader index={3} label="Expert's answer" done={answerReady} />
           <TextInput
             style={styles.answerInput}
             value={answerText}
@@ -261,21 +280,26 @@ export default function ReviewDebriefPanel({
             </>
           ) : null}
         </>
-      )}
+      ) : null}
 
       {/* Step 4 — compile draft */}
-      {question ? (
+      {question && !answerReady ? (
+        <Text style={styles.compileHint}>
+          Save the expert answer before compiling a training draft.
+        </Text>
+      ) : null}
+      {canShowCompile ? (
         <>
           <StepHeader index={4} label="Compile draft card" done={!!draft} />
           {!draft ? (
             <Pressable
               accessibilityRole="button"
-              disabled={busy || published}
+              disabled={busy || published || !answerReady}
               onPress={onCompileDraft}
               style={({ pressed }) => [
                 styles.secondaryButton,
                 pressed && styles.pressed,
-                (busy || published) && styles.disabled,
+                (busy || published || !answerReady) && styles.disabled,
               ]}
             >
               {busyStep === 'drafting' ? (
@@ -403,6 +427,31 @@ const styles = StyleSheet.create({
     fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,
+  },
+  voiceCompleteBand: {
+    borderRadius: 8,
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success,
+    padding: 12,
+    gap: 4,
+  },
+  voiceCompleteTitle: {
+    color: '#065F46',
+    fontFamily: fonts.bold,
+    fontSize: 14,
+  },
+  voiceCompleteBody: {
+    color: colors.text,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  compileHint: {
+    color: colors.textMuted,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    lineHeight: 17,
   },
   stepHeader: {
     flexDirection: 'row',

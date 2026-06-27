@@ -34,6 +34,7 @@ import type { ElicitationQuestion, KnowledgeObject } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import ActAppShell from '../components/ActAppShell';
 import ReviewMomentCard from '../components/ReviewMomentCard';
+import DebriefVoiceAgent from '../components/DebriefVoiceAgent';
 import type { DebriefStep } from '../components/ReviewDebriefPanel';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
@@ -47,6 +48,8 @@ type DebriefState = {
   draft: KnowledgeObject | null;
   busyStep: DebriefStep;
   published: boolean;
+  answered: boolean;
+  voiceComplete: boolean;
 };
 
 const EMPTY_DEBRIEF: DebriefState = {
@@ -54,6 +57,8 @@ const EMPTY_DEBRIEF: DebriefState = {
   draft: null,
   busyStep: 'idle',
   published: false,
+  answered: false,
+  voiceComplete: false,
 };
 
 export default function PilotReviewScreen() {
@@ -68,6 +73,8 @@ export default function PilotReviewScreen() {
   const [error, setError] = useState<string | null>(null);
   const [actingId, setActingId] = useState<string | null>(null);
   const [debriefs, setDebriefs] = useState<Record<string, DebriefState>>({});
+  // Which approved moment has the voice debrief agent open (one at a time).
+  const [voiceMomentId, setVoiceMomentId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     setError(null);
@@ -171,7 +178,14 @@ export default function PilotReviewScreen() {
     setError(null);
     try {
       const question = await generateMomentQuestion(momentId);
-      patchDebrief(momentId, { question, busyStep: 'idle' });
+      patchDebrief(momentId, {
+        question,
+        busyStep: 'idle',
+        answered: false,
+        voiceComplete: false,
+        draft: null,
+        published: false,
+      });
     } catch (err) {
       patchDebrief(momentId, { busyStep: 'idle' });
       setError(err instanceof Error ? err.message : 'could not generate question');
@@ -202,7 +216,12 @@ export default function PilotReviewScreen() {
         approvedByExpert: true,
         expertUserId: recording?.user_id ?? null,
       });
-      patchDebrief(momentId, { busyStep: 'idle' });
+      patchDebrief(momentId, {
+        busyStep: 'idle',
+        answered: true,
+        draft: null,
+        published: false,
+      });
     } catch (err) {
       patchDebrief(momentId, { busyStep: 'idle' });
       setError(err instanceof Error ? err.message : 'could not save answer');
@@ -237,7 +256,12 @@ export default function PilotReviewScreen() {
         approvedByExpert: true,
         expertUserId: recording?.user_id ?? null,
       });
-      patchDebrief(momentId, { busyStep: 'idle' });
+      patchDebrief(momentId, {
+        busyStep: 'idle',
+        answered: true,
+        draft: null,
+        published: false,
+      });
       return answer.transcript;
     } catch (err) {
       patchDebrief(momentId, { busyStep: 'idle' });
@@ -248,6 +272,11 @@ export default function PilotReviewScreen() {
   }
 
   async function compileDraft(momentId: string) {
+    const state = getDebrief(momentId);
+    if (!state.answered && !state.voiceComplete) {
+      setError('Save the expert answer before compiling a draft.');
+      return;
+    }
     patchDebrief(momentId, { busyStep: 'drafting' });
     setError(null);
     try {
@@ -332,7 +361,7 @@ export default function PilotReviewScreen() {
         <Text style={styles.summaryHelp}>
           Approve a moment, then debrief the expert — generate the question, capture
           the answer, compile, and publish into Apprentice Training. The debrief always
-          happens after the job, never in the tech&rsquo;s ear.
+          happens after the job, never in the tech's ear.
         </Text>
         {recording?.job_id ? (
           <Pressable
@@ -391,26 +420,62 @@ export default function PilotReviewScreen() {
           }
           renderItem={({ item }) => {
             const debrief = getDebrief(item.id);
+            const approved = item.status === 'approved';
+            const voiceOpen = voiceMomentId === item.id;
             return (
-              <ReviewMomentCard
-                moment={item}
-                busy={actingId === item.id}
-                debriefQuestion={debrief.question}
-                debriefDraft={debrief.draft}
-                debriefBusyStep={debrief.busyStep}
-                debriefPublished={debrief.published}
-                onApprove={() => void approveForDebrief(item)}
-                onReject={() => void actOnMoment(item.id, 'rejected')}
-                onNeedsInfo={() => void actOnMoment(item.id, 'needs_more_info')}
-                onOpenCard={(card) => navigation.navigate('Learn', { card, cardId: card.id })}
-                onGenerateQuestion={() => void generateQuestion(item.id)}
-                onSubmitAnswer={(question, answer) => void submitAnswer(item.id, question, answer)}
-                onSubmitAudioAnswer={(question, audioUri) =>
-                  submitAudioAnswer(item.id, question, audioUri)
-                }
-                onCompileDraft={() => void compileDraft(item.id)}
-                onPublishDraft={() => void publishDraft(item.id)}
-              />
+              <View style={styles.cardWrap}>
+                <ReviewMomentCard
+                  moment={item}
+                  busy={actingId === item.id}
+                  debriefQuestion={debrief.question}
+                  debriefDraft={debrief.draft}
+                  debriefBusyStep={debrief.busyStep}
+                  debriefPublished={debrief.published}
+                  debriefAnswered={debrief.answered}
+                  debriefVoiceComplete={debrief.voiceComplete}
+                  onApprove={() => void approveForDebrief(item)}
+                  onReject={() => void actOnMoment(item.id, 'rejected')}
+                  onNeedsInfo={() => void actOnMoment(item.id, 'needs_more_info')}
+                  onOpenCard={(card) => navigation.navigate('Learn', { card, cardId: card.id })}
+                  onGenerateQuestion={() => void generateQuestion(item.id)}
+                  onSubmitAnswer={(question, answer) => void submitAnswer(item.id, question, answer)}
+                  onSubmitAudioAnswer={(question, audioUri) =>
+                    submitAudioAnswer(item.id, question, audioUri)
+                  }
+                  onCompileDraft={() => void compileDraft(item.id)}
+                  onPublishDraft={() => void publishDraft(item.id)}
+                />
+                {approved && !debrief.published ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setVoiceMomentId(voiceOpen ? null : item.id)}
+                    style={({ pressed }) => [styles.voiceToggle, pressed && { opacity: 0.7 }]}
+                  >
+                    <Text style={styles.voiceToggleText}>
+                      {voiceOpen ? 'Hide voice debrief' : 'Run voice debrief instead'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {approved && voiceOpen ? (
+                  <DebriefVoiceAgent
+                    momentId={item.id}
+                    expertUserId={recording?.user_id ?? null}
+                    onComplete={() => {
+                      patchDebrief(item.id, {
+                        answered: true,
+                        voiceComplete: true,
+                        draft: null,
+                        published: false,
+                        busyStep: 'idle',
+                      });
+                      setVoiceMomentId(null);
+                      if (recordingId) {
+                        void refresh();
+                      }
+                    }}
+                  />
+                ) : null}
+              </View>
             );
           }}
         />
@@ -551,6 +616,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 24,
     gap: 12,
+  },
+  cardWrap: {
+    gap: 8,
+  },
+  voiceToggle: {
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceToggleText: {
+    color: colors.primary,
+    fontFamily: fonts.bold,
+    fontSize: 13,
   },
   empty: {
     borderRadius: 8,
