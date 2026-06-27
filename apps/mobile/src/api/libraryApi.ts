@@ -245,6 +245,34 @@ export async function submitExpertAudioAnswer(input: {
   return (await response.json()) as ExpertAnswer;
 }
 
+/** One turn of the backend turn-based debrief voice agent. */
+export interface DebriefTurn {
+  complete: boolean;
+  turn: number;
+  max_turns: number;
+  question_id: string | null;
+  question: string | null;
+  reason: string | null;
+  /** Playable URL for the spoken question when requested with speak. */
+  question_audio_url: string | null;
+}
+
+/**
+ * Drive the next turn of the debrief interview for a moment. With `speak`, the
+ * backend synthesizes the question and returns a playable `question_audio_url`.
+ * The expert answers each returned question via submitExpertAudioAnswer; call
+ * again to advance until `complete`.
+ */
+export async function debriefNext(
+  momentId: string,
+  opts: { speak?: boolean } = {},
+): Promise<DebriefTurn> {
+  const suffix = opts.speak ? '?speak=true' : '';
+  return jsonFetch<DebriefTurn>(`/moments/${momentId}/debrief/next${suffix}`, {
+    method: 'POST',
+  });
+}
+
 export async function compileMoment(input: {
   momentId: string;
   trade?: string;
