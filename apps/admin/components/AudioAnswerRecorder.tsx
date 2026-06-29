@@ -41,7 +41,9 @@ export default function AudioAnswerRecorder({ questionId, onAnswered }: Props) {
   useEffect(() => {
     return () => {
       stopTick();
-      mediaRecorderRef.current?.state === 'recording' && mediaRecorderRef.current.stop();
+      if (mediaRecorderRef.current?.state === 'recording') {
+        mediaRecorderRef.current.stop();
+      }
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);

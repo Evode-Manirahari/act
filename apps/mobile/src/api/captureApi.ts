@@ -106,6 +106,18 @@ export interface MarkOut {
   created_at: string;
 }
 
+export interface ExtractedFrameOut {
+  id: string;
+  recording_id: string;
+  timestamp_s: number;
+  storage_key: string;
+  thumbnail_key: string | null;
+  url: string | null;
+  thumbnail_url: string | null;
+  source: string;
+  created_at: string;
+}
+
 export interface CreateMarkInput {
   recordingId: string;
   timestampSeconds: number;
@@ -136,6 +148,7 @@ export interface MomentOut {
   reviewed_at: string | null;
   review_note: string | null;
   created_at: string;
+  evidence_frames?: ExtractedFrameOut[];
 }
 
 export interface ReviewQueueItem extends MomentOut {

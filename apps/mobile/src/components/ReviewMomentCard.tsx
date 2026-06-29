@@ -5,7 +5,7 @@
  * surfaces, before any action:
  *   - the mono time window (start_s–end_s), moment_type, and score
  *   - a transcript excerpt / "why it matters" if present
- *   - a frame/clip evidence placeholder (no media URL yet)
+ *   - a frame/clip evidence preview when processed media is available
  *   - a compact summary of evidence_json (object OR JSON string — both handled)
  *   - LOUD safety flags (red lockout rail + safety checklist) when the moment
  *     is safety-related, gating publish on the reviewer confirming the checks.
@@ -14,7 +14,7 @@
  * loop. Publishing is only available after an expert answer and compiled draft.
  */
 import React, { useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
@@ -24,6 +24,7 @@ import type {
   KnowledgeObject,
 } from '../api/libraryApi';
 import ReviewDebriefPanel, { type DebriefStep } from './ReviewDebriefPanel';
+import { selectEvidenceMedia } from './reviewEvidence';
 
 export type ReviewMomentCardProps = {
   moment: MomentOut;
@@ -71,6 +72,7 @@ export default function ReviewMomentCard({
   const safety = useMemo(() => isSafetyMoment(moment), [moment]);
   const evidenceItems = useMemo(() => summarizeEvidence(moment.evidence_json), [moment.evidence_json]);
   const transcriptExcerpt = useMemo(() => extractTranscript(moment.evidence_json), [moment.evidence_json]);
+  const evidenceMedia = useMemo(() => selectEvidenceMedia(moment), [moment]);
 
   const approved = moment.status === 'approved';
 
@@ -123,14 +125,61 @@ export default function ReviewMomentCard({
         </View>
       ) : null}
 
-      {/* Frame / clip evidence placeholder — no media URL yet */}
-      <View style={styles.clipPlaceholder}>
-        <Text style={styles.clipPlaceholderLabel}>Clip evidence</Text>
-        <Text style={styles.clipPlaceholderBody}>
-          Frames {formatTimestamp(moment.start_s)}–{formatTimestamp(moment.end_s)} · preview
-          attaches when media is processed
-        </Text>
-      </View>
+      {evidenceMedia ? (
+        <View style={styles.mediaBlock}>
+          <View style={styles.mediaHeader}>
+            <Text style={styles.evidenceLabel}>Visual evidence</Text>
+            <Text style={styles.mediaMeta}>
+              {evidenceMedia.timestampSeconds == null
+                ? evidenceMedia.label
+                : `${evidenceMedia.label} · ${formatTimestamp(evidenceMedia.timestampSeconds)}`}
+            </Text>
+          </View>
+          {evidenceMedia.kind === 'image' ? (
+            <Pressable
+              accessibilityRole="imagebutton"
+              onPress={() => {
+                void openEvidenceUrl(evidenceMedia.url);
+              }}
+              style={({ pressed }) => [styles.imagePreviewButton, pressed && styles.pressed]}
+            >
+              <Image
+                source={{ uri: evidenceMedia.url }}
+                resizeMode="cover"
+                style={styles.evidenceImage}
+              />
+            </Pressable>
+          ) : evidenceMedia.kind === 'clip' ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                void openEvidenceUrl(evidenceMedia.url);
+              }}
+              style={({ pressed }) => [styles.clipButton, pressed && styles.pressed]}
+            >
+              <Text style={styles.clipButtonText}>Open clip evidence</Text>
+              <Text style={styles.clipButtonSubtext} numberOfLines={1}>
+                {evidenceMedia.url}
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={styles.clipPlaceholder}>
+              <Text style={styles.clipPlaceholderLabel}>Frame evidence indexed</Text>
+              <Text style={styles.clipPlaceholderBody}>
+                {evidenceMedia.storageKey ?? 'Processed frame'} · waiting for signed preview URL
+              </Text>
+            </View>
+          )}
+        </View>
+      ) : (
+        <View style={styles.clipPlaceholder}>
+          <Text style={styles.clipPlaceholderLabel}>Clip evidence</Text>
+          <Text style={styles.clipPlaceholderBody}>
+            Frames {formatTimestamp(moment.start_s)}–{formatTimestamp(moment.end_s)} · preview
+            attaches when media is processed
+          </Text>
+        </View>
+      )}
 
       {/* Compact evidence_json summary */}
       {evidenceItems.length > 0 ? (
@@ -283,6 +332,13 @@ function ChecklistItem({
 }
 
 // ---- evidence + formatting helpers ----------------------------------------
+
+async function openEvidenceUrl(url: string): Promise<void> {
+  const supported = await Linking.canOpenURL(url);
+  if (supported) {
+    await Linking.openURL(url);
+  }
+}
 
 type EvidenceItem = { key: string; value: string };
 
@@ -492,6 +548,50 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontStyle: 'italic',
+  },
+  mediaBlock: {
+    gap: 8,
+  },
+  mediaHeader: {
+    gap: 3,
+  },
+  mediaMeta: {
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
+    fontSize: 11,
+  },
+  imagePreviewButton: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    overflow: 'hidden',
+  },
+  evidenceImage: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    backgroundColor: colors.surfaceAlt,
+  },
+  clipButton: {
+    minHeight: 64,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceAlt,
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 4,
+  },
+  clipButtonText: {
+    color: colors.text,
+    fontFamily: fonts.bold,
+    fontSize: 14,
+  },
+  clipButtonSubtext: {
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
+    fontSize: 11,
   },
   clipPlaceholder: {
     borderRadius: 8,
