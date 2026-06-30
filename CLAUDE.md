@@ -47,7 +47,7 @@ This repo (`act/`) contains the mobile client only. The backend lives in a sibli
 - `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
 - `../act-api/` — Python FastAPI backend (sibling repo, not a workspace member)
 
-**Active branch**: `capture-mvp` — where the Capture flow is being built and merged back to `main` in waves.
+**Active branch**: `main` — capture flow work has been folded into the mainline mobile pilot flow.
 
 Removed 2026-04-23: `apps/api` (Node/Express/Prisma), `apps/web` (React/Vite), `apps/flutter` (untracked, archived to `~/Downloads/act-apps-flutter-backup-2026-04-23.zip`), `railway.toml`.
 
@@ -87,7 +87,7 @@ The legacy copilot tables (`turns`, `frames`) were dropped 2026-06-09 along with
 
 ## Mobile State
 
-The mobile app has been progressively rewiring from the pre-pivot consumer-DIY product to the Capture flow. As of the latest `capture-mvp` work:
+The mobile app has been progressively rewiring from the pre-pivot consumer-DIY product to the Capture flow. As of the current mainline work:
 - `CaptureJobScreen` records, drops marks, queues uploads with retry/resume
 - `App.tsx` now launches into the HVAC training-capture shell
 - `CaptureJobScreen` includes a consent selector before recording; `do_not_share` blocks capture

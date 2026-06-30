@@ -2,6 +2,7 @@
   "name": "act",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.30.3",
   "scripts": {
     "dev:mobile": "pnpm --filter mobile start",
     "build": "pnpm --recursive build",
