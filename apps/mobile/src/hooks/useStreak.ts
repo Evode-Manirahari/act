@@ -1,9 +1,12 @@
 import { useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const STREAK_KEY = 'actober_streak';
-const LAST_BUILD_KEY = 'actober_last_build_date';
-const TOTAL_KEY = 'actober_total_completed';
+const STREAK_KEY = 'act_streak';
+const LAST_BUILD_KEY = 'act_last_build_date';
+const TOTAL_KEY = 'act_total_completed';
+const LEGACY_STREAK_KEY = 'actober_streak';
+const LEGACY_LAST_BUILD_KEY = 'actober_last_build_date';
+const LEGACY_TOTAL_KEY = 'actober_total_completed';
 
 function todayStr() {
   return new Date().toISOString().slice(0, 10); // YYYY-MM-DD
@@ -21,14 +24,24 @@ export interface StreakData {
   totalCompleted: number;
 }
 
+async function readMigratedValue(key: string, legacyKey: string): Promise<string | null> {
+  const current = await AsyncStorage.getItem(key);
+  if (current != null) return current;
+  const legacy = await AsyncStorage.getItem(legacyKey);
+  if (legacy != null) {
+    await AsyncStorage.setItem(key, legacy);
+  }
+  return legacy;
+}
+
 export function useStreak() {
   const [data, setData] = useState<StreakData>({ streak: 0, lastBuildDate: null, totalCompleted: 0 });
 
   const load = useCallback(async (): Promise<StreakData> => {
     const [streakRaw, lastBuild, totalRaw] = await Promise.all([
-      AsyncStorage.getItem(STREAK_KEY),
-      AsyncStorage.getItem(LAST_BUILD_KEY),
-      AsyncStorage.getItem(TOTAL_KEY),
+      readMigratedValue(STREAK_KEY, LEGACY_STREAK_KEY),
+      readMigratedValue(LAST_BUILD_KEY, LEGACY_LAST_BUILD_KEY),
+      readMigratedValue(TOTAL_KEY, LEGACY_TOTAL_KEY),
     ]);
 
     let streak = parseInt(streakRaw || '0', 10);
