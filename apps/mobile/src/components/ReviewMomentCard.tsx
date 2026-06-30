@@ -24,6 +24,7 @@ import type {
   KnowledgeObject,
 } from '../api/libraryApi';
 import ReviewDebriefPanel, { type DebriefStep } from './ReviewDebriefPanel';
+import DebriefVoiceAgent from './DebriefVoiceAgent';
 import { selectEvidenceMedia } from './reviewEvidence';
 
 export type ReviewMomentCardProps = {
@@ -42,6 +43,11 @@ export type ReviewMomentCardProps = {
   onReject: () => void;
   onNeedsInfo: () => void;
   onOpenCard: (card: KnowledgeObject) => void;
+  /** Guided voice debrief mode, owned by the screen so only one agent is open. */
+  voiceDebriefOpen: boolean;
+  expertUserId?: string | null;
+  onToggleVoiceDebrief: () => void;
+  onVoiceDebriefComplete: () => void;
   /** Debrief loop actions (wired to the API clients in the screen). */
   onGenerateQuestion: () => void;
   onSubmitAnswer: (questionText: string, answerText: string) => void;
@@ -63,6 +69,10 @@ export default function ReviewMomentCard({
   onReject,
   onNeedsInfo,
   onOpenCard,
+  voiceDebriefOpen,
+  expertUserId,
+  onToggleVoiceDebrief,
+  onVoiceDebriefComplete,
   onGenerateQuestion,
   onSubmitAnswer,
   onSubmitAudioAnswer,
@@ -285,21 +295,77 @@ export default function ReviewMomentCard({
 
       {/* Debrief loop — visible after approve */}
       {approved ? (
-        <ReviewDebriefPanel
-          momentId={moment.id}
-          question={debriefQuestion}
-          draft={debriefDraft}
-          busyStep={debriefBusyStep}
-          published={debriefPublished}
-          answered={debriefAnswered}
-          voiceComplete={debriefVoiceComplete}
-          onGenerateQuestion={onGenerateQuestion}
-          onSubmitAnswer={onSubmitAnswer}
-          onSubmitAudioAnswer={onSubmitAudioAnswer}
-          onCompileDraft={onCompileDraft}
-          onPublish={onPublishDraft}
-          onOpenCard={onOpenCard}
-        />
+        <>
+          {!debriefPublished ? (
+            <View style={styles.debriefMode}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: !voiceDebriefOpen }}
+                onPress={() => {
+                  if (voiceDebriefOpen) onToggleVoiceDebrief();
+                }}
+                style={({ pressed }) => [
+                  styles.modeButton,
+                  !voiceDebriefOpen && styles.modeButtonActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    !voiceDebriefOpen && styles.modeButtonTextActive,
+                  ]}
+                >
+                  Manual
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: voiceDebriefOpen }}
+                onPress={() => {
+                  if (!voiceDebriefOpen) onToggleVoiceDebrief();
+                }}
+                style={({ pressed }) => [
+                  styles.modeButton,
+                  voiceDebriefOpen && styles.modeButtonActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    voiceDebriefOpen && styles.modeButtonTextActive,
+                  ]}
+                >
+                  Guided voice
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {voiceDebriefOpen && !debriefPublished ? (
+            <DebriefVoiceAgent
+              momentId={moment.id}
+              expertUserId={expertUserId ?? null}
+              onComplete={onVoiceDebriefComplete}
+            />
+          ) : (
+            <ReviewDebriefPanel
+              momentId={moment.id}
+              question={debriefQuestion}
+              draft={debriefDraft}
+              busyStep={debriefBusyStep}
+              published={debriefPublished}
+              answered={debriefAnswered}
+              voiceComplete={debriefVoiceComplete}
+              onGenerateQuestion={onGenerateQuestion}
+              onSubmitAnswer={onSubmitAnswer}
+              onSubmitAudioAnswer={onSubmitAudioAnswer}
+              onCompileDraft={onCompileDraft}
+              onPublish={onPublishDraft}
+              onOpenCard={onOpenCard}
+            />
+          )}
+        </>
       ) : null}
 
     </View>
@@ -744,6 +810,36 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: fonts.bold,
     fontSize: 14,
+  },
+  debriefMode: {
+    flexDirection: 'row',
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceAlt,
+    padding: 3,
+    gap: 3,
+  },
+  modeButton: {
+    flex: 1,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  modeButtonActive: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modeButtonText: {
+    color: colors.textMuted,
+    fontFamily: fonts.bold,
+    fontSize: 12,
+  },
+  modeButtonTextActive: {
+    color: colors.text,
   },
   pressed: { opacity: 0.76 },
   disabled: { opacity: 0.5 },
