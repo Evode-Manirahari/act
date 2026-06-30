@@ -26,6 +26,11 @@ export interface KnowledgeObject {
   verification: string | null;
   quiz_json: KnowledgeObjectQuiz | null;
   tags_json: string[] | null;
+  system_type?: string | null;
+  customer_site_label?: string | null;
+  equipment_make?: string | null;
+  equipment_model?: string | null;
+  jurisdiction?: string | null;
   status: string;
   created_by: string | null;
   published_at: string | null;

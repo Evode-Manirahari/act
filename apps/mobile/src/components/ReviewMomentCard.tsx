@@ -18,7 +18,7 @@ import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
-import type { MomentOut } from '../api/captureApi';
+import type { MomentOut, ReviewQueueItem } from '../api/captureApi';
 import type {
   ElicitationQuestion,
   KnowledgeObject,
@@ -83,6 +83,7 @@ export default function ReviewMomentCard({
   const evidenceItems = useMemo(() => summarizeEvidence(moment.evidence_json), [moment.evidence_json]);
   const transcriptExcerpt = useMemo(() => extractTranscript(moment.evidence_json), [moment.evidence_json]);
   const evidenceMedia = useMemo(() => selectEvidenceMedia(moment), [moment]);
+  const contextItems = useMemo(() => reviewContextItems(moment), [moment]);
 
   const approved = moment.status === 'approved';
 
@@ -108,6 +109,20 @@ export default function ReviewMomentCard({
           <Text style={styles.scoreText}>{Math.round(moment.score)}</Text>
         </View>
       </View>
+
+      {contextItems.length > 0 ? (
+        <View style={styles.contextBand}>
+          <Text style={styles.contextBandLabel}>Company context</Text>
+          <View style={styles.contextRows}>
+            {contextItems.map((item) => (
+              <View key={item.key} style={styles.contextRow}>
+                <Text style={styles.contextLabel}>{item.key}</Text>
+                <Text style={styles.contextValue}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       {/* Loud safety banner — lockout treatment */}
       {safety ? (
@@ -498,6 +513,26 @@ function formatEvidenceValue(value: unknown): string {
   }
 }
 
+function reviewContextItems(moment: MomentOut): EvidenceItem[] {
+  const item = moment as Partial<ReviewQueueItem>;
+  const equipment = [
+    item.system_type,
+    item.equipment_make,
+    item.equipment_model,
+  ].filter(isNonEmpty).join(' ');
+  return [
+    item.customer_site_label ? { key: 'Site', value: item.customer_site_label } : null,
+    equipment ? { key: 'Equipment', value: equipment } : null,
+    item.jurisdiction ? { key: 'Jurisdiction', value: item.jurisdiction } : null,
+  ]
+    .filter((entry): entry is EvidenceItem => entry != null)
+    .map((entry) => ({ key: entry.key, value: entry.value.slice(0, 120) }));
+}
+
+function isNonEmpty(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export function humanizeMomentType(value: string): string {
   return value
     .split(/[_-]/)
@@ -576,6 +611,37 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: fonts.monoSemibold,
     fontSize: 16,
+  },
+  contextBand: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    padding: 10,
+    gap: 8,
+  },
+  contextBandLabel: {
+    ...labelStyle,
+    color: colors.steel500,
+    fontSize: 10,
+  },
+  contextRows: { gap: 6 },
+  contextRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  contextLabel: {
+    width: 88,
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
+    fontSize: 11,
+  },
+  contextValue: {
+    flex: 1,
+    color: colors.text,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    lineHeight: 17,
   },
   safetyBanner: {
     borderRadius: 8,
