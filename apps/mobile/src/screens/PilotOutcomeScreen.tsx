@@ -1,12 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
-  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -20,7 +17,16 @@ import ActBottomBar from '../components/ActBottomBar';
 import { logJobEvent, upsertJobOutcome } from '../api/captureApi';
 import type { JobOutcomeOut } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
-import { colors } from '../theme/colors';
+import {
+  ActButton,
+  ActCard,
+  ActInput,
+  ActScreen,
+  ActText,
+  colors,
+  radii,
+  spacing,
+} from '../design';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 type OutcomeRoute = RouteProp<PilotStackParamList, 'PilotOutcome'>;
@@ -55,12 +61,7 @@ export default function PilotOutcomeScreen() {
   const callback = firstFix === 'no';
 
   const managerNotes = useMemo(
-    () =>
-      buildManagerNotes({
-        diagnosisMinutes,
-        progress,
-        notes,
-      }),
+    () => buildManagerNotes({ diagnosisMinutes, progress, notes }),
     [diagnosisMinutes, progress, notes],
   );
 
@@ -83,11 +84,7 @@ export default function PilotOutcomeScreen() {
         eventType: 'outcome_logged',
         actorId: recordedBy ?? null,
         jobId,
-        payload: {
-          callback: outcome.callback,
-          diagnosis_minutes: diagnosisMinutes || null,
-          progress,
-        },
+        payload: { callback: outcome.callback, diagnosis_minutes: diagnosisMinutes || null, progress },
       }).catch(() => {
         // Outcome save already succeeded; event logging is additive.
       });
@@ -102,42 +99,42 @@ export default function PilotOutcomeScreen() {
     <ActAppShell
       mode="Outcome"
       rightLabel="Training"
+      rightMuted
       onRightPress={() => navigation.navigate('Learn', undefined)}
       onMenuPress={() =>
-        navigation.canGoBack()
-          ? navigation.goBack()
-          : navigation.navigate('PilotHome')
+        navigation.canGoBack() ? navigation.goBack() : navigation.navigate('PilotHome')
       }
       bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
     >
       <ActAskPanel visible={askOpen} onClose={() => setAskOpen(false)} />
       <KeyboardAvoidingView
-        style={styles.safe}
+        style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.summary}>
-            <Text style={styles.summaryLabel}>Measurement loop</Text>
-            <Text style={styles.summaryTitle}>Did this training transfer?</Text>
-            <Text style={styles.summaryText}>
-              Log the repair outcome, callback signal, diagnosis speed, and apprentice progress for this field job.
-            </Text>
-          </View>
+        <ActScreen>
+          <ActCard>
+            <ActText variant="label" color="primary">
+              Measurement loop
+            </ActText>
+            <ActText variant="h1" style={styles.summaryTitle}>
+              Did this training transfer?
+            </ActText>
+            <ActText variant="small" color="textMuted">
+              Log the repair outcome, callback signal, diagnosis speed, and apprentice progress for
+              this field job.
+            </ActText>
+          </ActCard>
 
-          {!jobId && (
-            <View style={[styles.notice, styles.noticeError]}>
-              <Text style={[styles.noticeTitle, styles.noticeTitleError]}>
+          {!jobId ? (
+            <ActCard tone="err" accent="err">
+              <ActText variant="label" color="error">
                 No field job selected
-              </Text>
-              <Text style={styles.noticeBody}>
+              </ActText>
+              <ActText variant="small" color="steel700" style={styles.gapTop}>
                 Open outcome logging from a reviewed recording so this attaches to real capture data.
-              </Text>
-            </View>
-          )}
+              </ActText>
+            </ActCard>
+          ) : null}
 
           <View style={styles.metricsRow}>
             <Metric label="job" value={jobId ? jobId.slice(0, 8) : 'none'} />
@@ -145,14 +142,14 @@ export default function PilotOutcomeScreen() {
             <Metric label="diagnosis" value={`${diagnosisMinutes || '0'} min`} />
           </View>
 
-          <View style={styles.formCard}>
-            <Field
+          <ActCard style={styles.form}>
+            <ActInput
               label="Final diagnosis"
               value={diagnosis}
               onChangeText={setDiagnosis}
               placeholder="e.g. failed run capacitor"
             />
-            <Field
+            <ActInput
               label="Fix"
               value={fix}
               onChangeText={setFix}
@@ -161,26 +158,22 @@ export default function PilotOutcomeScreen() {
             />
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>First-time fix</Text>
+              <ActText variant="label" color="textMuted">
+                First-time fix
+              </ActText>
               <View style={styles.segmentRow}>
-                <SegmentButton
-                  label="Yes"
-                  selected={firstFix === 'yes'}
-                  onPress={() => setFirstFix('yes')}
-                />
-                <SegmentButton
-                  label="Callback"
-                  selected={firstFix === 'no'}
-                  onPress={() => setFirstFix('no')}
-                />
+                <Segment label="Yes" selected={firstFix === 'yes'} onPress={() => setFirstFix('yes')} />
+                <Segment label="Callback" selected={firstFix === 'no'} onPress={() => setFirstFix('no')} />
               </View>
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Diagnosis time</Text>
+              <ActText variant="label" color="textMuted">
+                Diagnosis time
+              </ActText>
               <View style={styles.segmentRow}>
                 {diagnosisChoices.map((choice) => (
-                  <SegmentButton
+                  <Segment
                     key={choice}
                     label={`${choice}m`}
                     selected={diagnosisMinutes === choice}
@@ -191,9 +184,7 @@ export default function PilotOutcomeScreen() {
               <TextInput
                 style={styles.inlineInput}
                 value={diagnosisMinutes}
-                onChangeText={(value) =>
-                  setDiagnosisMinutes(value.replace(/[^0-9]/g, '').slice(0, 3))
-                }
+                onChangeText={(v) => setDiagnosisMinutes(v.replace(/[^0-9]/g, '').slice(0, 3))}
                 placeholder="Minutes"
                 placeholderTextColor={colors.textLight}
                 keyboardType="number-pad"
@@ -201,10 +192,12 @@ export default function PilotOutcomeScreen() {
             </View>
 
             <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Apprentice progress</Text>
-              <View style={styles.progressGrid}>
+              <ActText variant="label" color="textMuted">
+                Apprentice progress
+              </ActText>
+              <View style={styles.segmentRow}>
                 {(Object.keys(progressLabels) as ProgressState[]).map((key) => (
-                  <SegmentButton
+                  <Segment
                     key={key}
                     label={progressLabels[key]}
                     selected={progress === key}
@@ -214,82 +207,49 @@ export default function PilotOutcomeScreen() {
               </View>
             </View>
 
-            <Field
+            <ActInput
               label="Manager note"
               value={notes}
               onChangeText={setNotes}
               placeholder="Anything that will matter in the next review"
               multiline
             />
-          </View>
+          </ActCard>
 
-          {error && (
-            <View style={[styles.notice, styles.noticeError]}>
-              <Text style={styles.noticeText}>{error}</Text>
-            </View>
-          )}
+          {error ? (
+            <ActCard tone="err" accent="err">
+              <ActText variant="small" color="error" weight="semibold">
+                {error}
+              </ActText>
+            </ActCard>
+          ) : null}
 
-          {savedOutcome && (
-            <View style={[styles.notice, styles.noticeSuccess]}>
-              <Text style={styles.noticeTitle}>Outcome saved</Text>
-              <Text style={styles.noticeBody}>
+          {savedOutcome ? (
+            <ActCard tone="ok" accent="ok">
+              <ActText variant="label" style={styles.okTitle}>
+                Outcome saved
+              </ActText>
+              <ActText variant="small" color="steel700" style={styles.gapTop}>
                 {savedOutcome.callback
                   ? 'Callback risk is now visible in the manager loop.'
                   : 'First-time fix is recorded for this job.'}
-              </Text>
-            </View>
-          )}
+              </ActText>
+            </ActCard>
+          ) : null}
 
-          <Pressable
-            disabled={saving || !jobId}
-            style={({ pressed }) => [
-              styles.saveButton,
-              (saving || !jobId) && styles.disabled,
-              pressed && styles.pressed,
-            ]}
+          <ActButton
+            label={savedOutcome ? 'Outcome saved' : 'Save outcome'}
             onPress={() => void saveOutcome()}
-          >
-            {saving ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveText}>Save outcome</Text>
-            )}
-          </Pressable>
-        </ScrollView>
+            disabled={!jobId}
+            loading={saving}
+          />
+        </ActScreen>
       </KeyboardAvoidingView>
     </ActAppShell>
   );
 }
 
-function Field({
-  label,
-  value,
-  onChangeText,
-  placeholder,
-  multiline = false,
-}: {
-  label: string;
-  value: string;
-  onChangeText: (value: string) => void;
-  placeholder: string;
-  multiline?: boolean;
-}) {
-  return (
-    <View style={styles.fieldGroup}>
-      <Text style={styles.fieldLabel}>{label}</Text>
-      <TextInput
-        style={[styles.input, multiline && styles.inputMultiline]}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textLight}
-        multiline={multiline}
-      />
-    </View>
-  );
-}
-
-function SegmentButton({
+function Segment({
   label,
   selected,
   onPress,
@@ -300,42 +260,38 @@ function SegmentButton({
 }) {
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.segmentButton,
-        selected && styles.segmentSelected,
-        pressed && styles.pressed,
-      ]}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      style={({ pressed }) => [styles.segment, selected && styles.segmentSel, pressed && styles.pressed]}
       onPress={onPress}
     >
-      <Text style={[styles.segmentText, selected && styles.segmentTextSelected]}>
+      <ActText
+        variant="small"
+        weight="semibold"
+        color={selected ? 'primary' : 'textMuted'}
+        style={styles.segmentText}
+      >
         {label}
-      </Text>
+      </ActText>
     </Pressable>
   );
 }
 
-function Metric({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone?: 'good' | 'warn';
-}) {
+function Metric({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'warn' }) {
   return (
-    <View style={styles.metric}>
-      <Text style={styles.metricLabel}>{label}</Text>
-      <Text
-        style={[
-          styles.metricValue,
-          tone === 'good' && styles.metricGood,
-          tone === 'warn' && styles.metricWarn,
-        ]}
+    <ActCard style={styles.metric}>
+      <ActText variant="label" color="textMuted" style={styles.metricLabel}>
+        {label}
+      </ActText>
+      <ActText
+        variant="h2"
+        mono
+        color={tone === 'good' ? 'success' : tone === 'warn' ? 'error' : 'ink'}
+        style={styles.metricValue}
       >
         {value}
-      </Text>
-    </View>
+      </ActText>
+    </ActCard>
   );
 }
 
@@ -359,225 +315,40 @@ function buildManagerNotes({
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    minHeight: 56,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerBack: {
-    color: colors.primary,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  headerTitle: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '900',
-  },
-  headerAction: {
-    color: colors.primary,
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    gap: 14,
-  },
-  summary: {
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    gap: 5,
-  },
-  summaryLabel: {
-    color: colors.primary,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  summaryTitle: {
-    color: colors.text,
-    fontSize: 21,
-    lineHeight: 26,
-    fontWeight: '900',
-  },
-  summaryText: {
-    color: colors.textMuted,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  metricsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  metric: {
-    flex: 1,
-    minHeight: 72,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 12,
-    justifyContent: 'center',
-  },
-  metricLabel: {
-    color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  metricValue: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '900',
-    marginTop: 5,
-  },
-  metricGood: {
-    color: colors.success,
-  },
-  metricWarn: {
-    color: colors.error,
-  },
-  formCard: {
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 14,
-    gap: 14,
-  },
-  fieldGroup: {
-    gap: 8,
-  },
-  fieldLabel: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  input: {
-    minHeight: 46,
-    borderRadius: 8,
+  flex: { flex: 1 },
+  summaryTitle: { marginTop: 2 },
+  gapTop: { marginTop: 3 },
+  metricsRow: { flexDirection: 'row', gap: spacing.sm + 2 },
+  metric: { flex: 1, minHeight: 72, justifyContent: 'center' },
+  metricLabel: { fontSize: 9.5 },
+  metricValue: { marginTop: 6 },
+  form: { gap: spacing.lg },
+  fieldGroup: { gap: spacing.sm },
+  segmentRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  segment: {
+    minHeight: 42,
+    minWidth: 84,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
-    color: colors.text,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
+    paddingHorizontal: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  inputMultiline: {
-    minHeight: 82,
-    textAlignVertical: 'top',
-  },
+  segmentSel: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  segmentText: { textAlign: 'center' },
   inlineInput: {
     width: 112,
     minHeight: 44,
-    borderRadius: 8,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
     color: colors.text,
-    paddingHorizontal: 12,
+    paddingHorizontal: spacing.md,
     fontSize: 14,
   },
-  segmentRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  progressGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  segmentButton: {
-    minHeight: 40,
-    minWidth: 86,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
-    paddingHorizontal: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  segmentText: {
-    color: colors.textMuted,
-    fontSize: 13,
-    fontWeight: '800',
-    textAlign: 'center',
-  },
-  segmentTextSelected: {
-    color: colors.primary,
-  },
-  notice: {
-    borderRadius: 8,
-    borderWidth: 1,
-    padding: 12,
-  },
-  noticeError: {
-    borderColor: '#FCA5A5',
-    backgroundColor: '#FEE2E2',
-  },
-  noticeSuccess: {
-    borderColor: colors.success,
-    backgroundColor: colors.successLight,
-  },
-  noticeText: {
-    color: colors.error,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  noticeTitle: {
-    color: '#065F46',
-    fontSize: 13,
-    fontWeight: '900',
-  },
-  noticeTitleError: {
-    color: colors.error,
-  },
-  noticeBody: {
-    color: colors.text,
-    fontSize: 13,
-    lineHeight: 18,
-    marginTop: 3,
-  },
-  saveButton: {
-    minHeight: 52,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '900',
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  pressed: {
-    opacity: 0.76,
-  },
+  okTitle: { color: '#0E6B30' },
+  pressed: { opacity: 0.76 },
 });
