@@ -1,21 +1,12 @@
 /**
  * Learn — apprentice library on mobile.
  *
- * Lists published knowledge objects from the act-api library endpoint
- * and lets the apprentice take a quiz against any card. Quiz attempts
- * are logged via /training-events so the manager dashboard can see
- * who's learning what.
+ * Lists published knowledge objects from the act-api library endpoint and lets
+ * the apprentice take a quiz against any card. Quiz attempts are logged via
+ * /training-events so the manager dashboard can see who's learning what.
  */
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,14 +16,20 @@ import ActAskPanel from '../components/ActAskPanel';
 import ActBottomBar from '../components/ActBottomBar';
 import { getDemoContext } from '../api/captureApi';
 import type { DemoContext } from '../api/captureApi';
-import { colors } from '../theme/colors';
-import { fonts, labelStyle } from '../theme/typography';
-import {
-  logTrainingEvent,
-  searchLibrary,
-} from '../api/libraryApi';
+import { logTrainingEvent, searchLibrary } from '../api/libraryApi';
 import type { KnowledgeObject } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
+import {
+  ActButton,
+  ActCard,
+  ActEmptyState,
+  ActInput,
+  ActPill,
+  ActText,
+  colors,
+  radii,
+  spacing,
+} from '../design';
 import {
   getVisibleTrainingCards,
   shouldShowEmptyState,
@@ -41,7 +38,6 @@ import {
 
 type LearnRoute = RouteProp<PilotStackParamList, 'Learn'>;
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
-
 
 export default function LearnScreen() {
   const route = useRoute<LearnRoute>();
@@ -63,9 +59,7 @@ export default function LearnScreen() {
       setLearnerContext(await getDemoContext());
     } catch (err) {
       setLearnerContext(null);
-      setLearnerError(
-        err instanceof Error ? err.message : 'apprentice identity failed',
-      );
+      setLearnerError(err instanceof Error ? err.message : 'apprentice identity failed');
     } finally {
       setLearnerLoading(false);
     }
@@ -84,8 +78,7 @@ export default function LearnScreen() {
     }
   }, [query]);
 
-  // Refresh whenever the tab is focused so newly published cards show
-  // up without a manual reload.
+  // Refresh whenever the tab is focused so newly published cards show up.
   useFocusEffect(
     useCallback(() => {
       void refresh();
@@ -95,11 +88,7 @@ export default function LearnScreen() {
 
   const cards = getVisibleTrainingCards(results);
   const learnerId = learnerContext?.user_id;
-  const showingEmpty = shouldShowEmptyState({
-    loading,
-    error,
-    resultsCount: results.length,
-  });
+  const showingEmpty = shouldShowEmptyState({ loading, error, resultsCount: results.length });
 
   useEffect(() => {
     if (route.params?.card) {
@@ -113,10 +102,22 @@ export default function LearnScreen() {
     if (match) setSelected(match);
   }, [cards, route.params?.card, route.params?.cardId]);
 
+  function openCard(item: TrainingCard) {
+    if (!learnerId) {
+      setLearnerError('identity has not loaded yet');
+      return;
+    }
+    setSelected(item);
+    void logTrainingEvent({ knowledgeObjectId: item.id, userId: learnerId, eventType: 'viewed' }).catch(
+      (err) => setLearnerError(err instanceof Error ? err.message : 'view event failed'),
+    );
+  }
+
   return (
     <ActAppShell
       mode="Training"
       rightLabel="Capture"
+      rightMuted
       onRightPress={() => navigation.navigate('CaptureJob')}
       onMenuPress={() =>
         navigation.canGoBack() ? navigation.goBack() : navigation.navigate('PilotHome')
@@ -129,127 +130,98 @@ export default function LearnScreen() {
         accountId={learnerContext?.account_id}
       />
       {selected ? (
-        <CardDetail
-          card={selected}
-          userId={learnerId}
-          onBack={() => setSelected(null)}
-        />
+        <CardDetail card={selected} userId={learnerId} onBack={() => setSelected(null)} />
       ) : (
         <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Apprentice Training</Text>
-            <Text style={styles.headerSub}>
-              Reviewed cards from senior-tech captures.
-            </Text>
-          </View>
+          <FlatList
+            data={loading ? [] : cards}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.listContent}
+            ListHeaderComponent={
+              <View style={styles.listHeader}>
+                <View style={styles.header}>
+                  <ActText variant="h1" color="primary">
+                    Apprentice training
+                  </ActText>
+                  <ActText variant="small" color="textMuted">
+                    Reviewed cards from your own senior techs — company-specific, field-tested.
+                  </ActText>
+                </View>
 
-          <View style={styles.searchRow}>
-            <TextInput
-              style={styles.searchInput}
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search symptom, equipment, hazard"
-              placeholderTextColor={colors.textLight}
-              returnKeyType="search"
-              onSubmitEditing={refresh}
-            />
-          </View>
+                <ActInput
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Search symptom, equipment, hazard"
+                  returnKeyType="search"
+                  onSubmitEditing={refresh}
+                />
 
-          {error && (
-            <View style={[styles.notice, styles.noticeError]}>
-              <Text style={styles.noticeText}>{error}</Text>
-            </View>
-          )}
-          {learnerError && (
-            <View style={[styles.notice, styles.noticeError]}>
-              <Text style={styles.noticeText}>
-                Apprentice identity is required to measure transfer: {learnerError}
-              </Text>
-            </View>
-          )}
-          {learnerLoading && !learnerId && (
-            <View style={styles.notice}>
-              <Text style={styles.noticeTextMuted}>Loading apprentice identity…</Text>
-            </View>
-          )}
+                {error ? (
+                  <ActCard tone="err" accent="err">
+                    <ActText variant="small" color="error" weight="semibold">
+                      {error}
+                    </ActText>
+                  </ActCard>
+                ) : null}
+                {learnerError ? (
+                  <ActCard tone="err" accent="err">
+                    <ActText variant="small" color="error">
+                      Apprentice identity is required to measure transfer: {learnerError}
+                    </ActText>
+                  </ActCard>
+                ) : null}
+                {learnerLoading && !learnerId ? (
+                  <ActText variant="small" color="textMuted">
+                    Loading apprentice identity…
+                  </ActText>
+                ) : null}
 
-          {showingEmpty && (
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>No reviewed cards yet</Text>
-              <Text style={styles.emptyBody}>
-                Publish a reviewed moment from the capture flow and it will appear here.
-              </Text>
-            </View>
-          )}
-
-          {loading ? (
-            <ActivityIndicator style={styles.loading} color={colors.primary} />
-          ) : (
-            <FlatList
-              data={cards}
-              keyExtractor={(item) => item.id}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => {
-                    if (!learnerId) {
-                      setLearnerError('identity has not loaded yet');
-                      return;
-                    }
-                    setSelected(item);
-                    void logTrainingEvent({
-                      knowledgeObjectId: item.id,
-                      userId: learnerId,
-                      eventType: 'viewed',
-                    }).catch((err) => {
-                      setLearnerError(
-                        err instanceof Error ? err.message : 'view event failed',
-                      );
-                    });
-                  }}
-                  disabled={!learnerId}
-                  style={({ pressed }) => [
-                    styles.card,
-                    !learnerId && styles.cardDisabled,
-                    pressed && styles.cardPressed,
-                  ]}
-                >
-                  <Text style={styles.cardTitle}>{item.title}</Text>
-                  <View style={styles.cardMeta}>
-                    <View style={styles.pill}>
-                      <Text style={styles.pillText}>{item.trade}</Text>
-                    </View>
-                    {isCompanyApproved(item) ? (
-                      <View style={styles.approvedPill}>
-                        <Text style={styles.approvedPillText}>company-approved</Text>
-                      </View>
-                    ) : null}
-                    {item.jurisdiction ? (
-                      <View style={styles.pillLight}>
-                        <Text style={styles.pillLightText}>{item.jurisdiction}</Text>
-                      </View>
-                    ) : null}
-                    {item.tags_json?.slice(0, 3).map((tag) => (
-                      <View key={tag} style={styles.pillLight}>
-                        <Text style={styles.pillLightText}>{tag}</Text>
-                      </View>
-                    ))}
-                  </View>
-                  {item.novice_trap && (
-                    <Text numberOfLines={2} style={styles.cardBody}>
-                      Novice trap: {item.novice_trap}
-                    </Text>
-                  )}
-                </Pressable>
-              )}
-              contentContainerStyle={styles.listContent}
-            />
-          )}
+                {!loading && !showingEmpty ? (
+                  <ActText variant="label" color="textMuted">
+                    {cards.length} published cards
+                  </ActText>
+                ) : null}
+              </View>
+            }
+            ListEmptyComponent={
+              loading ? (
+                <ActivityIndicator style={styles.loading} color={colors.primary} />
+              ) : showingEmpty ? (
+                <ActEmptyState
+                  title="No reviewed cards yet"
+                  body="Publish a reviewed moment from the capture flow and it will appear here."
+                />
+              ) : null
+            }
+            renderItem={({ item }) => (
+              <ActCard
+                onPress={() => openCard(item)}
+                style={learnerId ? styles.card : [styles.card, styles.cardDisabled]}
+              >
+                <ActText variant="h2" weight="semibold">
+                  {item.title}
+                </ActText>
+                <View style={styles.meta}>
+                  <ActPill label={item.trade} tone="orange" />
+                  {isCompanyApproved(item) ? <ActPill label="company-approved" tone="ok" /> : null}
+                  {item.jurisdiction ? <ActPill label={item.jurisdiction} /> : null}
+                  {item.tags_json?.slice(0, 3).map((tag) => (
+                    <ActPill key={tag} label={tag} />
+                  ))}
+                </View>
+                {item.novice_trap ? (
+                  <ActText numberOfLines={2} variant="small" color="textMuted">
+                    Novice trap: {item.novice_trap}
+                  </ActText>
+                ) : null}
+              </ActCard>
+            )}
+          />
         </View>
       )}
     </ActAppShell>
   );
 }
-
 
 function CardDetail({
   card,
@@ -268,10 +240,7 @@ function CardDetail({
   const [trackingError, setTrackingError] = useState<string | null>(null);
 
   const quiz = card.quiz_json;
-  const isCorrect = useMemo(
-    () => quiz != null && selectedChoice === quiz.answer,
-    [quiz, selectedChoice],
-  );
+  const isCorrect = useMemo(() => quiz != null && selectedChoice === quiz.answer, [quiz, selectedChoice]);
 
   async function submit() {
     if (!selectedChoice || !quiz) return;
@@ -281,15 +250,9 @@ function CardDetail({
     }
     setQuizSaving(true);
     setTrackingError(null);
-    // Log the attempt and the outcome. Two events on purpose — the
-    // attempt count and the correct count are useful separately on the
-    // dashboard.
+    // Two events on purpose — attempt count and correct count are useful separately.
     try {
-      await logTrainingEvent({
-        knowledgeObjectId: card.id,
-        userId,
-        eventType: 'quiz_attempted',
-      });
+      await logTrainingEvent({ knowledgeObjectId: card.id, userId, eventType: 'quiz_attempted' });
       await logTrainingEvent({
         knowledgeObjectId: card.id,
         userId,
@@ -333,31 +296,28 @@ function CardDetail({
   return (
     <View style={styles.container}>
       <View style={styles.detailHeader}>
-        <Pressable onPress={onBack} hitSlop={12}>
-          <Text style={styles.backText}>‹ Back</Text>
+        <Pressable onPress={onBack} hitSlop={12} accessibilityRole="button">
+          <ActText variant="bodyStrong" weight="semibold" color="primary">
+            ‹ Library
+          </ActText>
         </Pressable>
       </View>
 
       <FlatList
         data={[0]}
         keyExtractor={() => 'detail'}
+        contentContainerStyle={styles.detailBody}
         renderItem={() => (
-          <View style={styles.detailBody}>
-            <Text style={styles.detailTitle}>{card.title}</Text>
+          <>
+            <ActText variant="display" style={styles.detailTitle}>
+              {card.title}
+            </ActText>
 
-            <View style={styles.cardMeta}>
-              <View style={styles.pill}>
-                <Text style={styles.pillText}>{card.trade}</Text>
-              </View>
-              {isCompanyApproved(card) ? (
-                <View style={styles.approvedPill}>
-                  <Text style={styles.approvedPillText}>company-approved</Text>
-                </View>
-              ) : null}
+            <View style={styles.meta}>
+              <ActPill label={card.trade} tone="orange" />
+              {isCompanyApproved(card) ? <ActPill label="company-approved" tone="ok" /> : null}
               {card.tags_json?.map((tag) => (
-                <View key={tag} style={styles.pillLight}>
-                  <Text style={styles.pillLightText}>{tag}</Text>
-                </View>
+                <ActPill key={tag} label={tag} />
               ))}
             </View>
 
@@ -367,22 +327,18 @@ function CardDetail({
             <Section label="What the master noticed" body={card.observable_cue} />
             <Section label="Why" body={card.expert_reasoning} />
             <Section label="What they did" body={card.decision} />
-            <Section
-              label="Novice trap"
-              body={card.novice_trap}
-              tone="warn"
-            />
-            <Section
-              label="Safety"
-              body={card.safety_boundary}
-              tone="error"
-            />
+            <Section label="Novice trap" body={card.novice_trap} tone="warn" />
+            <Section label="Safety" body={card.safety_boundary} tone="error" />
             <Section label="Verification" body={card.verification} />
 
-            {quiz && (
-              <View style={styles.quizCard}>
-                <Text style={styles.quizLabel}>Quick check</Text>
-                <Text style={styles.quizQuestion}>{quiz.question}</Text>
+            {quiz ? (
+              <ActCard style={styles.block}>
+                <ActText variant="label" color="primary">
+                  Quick check
+                </ActText>
+                <ActText variant="bodyStrong" weight="semibold">
+                  {quiz.question}
+                </ActText>
                 {quiz.choices.map((choice) => {
                   const isSelected = selectedChoice === choice;
                   const isAnswer = quiz.answer === choice;
@@ -390,6 +346,7 @@ function CardDetail({
                   return (
                     <Pressable
                       key={choice}
+                      accessibilityRole="button"
                       onPress={() => !submitted && setSelectedChoice(choice)}
                       style={[
                         styles.choice,
@@ -398,76 +355,58 @@ function CardDetail({
                         showFeedback && isSelected && !isAnswer && styles.choiceWrong,
                       ]}
                     >
-                      <Text style={styles.choiceText}>{choice}</Text>
-                      {showFeedback && isAnswer && (
-                        <Text style={styles.choiceTag}>correct</Text>
-                      )}
+                      <ActText variant="small" style={styles.choiceText}>
+                        {choice}
+                      </ActText>
+                      {showFeedback && isAnswer ? (
+                        <ActText variant="label" color="success" style={styles.choiceTag}>
+                          correct
+                        </ActText>
+                      ) : null}
                     </Pressable>
                   );
                 })}
                 {!submitted ? (
-                  <Pressable
-                    style={[
-                      styles.submit,
-                      (!selectedChoice || quizSaving || !userId) && styles.submitDisabled,
-                    ]}
-                    disabled={!selectedChoice || quizSaving || !userId}
+                  <ActButton
+                    label={quizSaving ? 'Saving answer' : 'Submit answer'}
                     onPress={submit}
-                  >
-                    <Text style={styles.submitText}>
-                      {quizSaving ? 'Saving answer' : 'Submit answer'}
-                    </Text>
-                  </Pressable>
+                    disabled={!selectedChoice || !userId}
+                    loading={quizSaving}
+                  />
                 ) : (
-                  <View
-                    style={[
-                      styles.resultBanner,
-                      isCorrect ? styles.resultRight : styles.resultWrong,
-                    ]}
-                  >
-                    <Text style={styles.resultText}>
+                  <View style={[styles.resultBanner, isCorrect ? styles.resultRight : styles.resultWrong]}>
+                    <ActText variant="small" weight="semibold" style={styles.resultText}>
                       {isCorrect ? 'Right.' : `Not quite. ${quiz.answer}.`}
-                    </Text>
+                    </ActText>
                   </View>
                 )}
-              </View>
-            )}
+              </ActCard>
+            ) : null}
 
-            {(!quiz || submitted) && (
-              <View style={styles.completeCard}>
-                <Text style={styles.completeLabel}>Progress</Text>
-                <Text style={styles.completeBody}>
+            {!quiz || submitted ? (
+              <ActCard style={styles.block}>
+                <ActText variant="label" color="success" style={styles.okLabel}>
+                  Progress
+                </ActText>
+                <ActText variant="small" color="textMuted">
                   Mark this card complete when the apprentice has reviewed the decision trace.
-                </Text>
-                <Pressable
-                  disabled={completed || completionSaving}
-                  style={({ pressed }) => [
-                    styles.completeButton,
-                    completed && styles.completeButtonDone,
-                    (completed || completionSaving) && styles.submitDisabled,
-                    pressed && styles.cardPressed,
-                  ]}
+                </ActText>
+                <ActButton
+                  label={completed ? 'Training complete' : completionSaving ? 'Saving' : 'Mark complete'}
                   onPress={() => void markComplete()}
-                >
-                  <Text
-                    style={[
-                      styles.completeButtonText,
-                      completed && styles.completeButtonDoneText,
-                    ]}
-                  >
-                    {completed
-                      ? 'Training complete'
-                      : completionSaving
-                        ? 'Saving'
-                        : 'Mark complete'}
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-            {trackingError && (
-              <Text style={styles.completeErrorText}>{trackingError}</Text>
-            )}
-          </View>
+                  variant={completed ? 'ghost' : 'primary'}
+                  disabled={completed}
+                  loading={completionSaving}
+                  style={completed ? styles.completeDone : undefined}
+                />
+              </ActCard>
+            ) : null}
+            {trackingError ? (
+              <ActText variant="small" color="error" weight="semibold">
+                {trackingError}
+              </ActText>
+            ) : null}
+          </>
         )}
       />
     </View>
@@ -475,11 +414,9 @@ function CardDetail({
 }
 
 function TrustBand({ card }: { card: TrainingCard }) {
-  const equipment = [
-    card.system_type,
-    card.equipment_make,
-    card.equipment_model,
-  ].filter(isNonEmpty).join(' ');
+  const equipment = [card.system_type, card.equipment_make, card.equipment_model]
+    .filter(isNonEmpty)
+    .join(' ');
   const rows = [
     {
       label: 'Approval',
@@ -491,14 +428,18 @@ function TrustBand({ card }: { card: TrainingCard }) {
   ].filter((row): row is { label: string; value: string } => row != null);
 
   return (
-    <View style={styles.trustBand}>
+    <ActCard style={styles.trustBand}>
       {rows.map((row) => (
-        <View key={row.label} style={styles.trustBandRow}>
-          <Text style={styles.trustBandLabel}>{row.label}</Text>
-          <Text style={styles.trustBandValue}>{row.value}</Text>
+        <View key={row.label} style={styles.trustRow}>
+          <ActText variant="label" color="textMuted" style={styles.trustLabel}>
+            {row.label}
+          </ActText>
+          <ActText variant="small" weight="medium" style={styles.trustValue}>
+            {row.value}
+          </ActText>
         </View>
       ))}
-    </View>
+    </ActCard>
   );
 }
 
@@ -509,7 +450,6 @@ function isCompanyApproved(card: TrainingCard): boolean {
 function isNonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
-
 
 function Section({
   label,
@@ -524,163 +464,58 @@ function Section({
   const isWarn = tone === 'warn';
   const isError = tone === 'error'; // safety -> lockout panel
   return (
-    <View
-      style={[
-        styles.section,
-        isWarn && styles.sectionWarn,
-        isError && styles.sectionError,
-      ]}
+    <ActCard
+      tone={isError ? 'err' : isWarn ? 'warn' : 'surface'}
+      accent={isError ? 'err' : isWarn ? 'warn' : 'steel'}
     >
       <View style={styles.sectionHd}>
-        {isError && (
+        {isError ? (
           <View style={styles.lockoutIcon}>
-            <Text style={styles.lockoutIconText}>!</Text>
+            <ActText variant="label" mono style={styles.lockoutIconText}>
+              !
+            </ActText>
           </View>
-        )}
-        <Text
-          style={[
-            styles.sectionLabel,
-            isWarn && styles.sectionLabelWarn,
-            isError && styles.sectionLabelError,
-          ]}
-        >
+        ) : null}
+        <ActText variant="label" color={isError ? 'error' : isWarn ? 'caution' : 'textMuted'}>
           {label}
-        </Text>
+        </ActText>
       </View>
-      <Text style={[styles.sectionBody, isError && styles.sectionBodyError]}>{body}</Text>
-    </View>
+      <ActText
+        variant="body"
+        color={isError ? 'error' : 'steel700'}
+        weight={isError ? 'medium' : undefined}
+        style={isError ? styles.errBody : undefined}
+      >
+        {body}
+      </ActText>
+    </ActCard>
   );
 }
 
-
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+  listContent: { padding: spacing.md, gap: spacing.sm + 2, paddingBottom: spacing.xl },
+  listHeader: { gap: spacing.md, paddingBottom: spacing.xs },
+  header: { gap: spacing.xs, paddingTop: spacing.xs },
+  loading: { marginTop: spacing['2xl'] },
+  card: { gap: spacing.sm },
+  cardDisabled: { opacity: 0.5 },
+  meta: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
+  detailHeader: {
+    paddingTop: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  headerTitle: { fontSize: 22, fontWeight: '900', color: colors.primary },
-  headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 4 },
-  searchRow: { padding: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  searchInput: {
-    backgroundColor: colors.surfaceAlt,
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: colors.text,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  loading: { marginTop: 32 },
-  notice: { padding: 12, margin: 12, borderRadius: 8 },
-  noticeError: { backgroundColor: '#FEE2E2', borderWidth: 1, borderColor: '#FCA5A5' },
-  noticeText: { fontSize: 13, color: colors.error },
-  noticeTextMuted: { fontSize: 13, color: colors.textMuted },
-  empty: { padding: 32, alignItems: 'center' },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: colors.text, marginBottom: 6 },
-  emptyBody: { fontSize: 13, color: colors.textMuted, textAlign: 'center', lineHeight: 18 },
-  listContent: { padding: 12, gap: 10 },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 8,
-  },
-  cardDisabled: { opacity: 0.48 },
-  cardPressed: { opacity: 0.6 },
-  cardTitle: { fontSize: 15, fontWeight: '700', color: colors.text },
-  cardMeta: { flexDirection: 'row', gap: 6, flexWrap: 'wrap' },
-  cardBody: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
-  pill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: colors.primaryLight,
-  },
-  pillText: { fontSize: 11, fontWeight: '800', color: colors.primary, textTransform: 'uppercase' },
-  approvedPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: colors.successLight,
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  approvedPillText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#065F46',
-    textTransform: 'uppercase',
-  },
-  pillLight: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 999,
-    backgroundColor: colors.surfaceAlt,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  pillLightText: { fontSize: 11, fontWeight: '600', color: colors.textMuted },
-  detailHeader: { paddingTop: 12, paddingHorizontal: 16, paddingBottom: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backText: { fontSize: 16, fontWeight: '700', color: colors.primary },
-  detailBody: { padding: 16, gap: 12 },
-  detailTitle: { fontSize: 22, fontWeight: '800', color: colors.ink, lineHeight: 28, fontFamily: fonts.display },
-  trustBand: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
-    padding: 12,
-    gap: 8,
-  },
-  trustBandRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  trustBandLabel: {
-    width: 92,
-    ...labelStyle,
-    color: colors.steel500,
-    fontSize: 10,
-  },
-  trustBandValue: {
-    flex: 1,
-    color: colors.text,
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  section: {
-    backgroundColor: colors.surface,
-    borderRadius: 6,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderLeftWidth: 3,
-    borderLeftColor: colors.steel300,
-    gap: 8,
-  },
-  sectionWarn: {
-    borderColor: '#F1D7A8',
-    backgroundColor: colors.cautionLight,
-    borderLeftWidth: 5,
-    borderLeftColor: colors.caution,
-  },
-  // Safety = industrial lockout panel: heavy danger left rule + tinted bg.
-  sectionError: {
-    borderColor: '#F3C9C9',
-    backgroundColor: colors.errorLight,
-    borderLeftWidth: 5,
-    borderLeftColor: colors.error,
-  },
-  sectionHd: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detailBody: { padding: spacing.lg, gap: spacing.md },
+  detailTitle: { fontSize: 22, lineHeight: 28 },
+  trustBand: { backgroundColor: colors.surfaceAlt, gap: spacing.sm },
+  trustRow: { flexDirection: 'row', gap: spacing.sm + 2 },
+  trustLabel: { width: 92, fontSize: 10 },
+  trustValue: { flex: 1 },
+  sectionHd: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   lockoutIcon: {
     width: 18,
     height: 18,
@@ -689,101 +524,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lockoutIconText: { color: '#fff', fontSize: 12, fontWeight: '800', fontFamily: fonts.mono },
-  sectionLabel: { ...labelStyle, color: colors.steel500 },
-  sectionLabelWarn: { color: colors.caution },
-  sectionLabelError: { color: colors.error },
-  sectionBody: { fontSize: 15, color: colors.steel700, lineHeight: 22, fontFamily: fonts.body },
-  sectionBodyError: { color: '#5B1212', fontWeight: '500' },
-  quizCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 10,
-  },
-  quizLabel: { ...labelStyle, color: colors.primary },
-  quizQuestion: { fontSize: 15, fontWeight: '600', color: colors.text, lineHeight: 22 },
+  lockoutIconText: { color: '#FFFFFF', fontSize: 12, letterSpacing: 0 },
+  errBody: { color: '#5B1212' },
+  block: { gap: spacing.sm + 2 },
   choice: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 12,
+    minHeight: 48,
     paddingHorizontal: 14,
-    borderRadius: 8,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     backgroundColor: colors.surfaceAlt,
   },
-  choiceSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight + '60' },
+  choiceSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   choiceCorrect: { borderColor: colors.success, backgroundColor: colors.successLight },
-  choiceWrong: { borderColor: colors.error, backgroundColor: '#FEE2E2' },
-  choiceText: { fontSize: 14, color: colors.text, flex: 1 },
-  choiceTag: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: colors.success,
-    textTransform: 'uppercase',
-  },
-  submit: {
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    borderRadius: 24,
-    alignItems: 'center',
-  },
-  submitDisabled: { opacity: 0.4 },
-  submitText: { color: '#fff', fontSize: 14, fontWeight: '800' },
-  resultBanner: {
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
+  choiceWrong: { borderColor: colors.error, backgroundColor: colors.errorLight },
+  choiceText: { flex: 1 },
+  choiceTag: {},
+  resultBanner: { paddingVertical: 11, paddingHorizontal: 14, borderRadius: radii.md },
   resultRight: { backgroundColor: colors.successLight },
-  resultWrong: { backgroundColor: '#FEE2E2' },
-  resultText: { fontSize: 14, fontWeight: '700', color: colors.text, textAlign: 'center' },
-  completeCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 8,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 9,
-  },
-  completeLabel: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: colors.success,
-    textTransform: 'uppercase',
-  },
-  completeBody: {
-    color: colors.textMuted,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  completeButton: {
-    minHeight: 44,
-    borderRadius: 8,
-    backgroundColor: colors.success,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  completeButtonDone: {
-    backgroundColor: colors.successLight,
-    borderWidth: 1,
-    borderColor: colors.success,
-  },
-  completeButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  completeButtonDoneText: {
-    color: '#065F46',
-  },
-  completeErrorText: {
-    color: colors.error,
-    fontSize: 12,
-    fontWeight: '700',
-  },
+  resultWrong: { backgroundColor: colors.errorLight },
+  resultText: { textAlign: 'center' },
+  okLabel: { color: '#0E6B30' },
+  completeDone: { backgroundColor: colors.successLight, borderColor: colors.success },
 });

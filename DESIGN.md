@@ -13,12 +13,10 @@
 - **Mood:** high-contrast, function-first, credible. Reads like a well-made gauge, not a consumer app.
 
 ## Typography
-- **Display/Hero:** General Sans (600/700) — sturdy, confident grotesque. (Fontshare)
-- **Body / UI / Data:** Geist (400/500/600), with **tabular numerals** for metrics. (Google Fonts)
+- **Display/Hero + Body / UI / Data:** **Geist** (400/500/600/700). General Sans was the original display pick; standardized on Geist so the app bundles one family cleanly (loaded via `@expo-google-fonts`).
 - **Instrument accent:** Geist Mono (500/600) — used on ALL numbers, metrics, IDs, and section labels (the callback %, "$1,400", superheat, "TEACHABLE MOMENT 0:42"). This mono accent is the signature move; it makes the app read like a field instrument.
-- **Code/Mono:** Geist Mono.
-- **Loading:** expo-font (bundle the .ttf/.otf in `apps/mobile/assets/fonts/`). Until bundled, fall back to system + a monospace fallback for the accent.
-- **Scale (px):** display 22/28, h1 20, h2 17, body 15, small 13, micro 11 (labels, mono, uppercase, letter-spacing 0.08em).
+- **⚠️ RN weight rule (do not forget):** custom Geist does **not** synthesize weight from `fontWeight`. `fontWeight: '700'` on a Geist style silently renders the wrong weight (or the system font). ALWAYS pick the weight by named family — `fonts.bold`/`fonts.semibold`/`fonts.medium`, or `ActText weight="bold"`. Never use `fontWeight` on app text.
+- **Scale (px, as implemented in `type`):** display 27/32 (tracking −0.4) · h1 21/26 (−0.2) · h2 18/24 · bodyStrong 15/22 · body 15/22 · small 13/18. The mono uppercase `label` is 11px, letter-spacing 1.
 
 ## Color
 - **Approach:** restrained. One hi-vis action color; everything else ink + cool steel neutrals; loud semantics only where they matter (safety).
@@ -36,7 +34,7 @@
 
 ## Layout
 - **Approach:** grid-disciplined. Predictable, sturdy alignment.
-- **Border radius:** sm 4 · md 6 · lg 8 (sturdy, never pill/bubble except true toggles).
+- **Border radius (`radii`):** sm 4 · md 6 (default: cards/buttons/inputs) · lg 8 · xl 14 · sheet 18 · full 999. `full` is reserved for true toggles only — status/tag chips use `sm` (squared instrument tag), never a rounded pill.
 - **Information architecture — 3 tabs for the 3 users:**
   - **Field** — record a job, mark the teachable moment (capture). Primary action = safety-orange.
   - **Review** — lead tech approves/edits a proposed moment before publish.
@@ -48,6 +46,22 @@
 - **Section labels:** mono, uppercase, steel-500, letter-spacing 0.1em.
 - **Safety always reads loud** — never a soft tip; always the lockout panel treatment.
 
+## Implementation — `apps/mobile/src/design/`
+The system is code, not just this doc. **Build on the primitives; don't hand-roll styles.** Import from `../design` (or `../design/tokens`).
+
+**Tokens** (`src/design/tokens/`): `colors` · `type` + `fonts` + `labelStyle` + `TypeScale` · `spacing` (+ `tapTarget` 48) · `radii` · `shadows` (`none`/`cta`/`slab`/`overlay`) · `motion` (`durations`/`easings`/`haptics`). `colors`/`fonts`/`labelStyle` are re-exported from `src/theme/` — the theme files stay the canonical source; the design barrel just adds the `type` scale and the primitives.
+
+**Primitives** (`src/design/components/`):
+- **ActText** — the only text component. `variant` (display/h1/h2/bodyStrong/body/small/`label`), `color` (ink/text/textMuted/textLight/steel700/primary/success/error/caution/surface), `mono`, `weight` (named Geist family). Use this instead of raw `<Text>` so the RN weight rule can't be violated.
+- **ActButton** — the one action primitive. `variant` primary/secondary/danger/ghost, `size` md/lg (lg = 76px field CTA), `loading`, `detail`. Meets the 48px tap target.
+- **ActInput** — labeled steel-fill field (mono label, radius 6, `multiline` grows + top-aligns). Label optional so it doubles as a bare input.
+- **ActCard** — neutral surface, border not shadow. `accent` (steel/orange/warn/err/ok left rule, or `top` for the orange top-rule stat tile), `tone` (surface/warn/err/ok tint for lockout/caution/verified panels), `onPress`, `padded`.
+- **ActPill** — mono uppercase instrument tag. `tone` neutral/orange/ok/err/warn, `dot`. Squared (radii.sm) — the canonical chip; match it for any bespoke status pill.
+- **ActScreen** — standard screen body (padded 20, gap-16 ScrollView, steel bg, hidden scrollbar). `scroll={false}` for fixed bodies; `refreshControl` supported.
+- **ActEmptyState** — the honest empty/error surface: capture-frame corner-bracket glyph + title + calm body + optional action. `tone="err"` for the danger-tinted variant.
+
+**Signature panels:** safety/lockout → `ActCard tone="err" accent="err"` + `!` glyph; caution/novice-trap → `tone="warn" accent="warn"`; verified → `ok`. Numbers/ids/timers/counts → `mono`.
+
 ## Motion
 - **Approach:** minimal-functional only. No bounce.
 - **Easing:** enter ease-out, exit ease-in, move ease-in-out.
@@ -57,3 +71,4 @@
 | Date | Decision | Rationale |
 |------|----------|-----------|
 | 2026-06-05 | Initial system "Field Instrument" created | /design-consultation. Anchored to "a serious field tool." Industrial/utilitarian, mono-accented data, lockout-style safety, single hi-vis orange action color. |
+| 2026-07-01 | System implemented as code in `src/design/` (tokens + 7 primitives); all 5 screens + Review components moved onto it | Codify the spec so UI is built, not re-derived. Reconciled doc to reality: Geist for display (not General Sans), real `type` scale, the RN named-weight rule, squared chips (removed the last rounded-999 pills and the dead legacy round-bubble MarkButton). |

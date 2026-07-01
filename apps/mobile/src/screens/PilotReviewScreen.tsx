@@ -3,10 +3,8 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Pressable,
   RefreshControl,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -37,8 +35,15 @@ import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import ActAppShell from '../components/ActAppShell';
 import ReviewMomentCard from '../components/ReviewMomentCard';
 import type { DebriefStep } from '../components/ReviewDebriefPanel';
-import { colors } from '../theme/colors';
-import { fonts, labelStyle } from '../theme/typography';
+import {
+  ActButton,
+  ActCard,
+  ActEmptyState,
+  ActPill,
+  ActText,
+  colors,
+  spacing,
+} from '../design';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 type ReviewRoute = RouteProp<PilotStackParamList, 'PilotReview'>;
@@ -392,6 +397,7 @@ export default function PilotReviewScreen() {
     <ActAppShell
       mode="Review"
       rightLabel="Training"
+      rightMuted
       onRightPress={() => navigation.navigate('Learn', undefined)}
       onMenuPress={() =>
         navigation.canGoBack()
@@ -399,41 +405,39 @@ export default function PilotReviewScreen() {
           : navigation.navigate('CaptureJob')
       }
     >
-      <View style={styles.summary}>
+      <ActCard style={styles.summary}>
         <View style={styles.summaryTop}>
-          <Text style={styles.summaryLabel}>{queueMode ? 'Review queue' : 'Recording'}</Text>
-          <Text style={styles.recordingId}>
+          <ActText variant="label" color="textMuted">
+            {queueMode ? 'Review queue' : 'Recording'}
+          </ActText>
+          <ActText variant="bodyStrong" mono style={styles.recordingId}>
             {recordingId ? recordingId.slice(0, 8) : `${moments.length} ready`}
-          </Text>
-          <View style={[styles.statusPill, ready ? styles.statusReady : styles.statusPending]}>
-            <Text style={[styles.statusText, ready ? styles.statusReadyText : styles.statusPendingText]}>
-              {formatStatus(status)}
-            </Text>
-          </View>
+          </ActText>
+          <ActPill label={formatStatus(status)} tone={ready ? 'ok' : 'warn'} />
         </View>
-        <Text style={styles.summaryHelp}>
-          Approve a moment, then debrief the expert — generate the question, capture
-          the answer, compile, and publish into Apprentice Training. The debrief always
-          happens after the job, never in the tech's ear.
-        </Text>
+        <ActText variant="small" color="textMuted">
+          Approve a moment, then debrief the expert — generate the question, capture the
+          answer, compile, and publish into Apprentice Training. The debrief always happens
+          after the job, never in the tech&apos;s ear.
+        </ActText>
         {recording ? (
           <View style={styles.trustRow}>
-            <TrustPill
-              label="Consent"
-              value={formatConsent(recording.consent_state)}
-              tone={consentBlocked ? 'danger' : 'default'}
+            <ActPill
+              label={`Consent · ${formatConsent(recording.consent_state)}`}
+              tone={consentBlocked ? 'err' : 'neutral'}
+              dot
             />
-            <TrustPill
-              label="Redaction"
-              value={formatRedaction(redactionState)}
-              tone={redactionBlocked ? 'danger' : 'default'}
+            <ActPill
+              label={`Redaction · ${formatRedaction(redactionState)}`}
+              tone={redactionBlocked ? 'err' : 'neutral'}
+              dot
             />
           </View>
         ) : null}
         {recording?.job_id ? (
-          <Pressable
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.outcomeLink, pressed && styles.pressed]}
+          <ActButton
+            label="Log job outcome"
+            variant="secondary"
             onPress={() =>
               navigation.navigate('PilotOutcome', {
                 jobId: recording.job_id,
@@ -441,47 +445,54 @@ export default function PilotReviewScreen() {
                 sourceRecordingId: recording.id,
               })
             }
-          >
-            <Text style={styles.outcomeLinkText}>Log job outcome</Text>
-          </Pressable>
+          />
         ) : null}
         {recording && !redactionBlocked ? (
-          <Pressable
-            accessibilityRole="button"
+          <ActButton
+            label={
+              actingId === recording.id ? 'Requesting redaction' : 'Request source redaction'
+            }
+            variant="danger"
             disabled={actingId === recording.id}
-            style={({ pressed }) => [
-              styles.redactionLink,
-              pressed && styles.pressed,
-              actingId === recording.id && styles.disabled,
-            ]}
             onPress={confirmSourceRedaction}
-          >
-            <Text style={styles.redactionLinkText}>
-              {actingId === recording.id ? 'Requesting redaction' : 'Request source redaction'}
-            </Text>
-          </Pressable>
+          />
         ) : null}
-      </View>
+      </ActCard>
 
       {error ? (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorLabel}>Action failed</Text>
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
+        <ActCard tone="err" accent="err" style={styles.outer}>
+          <ActText variant="label" color="error">
+            Action failed
+          </ActText>
+          <ActText variant="small" color="error" weight="medium" style={styles.gapTiny}>
+            {error}
+          </ActText>
+        </ActCard>
       ) : null}
 
       {reviewBlocked ? (
-        <View style={styles.blockedBox}>
-          <Text style={styles.blockedLabel}>Review locked</Text>
-          <Text style={styles.blockedText}>
+        <ActCard tone="err" accent="err" style={styles.outer}>
+          <View style={styles.lockRow}>
+            <View style={styles.lockGlyph}>
+              <ActText variant="label" mono style={styles.lockGlyphText}>
+                !
+              </ActText>
+            </View>
+            <ActText variant="label" color="error">
+              Review locked
+            </ActText>
+          </View>
+          <ActText variant="small" color="error" weight="semibold" style={styles.gapTiny}>
             {redactionBlocked
               ? `Recording redaction is ${formatRedaction(redactionState).toLowerCase()}.`
               : 'Recording consent is do not share.'}
-          </Text>
+          </ActText>
           {recording?.redaction_reason ? (
-            <Text style={styles.blockedReason}>{recording.redaction_reason}</Text>
+            <ActText variant="small" color="error">
+              {recording.redaction_reason}
+            </ActText>
           ) : null}
-        </View>
+        </ActCard>
       ) : null}
 
       {loading ? (
@@ -504,22 +515,23 @@ export default function PilotReviewScreen() {
           }
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Text style={styles.emptyTitle}>
-                {reviewBlocked
+            <ActEmptyState
+              tone={reviewBlocked ? 'err' : 'neutral'}
+              title={
+                reviewBlocked
                   ? 'Recording blocked'
                   : ready
                     ? 'No proposed moments yet'
-                    : 'Processing not finished'}
-              </Text>
-              <Text style={styles.emptyBody}>
-                {reviewBlocked
+                    : 'Processing not finished'
+              }
+              body={
+                reviewBlocked
                   ? 'Consent or redaction state prevents review and publishing.'
                   : ready
                     ? 'Pull to refresh after the backend finishes proposing moments.'
-                    : 'Pull to refresh when the recording reaches ready.'}
-              </Text>
-            </View>
+                    : 'Pull to refresh when the recording reaches ready.'
+              }
+            />
           }
           renderItem={({ item }) => {
             const debrief = getDebrief(item.id);
@@ -569,27 +581,6 @@ export default function PilotReviewScreen() {
         />
       )}
     </ActAppShell>
-  );
-}
-
-function TrustPill({
-  label,
-  value,
-  tone,
-}: {
-  label: string;
-  value: string;
-  tone: 'default' | 'danger';
-}) {
-  return (
-    <View style={[styles.trustPill, tone === 'danger' && styles.trustPillDanger]}>
-      <Text style={[styles.trustPillLabel, tone === 'danger' && styles.trustPillLabelDanger]}>
-        {label}
-      </Text>
-      <Text style={[styles.trustPillValue, tone === 'danger' && styles.trustPillValueDanger]}>
-        {value}
-      </Text>
-    </View>
   );
 }
 
@@ -644,195 +635,32 @@ async function requireSafetyReady(card: KnowledgeObject): Promise<KnowledgeObjec
 }
 
 const styles = StyleSheet.create({
-  summary: {
-    margin: 16,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    padding: 14,
-    gap: 8,
-  },
-  summaryTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  summaryLabel: {
-    ...labelStyle,
-    color: colors.textMuted,
-    fontSize: 11,
-  },
-  recordingId: {
-    color: colors.text,
-    fontFamily: fonts.monoSemibold,
-    fontSize: 15,
-    flex: 1,
-  },
-  summaryHelp: {
-    color: colors.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  trustRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  trustPill: {
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surfaceAlt,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-    gap: 2,
-  },
-  trustPillDanger: {
-    borderColor: colors.error,
-    backgroundColor: colors.errorLight,
-  },
-  trustPillLabel: {
-    ...labelStyle,
-    color: colors.textMuted,
-    fontSize: 9,
-  },
-  trustPillLabelDanger: { color: colors.error },
-  trustPillValue: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 12,
-  },
-  trustPillValueDanger: { color: colors.error },
-  outcomeLink: {
-    minHeight: 48,
-    borderRadius: 8,
-    backgroundColor: colors.primaryLight,
+  summary: { margin: spacing.lg, gap: spacing.sm },
+  summaryTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm + 2 },
+  recordingId: { flex: 1 },
+  trustRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  outer: { marginHorizontal: spacing.lg, marginBottom: spacing.md, gap: 3 },
+  gapTiny: { marginTop: 2 },
+  lockRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  lockGlyph: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    backgroundColor: colors.error,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 2,
   },
-  outcomeLinkText: {
-    color: colors.primary,
-    fontFamily: fonts.bold,
-    fontSize: 13,
-  },
-  redactionLink: {
-    minHeight: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.error,
-    backgroundColor: colors.errorLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  redactionLinkText: {
-    color: colors.error,
-    fontFamily: fonts.bold,
-    fontSize: 13,
-  },
-  statusPill: {
-    borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  statusReady: {
-    backgroundColor: colors.successLight,
-    borderColor: colors.success,
-  },
-  statusPending: {
-    backgroundColor: colors.cautionLight,
-    borderColor: colors.caution,
-  },
-  statusText: {
-    ...labelStyle,
-    fontSize: 10,
-  },
-  statusReadyText: { color: '#065F46' },
-  statusPendingText: { color: '#92400E' },
-  errorBox: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 8,
-    backgroundColor: colors.errorLight,
-    borderWidth: 1,
-    borderColor: colors.error,
-    padding: 12,
-    gap: 3,
-  },
-  errorLabel: {
-    ...labelStyle,
-    color: colors.error,
-    fontSize: 10,
-  },
-  errorText: {
-    color: '#7A1212',
-    fontFamily: fonts.medium,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  blockedBox: {
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 8,
-    backgroundColor: colors.errorLight,
-    borderWidth: 1,
-    borderColor: colors.error,
-    padding: 12,
-    gap: 4,
-  },
-  blockedLabel: {
-    ...labelStyle,
-    color: colors.error,
-    fontSize: 10,
-  },
-  blockedText: {
-    color: '#7A1212',
-    fontFamily: fonts.bold,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  blockedReason: {
-    color: '#7A1212',
-    fontFamily: fonts.body,
-    fontSize: 12,
-    lineHeight: 17,
-  },
+  lockGlyphText: { color: '#FFFFFF', fontSize: 12, letterSpacing: 0 },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: spacing['3xl'],
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    gap: 12,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+    gap: spacing.md,
   },
-  cardWrap: {
-    gap: 8,
-  },
-  empty: {
-    borderRadius: 8,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 18,
-  },
-  emptyTitle: {
-    color: colors.text,
-    fontFamily: fonts.bold,
-    fontSize: 16,
-  },
-  emptyBody: {
-    color: colors.textMuted,
-    fontFamily: fonts.body,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: 6,
-  },
-  pressed: { opacity: 0.76 },
-  disabled: { opacity: 0.5 },
+  cardWrap: { gap: spacing.sm },
 });

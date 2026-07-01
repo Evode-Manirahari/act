@@ -1,18 +1,18 @@
 /**
- * Glove-friendly "mark this" button. One tap drops a teachable moment at the
- * current recording timestamp. The visible type rail lets a tech tag safety,
- * verification, and sensory cues without opening a modal.
+ * Mark taxonomy — the single source of truth for teachable-moment types.
+ *
+ * The on-screen control is CaptureMarkButton (the Field Instrument slab). This
+ * module holds only the shared data model — types, cycle order, labels, hints,
+ * and colors — so the slab and any future surface stay in lockstep. The legacy
+ * round-bubble MarkButton was removed once CaptureMarkButton replaced it; the
+ * design system uses a squared industrial slab, not a round bubble.
  */
-import React, { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-
 import { colors } from '../theme/colors';
 
 
 export type MarkType = 'teachable' | 'safety' | 'verification' | 'sensory' | 'counterfactual';
 
-// Exported so the redesigned CaptureMarkButton can reuse the SAME mark
-// taxonomy, labels, hints, and colors — keeping the data model single-source.
+// Order the long-press / rail cycles through.
 export const MARK_CYCLE: MarkType[] = [
   'teachable',
   'safety',
@@ -47,8 +47,7 @@ export const MARK_CHIP_LABEL: Record<MarkType, string> = {
 
 // Field Instrument taxonomy: teachable=orange, safety=red, verify=green, and
 // sensory/counterfactual stay in the steel/ink family (no purple/sky) to hold
-// the "one action color, restraint" direction. Single source for both the
-// legacy MarkButton and the redesigned CaptureMarkButton.
+// the "one action color, restraint" direction.
 export const MARK_COLOR: Record<MarkType, string> = {
   teachable: colors.primary,   // #EA580C
   safety: colors.error,        // #C81E1E
@@ -56,114 +55,3 @@ export const MARK_COLOR: Record<MarkType, string> = {
   sensory: colors.steel500,    // #586170 (was #8B5CF6 purple)
   counterfactual: colors.ink,  // #14181F (was #0EA5E9 sky)
 };
-
-interface Props {
-  disabled?: boolean;
-  onMark: (kind: MarkType) => void;
-}
-
-export default function MarkButton({ disabled, onMark }: Props) {
-  const [kind, setKind] = useState<MarkType>('teachable');
-
-  function handlePress() {
-    if (disabled) return;
-    onMark(kind);
-  }
-
-  function handleLongPress() {
-    if (disabled) return;
-    const idx = MARK_CYCLE.indexOf(kind);
-    const next = MARK_CYCLE[(idx + 1) % MARK_CYCLE.length];
-    setKind(next);
-  }
-
-  return (
-    <View style={styles.wrap}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Mark ${MARK_LABEL[kind]}`}
-        accessibilityHint="Long-press to change mark type"
-        disabled={disabled}
-        onPress={handlePress}
-        onLongPress={handleLongPress}
-        delayLongPress={500}
-        style={({ pressed }) => [
-          styles.button,
-          { backgroundColor: MARK_COLOR[kind] },
-          (disabled || pressed) && styles.pressed,
-        ]}
-      >
-        <Text style={styles.label}>{MARK_LABEL[kind]}</Text>
-        <Text style={styles.hint}>{MARK_HINT[kind]}</Text>
-      </Pressable>
-      <View style={styles.typeRail}>
-        {MARK_CYCLE.map((type) => {
-          const active = type === kind;
-          return (
-            <Pressable
-              key={type}
-              accessibilityRole="button"
-              accessibilityLabel={`Use ${MARK_LABEL[type]} mark type`}
-              disabled={disabled}
-              onPress={() => setKind(type)}
-              style={({ pressed }) => [
-                styles.typeChip,
-                active && { borderColor: MARK_COLOR[type], backgroundColor: `${MARK_COLOR[type]}18` },
-                (pressed || disabled) && styles.chipMuted,
-              ]}
-            >
-              <Text style={[styles.typeChipText, active && { color: MARK_COLOR[type] }]}>
-                {MARK_CHIP_LABEL[type]}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-    </View>
-  );
-}
-
-
-const styles = StyleSheet.create({
-  wrap: { width: '100%', alignItems: 'center', justifyContent: 'center', gap: 12 },
-  button: {
-    width: 152,
-    height: 152,
-    borderRadius: 76,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  pressed: { opacity: 0.7, transform: [{ scale: 0.97 }] },
-  label: { color: '#fff', fontSize: 22, fontWeight: '800' },
-  hint: { color: 'rgba(255,255,255,0.85)', fontSize: 10, marginTop: 4, fontWeight: '600' },
-  typeRail: {
-    width: '100%',
-    maxWidth: 330,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  typeChip: {
-    minWidth: 58,
-    minHeight: 32,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  typeChipText: {
-    color: colors.textMuted,
-    fontSize: 11,
-    fontWeight: '800',
-  },
-  chipMuted: { opacity: 0.64 },
-});

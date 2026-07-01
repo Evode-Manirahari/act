@@ -27,6 +27,7 @@ import { Audio } from 'expo-av';
 
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
+import { radii } from '../design/tokens';
 import type {
   ElicitationQuestion,
   KnowledgeObject,
@@ -410,7 +411,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   donePill: {
-    borderRadius: 999,
+    borderRadius: radii.sm, // squared instrument chip, matches ActPill
     backgroundColor: colors.successLight,
     borderWidth: 1,
     borderColor: colors.success,
