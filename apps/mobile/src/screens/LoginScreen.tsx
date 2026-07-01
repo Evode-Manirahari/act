@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
 import { useAuthSession } from '../hooks/useAuthSession';
+import { canSubmitLogin } from './loginScreenModel';
 import { ActButton, ActCard, ActInput, ActScreen, ActText, colors, spacing } from '../design';
 
 export default function LoginScreen() {
@@ -19,7 +20,7 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = email.trim().length > 0 && password.length > 0 && !submitting;
+  const canSubmit = canSubmitLogin({ email, password, submitting });
 
   async function handleSignIn() {
     if (!canSubmit) return;
@@ -39,7 +40,7 @@ export default function LoginScreen() {
       style={styles.flex}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <ActScreen contentStyle={styles.content}>
+      <ActScreen contentStyle={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <ActText variant="label" color="primary" style={styles.wordmark}>
             ACT

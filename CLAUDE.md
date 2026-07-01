@@ -189,9 +189,10 @@ All endpoints are request/response — the SSE streaming surface went with the l
 ## Auth (Pilot)
 
 Mobile-side only so far — the backend does not verify anything yet:
-- `apps/mobile/src/lib/supabase.ts` creates a Supabase client gated on `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` being set (`isSupabaseConfigured`). Unset — the state today, no Supabase project exists yet — `PilotNavigator` skips the gate entirely and the app behaves exactly as before (`/demo/session`).
-- Once those env vars are set, `PilotNavigator` requires a session and shows `LoginScreen` (email + password, invite-only, no sign-up) until one exists.
+- `apps/mobile/src/lib/supabase.ts` creates a Supabase client gated on `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`supabaseConfigStatus` from `lib/supabaseConfig.ts`). Both unset — the state today, no Supabase project exists yet — `PilotNavigator` renders the pilot stack as before (`/demo/session`). Partial or unparseable config **fails closed** to a config-error screen, as does a build with `EXPO_PUBLIC_REQUIRE_AUTH` set but no Supabase config (set that flag in the same EAS profile change that adds the Supabase vars). The gate decision is the pure `resolveAuthGate` in `src/navigation/authGateModel.ts` (tested).
+- Once configured, `PilotNavigator` requires a session and shows `LoginScreen` (email + password, invite-only, no sign-up) until one exists. PilotHome shows a "Signed in as … · Sign out" row when a session exists.
 - **Not yet done**: the FastAPI backend has no `CurrentUser`/JWT-verification dependency, so `/demo/session` and client-provided `user_id`/`account_id` (e.g. `createRecording`'s `userId`) are still trusted as-is even after mobile login. Account-scoped enforcement (deriving `user_id`/`account_id` from the verified token server-side, not the client) is a separate backend change, not yet implemented.
+- **Deferred (post-activation hardening, from the 2026-07-01 review)**: encrypt the persisted session (SecureStore-keyed storage adapter instead of raw AsyncStorage); keep `PilotStack` mounted (overlay login instead of unmount) so a `SIGNED_OUT` event mid-capture can't destroy an in-progress recording; map raw Supabase error strings to pilot-friendly copy on `LoginScreen`.
 
 ## Admin / Pilot Safety
 

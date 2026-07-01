@@ -20,10 +20,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState, Platform } from 'react-native';
 import { createClient, processLock, type SupabaseClient } from '@supabase/supabase-js';
 
+import { computeSupabaseConfig } from './supabaseConfig';
+
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY);
+export const supabaseConfigStatus = computeSupabaseConfig(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const isSupabaseConfigured = supabaseConfigStatus === 'configured';
+
+/** Set in pilot/production EAS profiles once the Supabase project exists, so a
+ * build cut without the Supabase env vars fails closed instead of silently
+ * shipping without the login gate (EXPO_PUBLIC_* is inlined at bundle time —
+ * a miss is invisible at runtime otherwise). */
+export const requireAuth = Boolean(process.env.EXPO_PUBLIC_REQUIRE_AUTH);
+
+if (supabaseConfigStatus === 'misconfigured') {
+  console.error(
+    '[auth] Supabase config is partial or invalid — the auth gate will fail closed. ' +
+      'Set both EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY (or neither).',
+  );
+}
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured
   ? createClient(SUPABASE_URL as string, SUPABASE_PUBLISHABLE_KEY as string, {
