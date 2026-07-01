@@ -13,6 +13,7 @@ import {
   type PilotWeeklyReport,
 } from '../api/libraryApi';
 import { getDemoContext } from '../api/captureApi';
+import { useAuthSession } from '../hooks/useAuthSession';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { ActCard, ActPill, ActScreen, ActText, colors, radii, shadows, spacing } from '../design';
 
@@ -25,10 +26,19 @@ const workflow = ['Record', 'Mark', 'Review', 'Teach', 'Measure'];
 
 export default function PilotHomeScreen() {
   const navigation = useNavigation<NavProp>();
+  const { session, signOut } = useAuthSession();
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [report, setReport] = useState<PilotWeeklyReport | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [askOpen, setAskOpen] = useState(false);
+  const [signOutError, setSignOutError] = useState<string | null>(null);
+
+  async function handleSignOut() {
+    setSignOutError(null);
+    const { error } = await signOut();
+    if (error) setSignOutError(error);
+    // On success the navigator swaps to LoginScreen via onAuthStateChange.
+  }
 
   const refresh = useCallback(async () => {
     let scopedAccountId = accountId;
@@ -184,6 +194,24 @@ export default function PilotHomeScreen() {
             </React.Fragment>
           ))}
         </ActCard>
+
+        {session ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Sign out"
+            onPress={() => void handleSignOut()}
+            style={({ pressed }) => [styles.signOutRow, pressed && styles.pressed]}
+          >
+            <ActText variant="label" color="textMuted">
+              {session.user.email ? `Signed in as ${session.user.email} · ` : ''}Sign out
+            </ActText>
+            {signOutError ? (
+              <ActText variant="small" color="caution">
+                {signOutError}
+              </ActText>
+            ) : null}
+          </Pressable>
+        ) : null}
       </ActScreen>
     </ActAppShell>
   );
@@ -290,4 +318,5 @@ const styles = StyleSheet.create({
   workflowNumText: { color: '#FFFFFF', fontSize: 12, letterSpacing: 0 },
   workflowLabel: { fontSize: 9 },
   workflowLine: { flex: 1, height: 1, backgroundColor: colors.border, marginHorizontal: 2, marginBottom: 20 },
+  signOutRow: { alignItems: 'center', paddingVertical: spacing.sm, gap: 4 },
 });

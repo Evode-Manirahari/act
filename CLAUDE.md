@@ -95,8 +95,9 @@ The mobile app has been progressively rewiring from the pre-pivot consumer-DIY p
 - `LearnScreen` is the apprentice-facing surface and includes live reviewed cards, quiz-event logging, completion logging, and an honest empty state when no card exists
 - `PilotOutcomeScreen` logs final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, and apprentice progress against `/jobs/{job_id}/outcomes`; it must be launched with a real captured job id
 - Status polling + auto-process closes the loop after upload
+- `PilotNavigator` gates the pilot stack behind Supabase Auth (`LoginScreen`, invite-only, email+password) whenever `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set (see `src/lib/supabase.ts`, `src/hooks/useAuthSession.ts`); unset, it falls back to the pre-existing demo-session flow untouched. The backend does not yet verify Supabase tokens — see the Auth section below.
 
-The mobile API client (`apps/mobile/src/api/actApi.ts`) talks to the deployed FastAPI service at `https://act-api-evode.fly.dev`.
+The mobile API clients (`apps/mobile/src/api/captureApi.ts`, `libraryApi.ts`) talk to the deployed FastAPI service at `https://act-api-evode.fly.dev` (`apps/mobile/src/lib/config.ts`, overridable via `EXPO_PUBLIC_API_BASE_URL`). `actApi.ts` (the old SSE copilot client) was removed 2026-06-09 — this reference predated that cleanup.
 
 ## The Capture Flow (product concept)
 
@@ -184,6 +185,14 @@ Session bootstrap:
 - `POST /demo/session` — returns the seeded pilot account/user/job the capture flow records against until real auth lands
 
 All endpoints are request/response — the SSE streaming surface went with the legacy copilot.
+
+## Auth (Pilot)
+
+Mobile-side only so far — the backend does not verify anything yet:
+- `apps/mobile/src/lib/supabase.ts` creates a Supabase client gated on `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`supabaseConfigStatus` from `lib/supabaseConfig.ts`). Both unset — the state today, no Supabase project exists yet — `PilotNavigator` renders the pilot stack as before (`/demo/session`). Partial or unparseable config **fails closed** to a config-error screen, as does a build with `EXPO_PUBLIC_REQUIRE_AUTH` set but no Supabase config (set that flag in the same EAS profile change that adds the Supabase vars). The gate decision is the pure `resolveAuthGate` in `src/navigation/authGateModel.ts` (tested).
+- Once configured, `PilotNavigator` requires a session and shows `LoginScreen` (email + password, invite-only, no sign-up) until one exists. PilotHome shows a "Signed in as … · Sign out" row when a session exists.
+- **Not yet done**: the FastAPI backend has no `CurrentUser`/JWT-verification dependency, so `/demo/session` and client-provided `user_id`/`account_id` (e.g. `createRecording`'s `userId`) are still trusted as-is even after mobile login. Account-scoped enforcement (deriving `user_id`/`account_id` from the verified token server-side, not the client) is a separate backend change, not yet implemented.
+- **Deferred (post-activation hardening, from the 2026-07-01 review)**: encrypt the persisted session (SecureStore-keyed storage adapter instead of raw AsyncStorage); keep `PilotStack` mounted (overlay login instead of unmount) so a `SIGNED_OUT` event mid-capture can't destroy an in-progress recording; map raw Supabase error strings to pilot-friendly copy on `LoginScreen`.
 
 ## Admin / Pilot Safety
 

@@ -7,6 +7,7 @@ import React from 'react';
 import {
   RefreshControlProps,
   ScrollView,
+  ScrollViewProps,
   StyleSheet,
   View,
   ViewStyle,
@@ -19,6 +20,9 @@ export type ActScreenProps = {
   scroll?: boolean;
   refreshControl?: React.ReactElement<RefreshControlProps>;
   contentStyle?: ViewStyle | ViewStyle[];
+  /** Screens with a submit button under a text input need "handled" so the
+   * first tap presses the button instead of only dismissing the keyboard. */
+  keyboardShouldPersistTaps?: ScrollViewProps['keyboardShouldPersistTaps'];
 };
 
 export default function ActScreen({
@@ -26,6 +30,7 @@ export default function ActScreen({
   scroll = true,
   refreshControl,
   contentStyle,
+  keyboardShouldPersistTaps,
 }: ActScreenProps) {
   if (!scroll) {
     return <View style={[styles.container, styles.content, contentStyle]}>{children}</View>;
@@ -36,6 +41,7 @@ export default function ActScreen({
       contentContainerStyle={[styles.content, contentStyle]}
       showsVerticalScrollIndicator={false}
       refreshControl={refreshControl}
+      keyboardShouldPersistTaps={keyboardShouldPersistTaps}
     >
       {children}
     </ScrollView>
