@@ -1,7 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+
 import ActAppShell from '../components/ActAppShell';
 import ActAskPanel from '../components/ActAskPanel';
 import ActBottomBar from '../components/ActBottomBar';
@@ -13,8 +14,7 @@ import {
 } from '../api/libraryApi';
 import { getDemoContext } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
-import { colors } from '../theme/colors';
-import { fonts, labelStyle } from '../theme/typography';
+import { ActCard, ActPill, ActScreen, ActText, colors, radii, shadows, spacing } from '../design';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 
@@ -80,6 +80,8 @@ export default function PilotHomeScreen() {
     },
   ];
 
+  const queueCount = summary?.moments_proposed ?? 0;
+
   return (
     <ActAppShell
       mode="Capture"
@@ -87,242 +89,205 @@ export default function PilotHomeScreen() {
       onRightPress={() => navigation.navigate('CaptureJob')}
       bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
     >
-      <ActAskPanel
-        visible={askOpen}
-        onClose={() => setAskOpen(false)}
-        accountId={accountId}
-      />
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ActAskPanel visible={askOpen} onClose={() => setAskOpen(false)} accountId={accountId} />
+
+      <ActScreen>
         <View style={styles.header}>
-          <Text style={styles.kicker}>HVAC · Field Capture</Text>
-          <Text style={styles.title}>Capture what your best techs know.</Text>
-          <Text style={styles.subtitle}>
+          <ActText variant="label" color="primary" style={{ fontSize: 12 }}>
+            HVAC · Field Capture
+          </ActText>
+          <ActText variant="display">Capture what your best techs know.</ActText>
+          <ActText variant="body" color="textMuted" style={styles.sub}>
             Record the job, mark the teachable moment, review, publish. The judgment that
             prevents callbacks, captured before it retires.
-          </Text>
+          </ActText>
         </View>
 
         <View style={styles.actionBand}>
-          <ActionButton
+          <HomeAction
             label="Record senior tech"
             detail="Capture the call and mark what matters"
-            variant="primary"
+            primary
             onPress={() => navigation.navigate('CaptureJob')}
           />
-          <ActionButton
+          <HomeAction
             label="Apprentice training"
             detail="Open reviewed cards and quick checks"
             onPress={() => navigation.navigate('Learn')}
           />
-          <ActionButton
+          <HomeAction
             label="Review queue"
             detail="Approve moments across ready recordings"
+            badge={queueCount > 0 ? `${queueCount} ready` : undefined}
             onPress={() => navigation.navigate('PilotReview', { queue: true })}
           />
-          <ActionButton
+          <HomeAction
             label="Measure outcome"
             detail="Available after review from a recorded job"
             disabled
           />
         </View>
 
-        <Text style={styles.sectionLabel}>Pilot progress</Text>
+        <ActText variant="label" color="textMuted" style={styles.sectionLabel}>
+          Pilot progress
+        </ActText>
         <View style={styles.statsRow}>
           {progressStats.map((stat) => (
-            <View key={stat.label} style={styles.statTile}>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statLabel}>{stat.label}</Text>
-            </View>
+            <ActCard key={stat.label} accent="orange" top style={styles.statTile}>
+              <ActText variant="h1" mono color="ink" style={styles.statValue}>
+                {stat.value}
+              </ActText>
+              <ActText variant="label" color="textMuted" style={styles.statLabel}>
+                {stat.label}
+              </ActText>
+            </ActCard>
           ))}
         </View>
 
         {report ? (
-          <View style={styles.reportCard}>
-            <Text style={styles.sectionLabel}>{report.week} pilot report</Text>
-            <Text style={styles.reportSummary}>{report.summary}</Text>
-            <Text style={styles.reportSummary}>
+          <ActCard>
+            <ActText variant="label" color="textMuted">
+              {report.week} pilot report
+            </ActText>
+            <ActText variant="small" color="steel700" style={styles.reportLine}>
+              {report.summary}
+            </ActText>
+            <ActText variant="small" mono color="textMuted" style={styles.reportMetrics}>
               {report.metrics.cards_published} cards · {report.metrics.callbacks}/
               {report.metrics.outcomes_logged} callbacks · {report.metrics.training_events} training events
-            </Text>
+            </ActText>
             {report.risks.slice(0, 2).map((risk) => (
-              <Text key={risk} style={styles.reportRisk}>
-                {risk}
-              </Text>
+              <View key={risk} style={styles.riskRow}>
+                <View style={styles.riskDot} />
+                <ActText variant="small" color="caution" style={styles.riskText}>
+                  {risk}
+                </ActText>
+              </View>
             ))}
-          </View>
+          </ActCard>
         ) : null}
 
-        <View style={styles.workflowBand}>
+        <ActCard style={styles.workflowBand} padded={false}>
           {workflow.map((step, index) => (
             <React.Fragment key={step}>
               <View style={styles.workflowStep}>
-                <Text style={styles.workflowNumber}>{index + 1}</Text>
-                <Text style={styles.workflowLabel}>{step}</Text>
+                <View style={[styles.workflowNum, index === 0 && styles.workflowNumActive]}>
+                  <ActText variant="label" style={styles.workflowNumText}>
+                    {index + 1}
+                  </ActText>
+                </View>
+                <ActText variant="label" color="steel700" style={styles.workflowLabel}>
+                  {step}
+                </ActText>
               </View>
               {index < workflow.length - 1 && <View style={styles.workflowLine} />}
             </React.Fragment>
           ))}
-        </View>
-
-      </ScrollView>
+        </ActCard>
+      </ActScreen>
     </ActAppShell>
   );
 }
 
-function ActionButton({
+function HomeAction({
   label,
   detail,
-  variant = 'secondary',
+  primary = false,
+  badge,
   onPress,
   disabled = false,
 }: {
   label: string;
   detail: string;
-  variant?: 'primary' | 'secondary';
+  primary?: boolean;
+  badge?: string;
   onPress?: () => void;
   disabled?: boolean;
 }) {
-  const primary = variant === 'primary';
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
       disabled={disabled}
+      onPress={onPress}
       style={({ pressed }) => [
-        styles.actionButton,
-        primary ? styles.primaryAction : styles.secondaryAction,
-        disabled && styles.disabledAction,
+        styles.action,
+        primary ? styles.actionPrimary : styles.actionSecondary,
+        primary && shadows.cta,
+        disabled && styles.actionDisabled,
         pressed && styles.pressed,
       ]}
-      onPress={onPress}
     >
-      <Text
-        style={[
-          styles.actionLabel,
-          primary && styles.primaryActionText,
-          disabled && styles.disabledActionText,
-        ]}
-      >
+      {badge ? (
+        <View style={styles.badge}>
+          <ActPill label={badge} tone="orange" />
+        </View>
+      ) : null}
+      <ActText variant="h2" weight="semibold" color={primary ? 'surface' : 'ink'}>
         {label}
-      </Text>
-      <Text
-        style={[
-          styles.actionDetail,
-          primary && styles.primaryActionDetail,
-          disabled && styles.disabledActionDetail,
-        ]}
+      </ActText>
+      <ActText
+        variant="small"
+        color={primary ? 'surface' : 'textMuted'}
+        style={[styles.actionDetail, primary && styles.actionDetailPrimary]}
       >
         {detail}
-      </Text>
+      </ActText>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1 },
-  content: { padding: 20, gap: 16 },
-  header: { paddingTop: 8, gap: 8 },
-  kicker: { ...labelStyle, color: colors.primary, fontSize: 12 },
-  title: {
-    color: colors.ink,
-    fontSize: 28,
-    lineHeight: 34,
-    fontFamily: fonts.display, // bold Geist (so it isn't flattened by the global default)
-  },
-  subtitle: {
-    color: colors.steel500,
-    fontSize: 15,
-    lineHeight: 22,
-    maxWidth: 360,
-    fontFamily: fonts.body,
-  },
-  actionBand: { gap: 10 },
-  actionButton: {
-    minHeight: 88,
-    borderRadius: 6,
+  header: { paddingTop: spacing.sm, gap: spacing.sm },
+  sub: { maxWidth: 360 },
+  actionBand: { gap: spacing.sm + 2 },
+  action: {
+    minHeight: 86,
+    borderRadius: radii.md,
     padding: 18,
     justifyContent: 'center',
     borderWidth: 1,
+    gap: 4,
   },
-  primaryAction: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primaryPressed,
-  },
-  secondaryAction: {
+  actionPrimary: { backgroundColor: colors.primary, borderColor: colors.primaryPressed },
+  actionSecondary: {
     backgroundColor: colors.surface,
     borderColor: colors.border,
     borderLeftWidth: 3,
     borderLeftColor: colors.steel300,
   },
-  disabledAction: {
-    opacity: 0.58,
-  },
-  actionLabel: { color: colors.ink, fontSize: 19, fontFamily: fonts.semibold },
-  actionDetail: { color: colors.steel500, fontSize: 14, marginTop: 5, fontFamily: fonts.body },
-  primaryActionText: { color: '#FFFFFF' },
-  primaryActionDetail: { color: 'rgba(255,255,255,0.85)' },
-  disabledActionText: { color: colors.steel500 },
-  disabledActionDetail: { color: colors.textMuted },
-  pressed: { opacity: 0.8 },
-  sectionLabel: { ...labelStyle, color: colors.steel500, marginBottom: -6 },
-  statsRow: { flexDirection: 'row', gap: 10 },
-  statTile: {
-    flex: 1,
-    minHeight: 80,
-    borderRadius: 6,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderTopWidth: 3,
-    borderTopColor: colors.primary,
-    padding: 14,
-    justifyContent: 'center',
-  },
-  statValue: { color: colors.ink, fontSize: 26, fontFamily: fonts.mono }, // mono = instrument
-  statLabel: { ...labelStyle, color: colors.steel500, fontSize: 10, marginTop: 4 },
-  reportCard: {
-    gap: 8,
-    padding: 14,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  reportSummary: { color: colors.steel700, fontSize: 14, lineHeight: 20, fontFamily: fonts.body },
-  reportRisk: { color: colors.caution, fontSize: 12, lineHeight: 17, fontFamily: fonts.medium },
+  actionDisabled: { opacity: 0.55 },
+  actionDetail: {},
+  actionDetailPrimary: { opacity: 0.9 },
+  badge: { position: 'absolute', top: 14, right: 14 },
+  pressed: { opacity: 0.85 },
+  sectionLabel: { marginBottom: -spacing.sm },
+  statsRow: { flexDirection: 'row', gap: spacing.sm + 2 },
+  statTile: { flex: 1, minHeight: 80, justifyContent: 'center' },
+  statValue: { fontSize: 26, lineHeight: 28 },
+  statLabel: { fontSize: 10, marginTop: 6 },
+  reportLine: { marginTop: 2 },
+  reportMetrics: {},
+  riskRow: { flexDirection: 'row', gap: 9, alignItems: 'flex-start' },
+  riskDot: { width: 6, height: 6, borderRadius: 1, backgroundColor: colors.caution, marginTop: 6 },
+  riskText: { flex: 1, fontWeight: '500' },
   workflowBand: {
     minHeight: 80,
-    borderRadius: 6,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 14,
+    paddingHorizontal: spacing.lg - 2,
     flexDirection: 'row',
     alignItems: 'center',
   },
-  workflowStep: { alignItems: 'center', minWidth: 50 },
-  workflowNumber: {
+  workflowStep: { alignItems: 'center', minWidth: 50, gap: 6 },
+  workflowNum: {
     width: 26,
     height: 26,
     borderRadius: 3, // square instrument chip, not a round pill
     backgroundColor: colors.ink,
-    color: '#FFFFFF',
-    textAlign: 'center',
-    lineHeight: 26,
-    fontFamily: fonts.monoSemibold,
-    fontSize: 13,
-    marginBottom: 6,
-    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  workflowLabel: { ...labelStyle, color: colors.steel700, fontSize: 9 },
-  workflowLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-    marginHorizontal: 2,
-    marginBottom: 20,
-  },
+  workflowNumActive: { backgroundColor: colors.primary },
+  workflowNumText: { color: '#FFFFFF', fontSize: 12, letterSpacing: 0 },
+  workflowLabel: { fontSize: 9 },
+  workflowLine: { flex: 1, height: 1, backgroundColor: colors.border, marginHorizontal: 2, marginBottom: 20 },
 });

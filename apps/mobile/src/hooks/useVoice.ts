@@ -2,14 +2,21 @@ import { useState, useCallback } from 'react';
 import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const VOICE_KEY = 'actober_voice_enabled';
+const VOICE_KEY = 'act_voice_enabled';
+const LEGACY_VOICE_KEY = 'actober_voice_enabled';
 
 export function useVoice() {
   const [voiceEnabled, setVoiceEnabled] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
 
   const loadVoicePreference = useCallback(async () => {
-    const stored = await AsyncStorage.getItem(VOICE_KEY);
+    let stored = await AsyncStorage.getItem(VOICE_KEY);
+    if (stored == null) {
+      stored = await AsyncStorage.getItem(LEGACY_VOICE_KEY);
+      if (stored != null) {
+        await AsyncStorage.setItem(VOICE_KEY, stored);
+      }
+    }
     setVoiceEnabled(stored === 'true');
   }, []);
 

@@ -11,6 +11,7 @@ import {
   getDemoContext,
   getJobOutcome,
   logJobEvent,
+  requestRecordingRedaction,
   upsertJobOutcome,
 } from '../captureApi';
 
@@ -126,6 +127,46 @@ describe('capture outcome API', () => {
       recording_id: 'rec-1',
       source: 'mobile',
       payload_json: { mark_type: 'safety' },
+    });
+  });
+
+  it('requests source recording redaction without purging media from mobile', async () => {
+    const recording = {
+      id: 'rec-1',
+      job_id: 'job-1',
+      user_id: 'user-1',
+      storage_key: 'recordings/rec-1.mp4',
+      content_type: 'video/mp4',
+      trade: 'hvac',
+      status: 'ready',
+      consent_state: 'internal_training',
+      redaction_state: 'requested',
+      redaction_reason: 'Customer requested removal.',
+      redaction_requested_by: 'user-1',
+      redaction_requested_at: '2026-06-30T00:00:00.000Z',
+      duration_s: 120,
+      bytes_uploaded: 1024,
+      started_at: null,
+      ended_at: null,
+      device_meta: null,
+      created_at: '2026-06-30T00:00:00.000Z',
+    };
+    const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse(recording));
+    global.fetch = fetchMock as typeof fetch;
+
+    await expect(requestRecordingRedaction({
+      recordingId: 'rec-1',
+      reason: 'Customer requested removal.',
+      requestedBy: 'user-1',
+    })).resolves.toEqual(recording);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining('/recordings/rec-1/redaction'),
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string)).toEqual({
+      reason: 'Customer requested removal.',
+      requested_by: 'user-1',
     });
   });
 });

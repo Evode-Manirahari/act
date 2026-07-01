@@ -28,10 +28,10 @@ import type { DemoContext } from '../api/captureApi';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
 import {
-  KnowledgeObject,
   logTrainingEvent,
   searchLibrary,
 } from '../api/libraryApi';
+import type { KnowledgeObject } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import {
   getVisibleTrainingCards,
@@ -218,6 +218,16 @@ export default function LearnScreen() {
                     <View style={styles.pill}>
                       <Text style={styles.pillText}>{item.trade}</Text>
                     </View>
+                    {isCompanyApproved(item) ? (
+                      <View style={styles.approvedPill}>
+                        <Text style={styles.approvedPillText}>company-approved</Text>
+                      </View>
+                    ) : null}
+                    {item.jurisdiction ? (
+                      <View style={styles.pillLight}>
+                        <Text style={styles.pillLightText}>{item.jurisdiction}</Text>
+                      </View>
+                    ) : null}
                     {item.tags_json?.slice(0, 3).map((tag) => (
                       <View key={tag} style={styles.pillLight}>
                         <Text style={styles.pillLightText}>{tag}</Text>
@@ -339,12 +349,19 @@ function CardDetail({
               <View style={styles.pill}>
                 <Text style={styles.pillText}>{card.trade}</Text>
               </View>
+              {isCompanyApproved(card) ? (
+                <View style={styles.approvedPill}>
+                  <Text style={styles.approvedPillText}>company-approved</Text>
+                </View>
+              ) : null}
               {card.tags_json?.map((tag) => (
                 <View key={tag} style={styles.pillLight}>
                   <Text style={styles.pillLightText}>{tag}</Text>
                 </View>
               ))}
             </View>
+
+            <TrustBand card={card} />
 
             <Section label="Situation" body={card.situation} />
             <Section label="What the master noticed" body={card.observable_cue} />
@@ -457,6 +474,42 @@ function CardDetail({
   );
 }
 
+function TrustBand({ card }: { card: TrainingCard }) {
+  const equipment = [
+    card.system_type,
+    card.equipment_make,
+    card.equipment_model,
+  ].filter(isNonEmpty).join(' ');
+  const rows = [
+    {
+      label: 'Approval',
+      value: isCompanyApproved(card) ? 'Company-approved training card' : 'Draft under review',
+    },
+    { label: 'Jurisdiction', value: card.jurisdiction ?? 'Not specified' },
+    card.customer_site_label ? { label: 'Site', value: card.customer_site_label } : null,
+    equipment ? { label: 'Equipment', value: equipment } : null,
+  ].filter((row): row is { label: string; value: string } => row != null);
+
+  return (
+    <View style={styles.trustBand}>
+      {rows.map((row) => (
+        <View key={row.label} style={styles.trustBandRow}>
+          <Text style={styles.trustBandLabel}>{row.label}</Text>
+          <Text style={styles.trustBandValue}>{row.value}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function isCompanyApproved(card: TrainingCard): boolean {
+  return card.status === 'published' && card.published_at != null;
+}
+
+function isNonEmpty(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 
 function Section({
   label,
@@ -552,6 +605,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
   },
   pillText: { fontSize: 11, fontWeight: '800', color: colors.primary, textTransform: 'uppercase' },
+  approvedPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success,
+  },
+  approvedPillText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#065F46',
+    textTransform: 'uppercase',
+  },
   pillLight: {
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -565,6 +632,31 @@ const styles = StyleSheet.create({
   backText: { fontSize: 16, fontWeight: '700', color: colors.primary },
   detailBody: { padding: 16, gap: 12 },
   detailTitle: { fontSize: 22, fontWeight: '800', color: colors.ink, lineHeight: 28, fontFamily: fonts.display },
+  trustBand: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    padding: 12,
+    gap: 8,
+  },
+  trustBandRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  trustBandLabel: {
+    width: 92,
+    ...labelStyle,
+    color: colors.steel500,
+    fontSize: 10,
+  },
+  trustBandValue: {
+    flex: 1,
+    color: colors.text,
+    fontFamily: fonts.medium,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   section: {
     backgroundColor: colors.surface,
     borderRadius: 6,

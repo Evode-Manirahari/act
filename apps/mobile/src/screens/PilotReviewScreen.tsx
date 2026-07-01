@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -17,6 +18,7 @@ import {
   listReviewQueue,
   listRecordingMoments,
   logJobEvent,
+  requestRecordingRedaction,
   reviewMoment,
 } from '../api/captureApi';
 import type { MomentOut, RecordingOut, ReviewQueueItem } from '../api/captureApi';
@@ -34,7 +36,6 @@ import type { ElicitationQuestion, KnowledgeObject } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import ActAppShell from '../components/ActAppShell';
 import ReviewMomentCard from '../components/ReviewMomentCard';
-import DebriefVoiceAgent from '../components/DebriefVoiceAgent';
 import type { DebriefStep } from '../components/ReviewDebriefPanel';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
@@ -332,8 +333,60 @@ export default function PilotReviewScreen() {
     }
   }
 
+  async function requestSourceRedaction() {
+    if (!recording) return;
+    const reason = 'Mobile reviewer requested source recording redaction.';
+    setActingId(recording.id);
+    setError(null);
+    try {
+      const updated = await requestRecordingRedaction({
+        recordingId: recording.id,
+        reason,
+        requestedBy: recording.user_id,
+      });
+      setRecording(updated);
+      setMoments([]);
+      void logJobEvent({
+        eventType: 'recording_redaction_requested',
+        actorId: updated.redaction_requested_by ?? recording.user_id,
+        jobId: updated.job_id,
+        recordingId: updated.id,
+        payload: {
+          reason: updated.redaction_reason ?? reason,
+          redaction_state: updated.redaction_state,
+        },
+      }).catch(() => {
+        // Redaction request succeeded; telemetry must not roll it back.
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'redaction request failed');
+    } finally {
+      setActingId(null);
+    }
+  }
+
+  function confirmSourceRedaction() {
+    Alert.alert(
+      'Request source redaction?',
+      'This locks review and publishing for this recording until an admin resolves the redaction.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Request redaction',
+          style: 'destructive',
+          onPress: () => void requestSourceRedaction(),
+        },
+      ],
+    );
+  }
+
   const status = queueMode ? 'ready' : recording?.status ?? 'loading';
   const ready = status === 'ready';
+  const redactionState = recording?.redaction_state ?? 'none';
+  const redactionBlocked = redactionState !== 'none';
+  const consentBlocked = recording?.consent_state === 'do_not_share';
+  const reviewBlocked = Boolean(recording && (redactionBlocked || consentBlocked));
+  const visibleMoments = reviewBlocked ? [] : moments;
 
   return (
     <ActAppShell
@@ -363,6 +416,20 @@ export default function PilotReviewScreen() {
           the answer, compile, and publish into Apprentice Training. The debrief always
           happens after the job, never in the tech's ear.
         </Text>
+        {recording ? (
+          <View style={styles.trustRow}>
+            <TrustPill
+              label="Consent"
+              value={formatConsent(recording.consent_state)}
+              tone={consentBlocked ? 'danger' : 'default'}
+            />
+            <TrustPill
+              label="Redaction"
+              value={formatRedaction(redactionState)}
+              tone={redactionBlocked ? 'danger' : 'default'}
+            />
+          </View>
+        ) : null}
         {recording?.job_id ? (
           <Pressable
             accessibilityRole="button"
@@ -378,6 +445,22 @@ export default function PilotReviewScreen() {
             <Text style={styles.outcomeLinkText}>Log job outcome</Text>
           </Pressable>
         ) : null}
+        {recording && !redactionBlocked ? (
+          <Pressable
+            accessibilityRole="button"
+            disabled={actingId === recording.id}
+            style={({ pressed }) => [
+              styles.redactionLink,
+              pressed && styles.pressed,
+              actingId === recording.id && styles.disabled,
+            ]}
+            onPress={confirmSourceRedaction}
+          >
+            <Text style={styles.redactionLinkText}>
+              {actingId === recording.id ? 'Requesting redaction' : 'Request source redaction'}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {error ? (
@@ -387,13 +470,27 @@ export default function PilotReviewScreen() {
         </View>
       ) : null}
 
+      {reviewBlocked ? (
+        <View style={styles.blockedBox}>
+          <Text style={styles.blockedLabel}>Review locked</Text>
+          <Text style={styles.blockedText}>
+            {redactionBlocked
+              ? `Recording redaction is ${formatRedaction(redactionState).toLowerCase()}.`
+              : 'Recording consent is do not share.'}
+          </Text>
+          {recording?.redaction_reason ? (
+            <Text style={styles.blockedReason}>{recording.redaction_reason}</Text>
+          ) : null}
+        </View>
+      ) : null}
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.primary} />
         </View>
       ) : (
         <FlatList
-          data={moments}
+          data={visibleMoments}
           keyExtractor={(item) => item.id}
           refreshControl={
             <RefreshControl
@@ -409,18 +506,23 @@ export default function PilotReviewScreen() {
           ListEmptyComponent={
             <View style={styles.empty}>
               <Text style={styles.emptyTitle}>
-                {ready ? 'No proposed moments yet' : 'Processing not finished'}
+                {reviewBlocked
+                  ? 'Recording blocked'
+                  : ready
+                    ? 'No proposed moments yet'
+                    : 'Processing not finished'}
               </Text>
               <Text style={styles.emptyBody}>
-                {ready
-                  ? 'Pull to refresh after the backend finishes proposing moments.'
-                  : 'Pull to refresh when the recording reaches ready.'}
+                {reviewBlocked
+                  ? 'Consent or redaction state prevents review and publishing.'
+                  : ready
+                    ? 'Pull to refresh after the backend finishes proposing moments.'
+                    : 'Pull to refresh when the recording reaches ready.'}
               </Text>
             </View>
           }
           renderItem={({ item }) => {
             const debrief = getDebrief(item.id);
-            const approved = item.status === 'approved';
             const voiceOpen = voiceMomentId === item.id;
             return (
               <View style={styles.cardWrap}>
@@ -437,6 +539,22 @@ export default function PilotReviewScreen() {
                   onReject={() => void actOnMoment(item.id, 'rejected')}
                   onNeedsInfo={() => void actOnMoment(item.id, 'needs_more_info')}
                   onOpenCard={(card) => navigation.navigate('Learn', { card, cardId: card.id })}
+                  voiceDebriefOpen={voiceOpen}
+                  expertUserId={recording?.user_id ?? null}
+                  onToggleVoiceDebrief={() => setVoiceMomentId(voiceOpen ? null : item.id)}
+                  onVoiceDebriefComplete={() => {
+                    patchDebrief(item.id, {
+                      answered: true,
+                      voiceComplete: true,
+                      draft: null,
+                      published: false,
+                      busyStep: 'idle',
+                    });
+                    setVoiceMomentId(null);
+                    if (recordingId) {
+                      void refresh();
+                    }
+                  }}
                   onGenerateQuestion={() => void generateQuestion(item.id)}
                   onSubmitAnswer={(question, answer) => void submitAnswer(item.id, question, answer)}
                   onSubmitAudioAnswer={(question, audioUri) =>
@@ -445,42 +563,33 @@ export default function PilotReviewScreen() {
                   onCompileDraft={() => void compileDraft(item.id)}
                   onPublishDraft={() => void publishDraft(item.id)}
                 />
-                {approved && !debrief.published ? (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => setVoiceMomentId(voiceOpen ? null : item.id)}
-                    style={({ pressed }) => [styles.voiceToggle, pressed && { opacity: 0.7 }]}
-                  >
-                    <Text style={styles.voiceToggleText}>
-                      {voiceOpen ? 'Hide voice debrief' : 'Run voice debrief instead'}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {approved && voiceOpen ? (
-                  <DebriefVoiceAgent
-                    momentId={item.id}
-                    expertUserId={recording?.user_id ?? null}
-                    onComplete={() => {
-                      patchDebrief(item.id, {
-                        answered: true,
-                        voiceComplete: true,
-                        draft: null,
-                        published: false,
-                        busyStep: 'idle',
-                      });
-                      setVoiceMomentId(null);
-                      if (recordingId) {
-                        void refresh();
-                      }
-                    }}
-                  />
-                ) : null}
               </View>
             );
           }}
         />
       )}
     </ActAppShell>
+  );
+}
+
+function TrustPill({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone: 'default' | 'danger';
+}) {
+  return (
+    <View style={[styles.trustPill, tone === 'danger' && styles.trustPillDanger]}>
+      <Text style={[styles.trustPillLabel, tone === 'danger' && styles.trustPillLabelDanger]}>
+        {label}
+      </Text>
+      <Text style={[styles.trustPillValue, tone === 'danger' && styles.trustPillValueDanger]}>
+        {value}
+      </Text>
+    </View>
   );
 }
 
@@ -491,6 +600,19 @@ function formatStatus(status: string): string {
   if (status === 'failed') return 'Failed';
   if (status === 'pending') return 'Pending upload';
   return status;
+}
+
+function formatConsent(value: string): string {
+  return value
+    .split('_')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
+}
+
+function formatRedaction(value: string): string {
+  if (value === 'none') return 'Clear';
+  return formatConsent(value);
 }
 
 function tradeForMoment(moment: MomentOut, recording: RecordingOut | null): string {
@@ -553,6 +675,36 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  trustRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  trustPill: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    gap: 2,
+  },
+  trustPillDanger: {
+    borderColor: colors.error,
+    backgroundColor: colors.errorLight,
+  },
+  trustPillLabel: {
+    ...labelStyle,
+    color: colors.textMuted,
+    fontSize: 9,
+  },
+  trustPillLabelDanger: { color: colors.error },
+  trustPillValue: {
+    color: colors.text,
+    fontFamily: fonts.bold,
+    fontSize: 12,
+  },
+  trustPillValueDanger: { color: colors.error },
   outcomeLink: {
     minHeight: 48,
     borderRadius: 8,
@@ -563,6 +715,21 @@ const styles = StyleSheet.create({
   },
   outcomeLinkText: {
     color: colors.primary,
+    fontFamily: fonts.bold,
+    fontSize: 13,
+  },
+  redactionLink: {
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.error,
+    backgroundColor: colors.errorLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  redactionLinkText: {
+    color: colors.error,
     fontFamily: fonts.bold,
     fontSize: 13,
   },
@@ -607,6 +774,33 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
   },
+  blockedBox: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 8,
+    backgroundColor: colors.errorLight,
+    borderWidth: 1,
+    borderColor: colors.error,
+    padding: 12,
+    gap: 4,
+  },
+  blockedLabel: {
+    ...labelStyle,
+    color: colors.error,
+    fontSize: 10,
+  },
+  blockedText: {
+    color: '#7A1212',
+    fontFamily: fonts.bold,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  blockedReason: {
+    color: '#7A1212',
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 17,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -619,20 +813,6 @@ const styles = StyleSheet.create({
   },
   cardWrap: {
     gap: 8,
-  },
-  voiceToggle: {
-    minHeight: 44,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  voiceToggleText: {
-    color: colors.primary,
-    fontFamily: fonts.bold,
-    fontSize: 13,
   },
   empty: {
     borderRadius: 8,
@@ -654,4 +834,5 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   pressed: { opacity: 0.76 },
+  disabled: { opacity: 0.5 },
 });

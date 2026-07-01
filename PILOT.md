@@ -1,223 +1,209 @@
-# ACT Capture — HVAC Pilot Plan
+# ACT Capture - HVAC Operator Pilot
 
-**Status:** pilot-ready draft v2, 2026-05-27
-**Owner:** Evode Manirahari
-**Wedge:** HVAC residential / light commercial troubleshooting
-**Mode:** ACT Capture (moment capture + expert debrief → reviewed training cards). Not real-time copilot.
+**Status:** current pilot operating plan, 2026-06-30
+**Wedge:** HVAC residential and light-commercial troubleshooting
+**Mode:** ACT Capture. Record senior-tech jobs, mark teachable moments, debrief after the job, publish reviewed training cards, and measure apprentice transfer.
+**Buyer:** multi-site HVAC operator, consolidator, franchise network, or regional service director. Not a solo shop. Not the apprentice.
 
----
+## 1. Pilot Thesis
 
-> **⚠️ Reframe (2026-05-29):** This plan predates the wedge reframe. The **buyer is a multi-site operator / consolidator** (ARS, CoolSys, Service Champions, franchise networks), **not a solo shop**, and the sell is **callback reduction + retiring-expert capture + faster time-to-billable**, not generic "apprentice ramp." The original solo-shop target list (§2) and per-apprentice pricing (§7) are **superseded**; first motion is a **60-day paid concierge pilot** with one operator + one retiring senior tech. Sections below are being migrated; treat superseded blocks as reserve research until rewritten. Source: `~/.gstack/projects/evodemanirahari/evodemanirahari-act-capture-design-20260529-115431.md`.
+ACT is not a live copilot. It is a company-specific expertise capture system.
 
----
+The buyer problem is not "make training content." The buyer problem is that callbacks, slow new-hire ramp, and retiring senior techs all leak money from the same place: hard-won field judgment that never becomes reusable company knowledge.
 
-## 1. What we are selling
+The pilot proves one claim:
 
-> Capture how your best techs diagnose your hardest jobs — before they retire — and turn it into company-specific training that cuts callbacks and gets new hires billable on your own install base.
+> In 60 days, ACT can turn real senior-tech jobs into a reviewed training library that helps new or junior techs make better next-step and hazard-ID decisions on the operator's own equipment mix.
 
-We are **not** selling AI that tells techs what to do, and we are **not** selling generic apprentice training (that is the incumbent Interplay's hill). We are selling, to a multi-site operator, **fewer callbacks on their own install base**, **faster time-to-billable for new hires**, and **preservation of senior expertise** — the company-specific institutional knowledge that walks out the door when a 30-year master retires.
+## 2. Ideal Design Partner
 
-Concretely, the pilot delivers:
+Start with one paid concierge pilot. Do not spread across several small shops.
 
-- **20 captured expert jobs** turned into **50 reviewed training cards** over a 6-week window.
-- Each card = short clip + the expert's *why* + the novice trap + the safety boundary + a quiz.
-- A measurable improvement in apprentice hazard ID and next-step decisions, pre/post.
+Target profile:
 
-What the buyer (ops director / regional service director at a multi-site operator) hears: *"In 60 days you'll have a library, captured from your own senior tech, that makes a new hire notice what your best tech notices on your own accounts — and you'll see it in callbacks and time-to-billable."*
+1. Multi-site or multi-truck HVAC operator with service volume high enough that callbacks and ramp time matter.
+2. Ops director, regional service director, service manager, or training owner with budget or direct influence over callback/ramp metrics.
+3. At least one senior tech with 10+ years of field judgment who is willing to be recorded on real jobs.
+4. At least two apprentices, helpers, or early-career techs who can use the cards during the measurement window.
+5. Access to callback, first-time-fix, and time-to-billable signals, even if the baseline is imperfect.
 
----
+Good first targets:
 
-## 2. Target design partner
+- ARS / Rescue Rooter regional branches
+- CoolSys regional service teams
+- Service Champions and similar regional operators
+- One Hour Heating & Air Conditioning franchise groups
+- Private-equity rollups with branch-level training pain
 
-We want **one paid concierge-pilot partner** to start: a **multi-site operator or consolidator**, not a solo shop. Criteria, in order:
+Solo shops are useful for discovery and referral paths, but they are not the pilot buyer.
 
-1. **Multi-site / multi-truck operator** (regional branch network, consolidator, or multi-location franchise) where slow ramp and callbacks scale across many techs. This is the buyer profile.
-2. **A reachable human with budget** — ops director, regional service director, or service manager who owns the ramp/callback P&L. Not a careers page.
-3. **Has ≥1 senior or retiring tech (10+ years)** willing to be recorded on real jobs. This is the gating constraint.
-4. **New hires / apprentices** who can be the learning target, and **callback / first-time-fix data** we can baseline against to prove ROI.
-5. **Diagnostic-heavy** residential or commercial service work — high variability per call yields richer teachable moments than pure changeouts/new-construction.
+## 3. Commercial Offer
 
-### Candidate list — ⚠️ SUPERSEDED (old solo-shop frame; kept as reserve research)
+**Offer:** 60-day paid concierge pilot.
 
-> The list below targets **solo shops**, which the 2026-05-29 reframe rules out as the buyer. Retained as reserve research / possible referral sources, **not** the primary target. Primary targets are now multi-site operators (ARS/Rescue Rooter, CoolSys, Service Champions, One Hour and franchise networks) — see the design doc for the ICP rationale.
+Pilot structure:
 
-| # | Company | Contact | Source | Why a fit | Status |
-|---|---|---|---|---|---|
-| 1 | Cal State HVAC — Hillsborough / SF Bay Area | Owner / training lead via (650) 342-5556 | [calstatehvac.com](https://www.calstatehvac.com/) | Family-owned; residential + light commercial from SF to San Jose; says techs get comprehensive owner-led training before joining the team. Strongest match to "senior teaches juniors." | priority outreach |
-| 2 | North Breeze HVAC & Refrigeration — Los Gatos / South Bay | Owner / service lead via info@northbreezehvac.com or (408) 581-2241 | [northbreezehvac.com](https://northbreezehvac.com/about/) | Local, licensed C-20 + C-38 shop covering residential, commercial HVAC, and refrigeration. 15 years field background + diagnostic/service breadth make for richer teachable moments than simple changeouts. | priority outreach |
-| 3 | WISE Cooling & Heating — Greater Phoenix | Owner / lead-service-tech hiring contact via careers page | [wisecoolingandheating.com](https://wisecoolingandheating.com/careers/) | Family-owned Phoenix shop; current lead-tech role explicitly includes diagnosing residential/light-commercial systems and mentoring less-experienced techs. This is almost exactly the ACT capture motion. | priority outreach |
-| 4 | Dali Heating and Air Conditioning — Las Vegas | Owner / careers contact via website | [dalicools.com](https://dalicools.com/careers/) | Family-owned Las Vegas HVAC company; hiring HVAC service technicians; states ongoing training, certification support, and advancement opportunities. Good reserve if Phoenix/Bay Area leads stall. | reserve |
-| 5 | We Care Air — Las Vegas | Owner-operator via (702) 272-2348 | [wecareairlv.com](https://www.wecareairlv.com/) | Family-owned / owner-operated; no-commission diagnostic positioning; public examples emphasize finding refrigerant leaks and hands-on troubleshooting. Good fit for tacit-judgment cards. | reserve |
+- 6 weeks of active capture and review
+- 4 weeks of measurement and operator readout
+- One region or branch
+- One senior tech as the primary capture source
+- One lead reviewer, which may be the same senior tech for pilot speed
+- Two to five apprentices or early-career techs as learners
 
-**Verification call rule:** do not count a candidate as a real design partner until the first call confirms (1) at least one senior tech is willing to be recorded, (2) at least two apprentices/new hires can use the cards, (3) residential/light-commercial diagnostic work is a meaningful part of weekly volume, and (4) they are comfortable with the consent workflow.
+Pilot target:
 
-**How to find them:**
-- HVAC Reddit, /r/HVAC, /r/HVACAdvice — DM owners who post about training pain
-- Local ACCA + HARDI chapter meetings
-- Existing electrical-side crew relationship from `project_act_customer_discovery` — ask which HVAC contractors they sub to or refer
-- LinkedIn: "Owner / GM, HVAC contractor, < 50 employees, San Francisco Bay Area / Phoenix / Las Vegas"
+- 20 captured expert jobs
+- 50 reviewed and published training cards
+- Pre/post scenario assessment for each learner
+- Callback/ramp readout against the operator's available baseline
 
----
+Pricing signal:
 
-## 3. Outreach script
+- Flat pilot fee around $4k to $5k
+- Refund or credit if fewer than 30 reviewed cards are published for reasons inside ACT's control
+- Post-pilot expansion priced per tech seat or per branch, justified against callback reduction and ramp time
 
-### Cold message (text or LinkedIn DM, ~80 words)
+## 4. Product Loop Under Test
 
-> Hey [Name], I work with multi-site HVAC operators on a problem you already track: callbacks and the months it takes a new hire to get billable on your own accounts. We capture how your senior techs actually diagnose your hardest jobs — the shortcuts, the novice traps, the safety calls that live in their head — and turn it into short training your new hires practice with, before that senior tech retires. No writing required. 60-day paid pilot, one region. Worth a 20-min call to see if it's a fit?
+The pilot tests this exact loop:
 
-### First call (20 min — qualify, don't sell)
+1. **Record:** senior tech starts capture at the beginning of a diagnostic job.
+2. **Mark:** senior tech taps Mark when a teachable moment happens.
+3. **Process:** backend extracts transcript, frames, and proposed moments.
+4. **Review evidence:** lead reviewer sees timestamp, transcript, frame evidence, score, and safety flags.
+5. **Debrief after the job:** ACT asks the expert for the reasoning, novice trap, and safety boundary.
+6. **Compile:** ACT turns approved evidence and expert answers into a draft card.
+7. **Safety review and publish:** reviewer approves before the card enters the apprentice library.
+8. **Learn:** apprentice studies card and completes quiz/interactions.
+9. **Measure:** training events and job outcomes show whether transfer is happening.
 
-1. (3 min) Their training pain today. *How do you onboard a new tech? What part costs you the most time?*
-2. (5 min) The wedge. *Walk through the capture loop in 3 sentences.* "Senior tech records, taps Mark on teachable moments, answers 3 questions later. We turn it into apprentice cards."
-3. (5 min) What they would pay for. *Make the pain a number: what does a callback cost you, how many new hires did you lose in the first 90 days last year, how long until a new hire is billable? Is moving those numbers worth a paid pilot?*
-4. (4 min) Fit check. Do they have ≥1 senior + ≥2 apprentices? Is the senior willing? Are they OK with consent on residential calls?
-5. (3 min) Next step. Schedule the in-person kickoff if they're in.
+Everything important happens after the job. ACT does not tell a tech what to do live in the field.
 
-**If they push back on AI:** *"We are not asking AI to tell your tech what to do. The AI's job is to listen to what your tech already says, find the moments worth keeping, and ask a follow-up question after the job. Your tech approves everything."*
+## 5. Weekly Operating Cadence
 
-**If they push back on recording:** *"The senior tech owns the marks. Nothing gets published without their approval. We can blur faces and customer-identifying details before any card leaves your shop."*
+### Week 0 - Setup
 
-### Pilot agreement (signed before kickoff)
+- Confirm operator sponsor, senior tech, reviewer, and learner roster.
+- Install the mobile app on the senior tech's device.
+- Run one practice capture in the shop.
+- Confirm consent script and customer-facing recording language.
+- Capture baseline: callbacks, first-time-fix, and learner scenario scores.
 
-- **Term:** 6 weeks of active capture + 4 weeks of measurement.
-- **Price:** $500 / week / shop during capture, $0 during measurement. Refund if < 30 reviewed cards published.
-- **Roles:** The **senior tech being recorded is also the lead tech** for the pilot — they approve their own moments and edit their own questions. Single neck-to-wring, fastest feedback. Post-pilot we can split the lead-tech role out to a GM or designated trainer.
-- **Data:** Their recordings, their cards. We retain anonymized rule-engine outputs for product improvement. Nothing leaves the shop without senior tech approval.
-- **Exclusivity:** No exclusivity. They can stop at any time. We can publish anonymized aggregate metrics for marketing.
+### Weeks 1-6 - Capture and Review
 
----
+Senior tech:
 
-## 4. Capture week — what actually happens
+- Records 2 to 4 diagnostic jobs per week.
+- Marks teachable moments live.
+- Uploads recordings by end of day on reliable network.
+- Answers debrief questions after the job by voice or text.
 
-| Day | Activity | Owner |
-|---|---|---|
-| **Monday** | Kickoff. 90 min on-site. Install dev-client on senior tech's phone (Android APK or iOS via TestFlight). Walk through Mark button. Run one practice capture in the shop. | Evode + senior tech |
-| Mon–Fri | Senior tech records 2-3 jobs/day. Marks teachable moments live. Uploads at end of day on shop wifi. | Senior tech |
-| End of Wed | Mid-week check-in (10 min phone call). Anything broken? Anything annoying about the flow? | Evode |
-| Daily | Backend processes recordings overnight. Moments + draft questions appear in the lead-tech review queue by morning. | act-api |
-| Tue–Sat | Lead tech (could be the senior or shop GM) approves/edits moments, sends 3-5 questions back to the senior tech. Senior tech answers via in-browser voice recorder. | Lead tech + senior |
-| **Saturday** | Wrap-up call (20 min). Review the week's published cards. Decide if anything needs to change before Week 2. | Evode + lead tech |
+Reviewer:
 
-**Per-week target:** 4 captured jobs → 8-12 reviewed moments → 5-8 published training cards.
-**Six-week total target:** 20 captured jobs → 50 published training cards.
+- Reviews proposed moments daily or every other day.
+- Rejects noise quickly.
+- Confirms safety-sensitive moments before publish.
+- Publishes only cards that match company-approved practice.
 
----
+ACT:
 
-## 5. Metrics
+- Produces evidence-first proposed moments.
+- Generates expert debrief questions.
+- Compiles draft cards.
+- Logs apprentice usage and job outcomes.
 
-Tied to the schemas in act-api so they fall out of the existing dashboards.
+### Weeks 7-10 - Measurement
 
-### Leading indicators (captured during pilot)
+- Apprentices complete the same scenario assessment used at baseline, with randomized order.
+- Operator reviews callback and first-time-fix deltas where data exists.
+- Sponsor interview decides whether ACT expands, pauses, or changes scope.
 
-| Metric | Source | Target |
-|---|---|---|
-| Expert approval rate | approved Moments / proposed Moments (`Moment.status`) | ≥ 60% — proves the rule engine is finding real moments, not noise |
-| Question usefulness | mean expert rating on each `ElicitationQuestion` (1-5) | ≥ 4.0 — proves the question generator is asking what experts want to answer |
-| Senior tech time per job | self-reported minutes from senior tech | ≤ 5 min / captured job on top of normal job time |
-| Published cards / week | count of `KnowledgeObject` rows with `status='published'` | ≥ 5 / week |
-| Card completion rate | `training_events` where `event_type='quiz_completed'` / `event_type='viewed'` | ≥ 50% — proves apprentices actually engage |
+## 6. Pilot Metrics
 
-### Lagging indicators (apprentice transfer — Weeks 7-10)
+### Leading Indicators
 
-Each apprentice takes a **scenario assessment** in Week 0 (pre-pilot) and Week 10 (post-pilot). Same 15 HVAC scenarios both times, randomized order.
+| Metric | Target | Why it matters |
+|---|---:|---|
+| Expert approval rate | >= 60% | Proposed moments are real signal, not noise |
+| Published cards per week | >= 5 | Capture loop is producing reusable objects |
+| Senior-tech extra time | <= 5 min per job | Workflow is light enough to survive real field work |
+| Apprentice card completion | >= 50% | Learners actually engage |
+| Debrief completion rate | >= 70% of approved moments | Expert reasoning is being captured, not just video |
 
-**Sourcing (locked 2026-05-25):** Hybrid. Evode drafts **10 scenarios** from public HVAC training material (ACCA, Carrier University, NATE practice banks) covering core no-cool / no-heat / airflow / electrical / refrigerant traps. A known senior tech is paid **$300–500** to write **5 high-tacit-judgment scenarios** — the kind of "I just knew" calls that don't show up in textbooks. Hybrid keeps the Week 0 baseline shippable while still capturing the moment-of-judgment patterns the pilot is meant to surface.
+### Lagging Indicators
 
-1. "Frost on the suction line, 78°F return — what's your next reading?" (correct: airflow before charge)
-2. "Compressor hums 5 sec then trips on overload — what do you check first?" (correct: run cap microfarads)
-3. "Subcool of 3 on a TXV system — what does that tell you?" (correct: low charge)
-4. (...12 more — 7 more from Evode + 5 from the commissioned senior tech)
+| Metric | Target | Why it matters |
+|---|---:|---|
+| Scenario score improvement | >= 25% mean lift | Cards transfer judgment, not just facts |
+| Hazard-ID score improvement | >= 30% mean lift | Safety boundaries are landing |
+| First-time-fix change | Directionally positive | Buyer value connects to operating metrics |
+| Callback change | Directionally positive | Buyer can justify rollout |
+| Expansion intent | Paid branch or seat expansion | Pilot has commercial pull |
 
-| Metric | Source | Target |
-|---|---|---|
-| Apprentice scenario score Δ | (Week 10 score − Week 0 score) / Week 0 score, per apprentice | ≥ +25% mean improvement |
-| Hazard-ID accuracy Δ | subset of scenarios that are safety-boundary moments | ≥ +30% mean improvement |
-| First-time-fix rate Δ | from `JobOutcome.first_time_fix` rows in pilot vs prior 90 days | ≥ +5 percentage points (noisy — directional) |
-| Buyer value | "Would you roll this out per-seat across the region to continue?" | Operator commits to a paid per-seat rollout (signal $50+/tech/month), justified against callback + ramp savings |
+Do not optimize for AI response count, recording length, or real-time answer accuracy. Those are not the product.
 
-### Anti-metrics (things we explicitly are NOT optimizing for)
+## 7. Trust, Consent, and Safety
 
-- Number of AI responses generated → meaningless if not approved
-- Real-time accuracy → not a real-time product
-- Capture session length → longer ≠ better
+Trust is part of the product surface.
 
----
+Built or in progress:
 
-## 6. Trust, consent, safety
+- Senior tech controls capture and mark points.
+- `do_not_share` consent blocks capture usage.
+- Redaction backend services exist.
+- Review queue blocks unreviewed publishing.
+- Safety review gates publishing.
+- Apprentice events require correct learner identity when available.
+- Published-card Ask ACT answers only from reviewed library content.
 
-These are product features, not legal footnotes.
+Still needed before a serious paid pilot:
 
-| Risk | Product response | Status |
-|---|---|---|
-| Tech feels surveilled | Senior tech owns marks + approvals. No individual performance scoring during pilot. | ✅ Built |
-| Customer privacy | `Recording.consent_state` defaults to `internal_training`. Future redaction workflow. | ⚠️ Defaulted; redaction UX = TODO |
-| Unsafe AI instruction | Training cards require lead-tech approval before publish. Real-time advisory only, never authoritative. | ✅ Built (admin review queue) |
-| Code variability | Cards tagged with state/local jurisdiction. Mark as "company-approved", not "code-approved". | ⚠️ Tagging field exists; jurisdiction UX = TODO |
-| Bad capture quality | Reviewers can reject unusable clips. | ✅ Built |
-| Trade resistance | Credit the master by name in the card. Mentorship framing, not replacement. | ✅ Copy uses "your best tech" framing |
-| Interruption policy | `do_not_interrupt` flag on Moments. Questions queued for post-job. Brazing / vacuum / driving windows blocked. | ✅ Built (PR #4 hardening) |
+1. **Redaction UX:** reviewer can request source redaction from the review surface and see recording redaction state. Purge remains an admin/backend action.
+2. **Jurisdiction/company-approved label:** cards should visibly say "company-approved" and show jurisdiction when present.
+3. **Consent artifact:** one-page customer-facing recording card and operator agreement clause.
+4. **Reviewer accountability:** published cards should show who approved them and when.
+5. **CI gate:** every push should run lint, typecheck, tests, and build.
 
-### Consent script for the senior tech (give to them before Day 1)
+## 8. Outreach Script
 
-> Before any video leaves your shop, you have to approve it. The Mark button only saves the moment — the camera was already running, that's not new. The system asks you 3 short questions when you're off the job. You can delete any moment, edit any question, or pull a card before it goes to an apprentice. Nothing publishes without you.
+Short version:
 
-### Consent script for the customer (residential — printed card to leave on the truck)
+> We help HVAC operators capture the judgment of senior techs before it walks out the door. A senior tech records real diagnostic jobs, taps Mark on teachable moments, and answers a few questions after the job. ACT turns that into reviewed training cards for your new techs, tied back to callbacks and ramp time. We are not telling techs what to do live. We are preserving how your best techs think on your own accounts.
 
-> Your tech is part of a training program. Their phone is recording the work area to help train newer techs. We do not record inside private rooms or capture identifying information. If you would prefer they stop recording on this visit, just ask — there's no impact on your service.
+Fit questions:
 
-**Legal floor (locked 2026-05-25):** Before Week 1, the consent card + pilot agreement go to a contracts paralegal for a one-shot template review ($200–500). Goal is not a full lawyer pass — it is a defensible artifact that addresses CA/AZ/NV two-party recording rules and the AI/training-data use clause specifically. If the paralegal flags a state-specific issue, we ship a state-tagged variant of the card.
+1. How long until a new service tech is trusted on diagnostic calls?
+2. Which callback categories are most expensive right now?
+3. Who is the senior tech everyone calls when a job gets weird?
+4. Would that person tolerate recording if they controlled what gets published?
+5. Can you give us two apprentices and a callback baseline for 60 days?
 
----
+## 9. Go / No-Go Criteria
 
-## 7. Pricing & commercial framing
+Go forward if:
 
-**Concierge pilot:** a single multi-site operator, 60-day engagement. Flat pilot fee (signal ~$4–5k) covering capture of ~20 jobs into company-specific cards plus the callback/ramp measurement. One operator, not three solo shops.
+- Senior tech records at least 12 jobs in the first 3 weeks.
+- Reviewer publishes at least 15 cards by the midpoint.
+- Expert approval rate stays above 50%.
+- Apprentices complete cards without hand-holding.
+- Operator sponsor can name the operating metric they want ACT to move.
 
-**Post-pilot price (signaled, not committed):** per-seat across the operator's tech base (signal $50–100 / tech / month). The buyer is the multi-site operator; the price scales with tech headcount and is justified against the callback dollar (~$650/callback) and time-to-billable, not against apprentice count.
+Stop or re-scope if:
 
-**Why this works:**
-- A per-seat fee is a rounding error against one avoided callback per tech per quarter. Easy ROI math the operator already tracks.
-- The concierge pilot price is high enough that the operator takes it seriously and low enough that one operator is realistic for a single-founder push.
-- We give one full refund clause (< 30 cards) to remove buyer risk.
+- Senior tech will not record real jobs.
+- Review queue fills with unusable or unsafe moments.
+- Cards are generic textbook material instead of company-specific judgment.
+- Apprentices do not engage.
+- Operator sees the output as "interesting content" but not callback/ramp leverage.
 
----
+## 10. Engineering Priorities For Pilot Readiness
 
-## 8. Timeline
+Priority order:
 
-| Week | Milestone | Owner |
-|---|---|---|
-| Week 0 (now, 2026-05-25) | Finalize this doc. Apple Developer enrollment (in progress). Real-iPhone build verified. | Evode |
-| Week 1 | First 5 outreach DMs sent. Aim: 2 qualified calls. | Evode |
-| Week 2 | 1 signed concierge-pilot agreement. New-hire pre-pilot assessments administered; callback baseline pulled. | Evode + 1 operator |
-| **Weeks 3–8** | Capture weeks 1–6 (6 weeks of active capture, see §4). | All |
-| Weeks 9–10 | Measurement — new-hire post-pilot assessments, callback/ramp delta, operator interview, churn / continue decision. | Evode + 1 operator |
-| Week 11 | Pilot retro. Decide commercial structure for Round 2. | Evode |
+1. Keep the review/debrief/publish path tight and safe.
+2. Add CI so regressions are caught before demos.
+3. Ship redaction and jurisdiction/company-approved UX.
+4. Make the weekly operator report visible from existing metrics.
+5. Defer generic KB expansion until real captured cards expose gaps.
 
----
-
-## 9. What kills the pilot
-
-Things we have to watch and respond to:
-
-- **No senior tech will agree to be recorded.** Mitigation: lead with the "credit the master" framing. Show the admin review queue — they own the publish button.
-- **Manual marks dry up after Day 2.** Mitigation: mid-week check-in catches this. If the Mark button is friction, fix it before Week 2.
-- **New hires ignore the cards.** Mitigation: ship the Learn tab with quiz scoring + streak. Make completion visible to the operator / service manager.
-- **Cards don't transfer (Week 10 score = Week 0 score).** Mitigation: this is the existential question. If transfer is zero we have a design problem in the cards themselves, not the capture loop.
-- **Operator won't pay post-pilot.** Mitigation: the operator interview at Week 9 surfaces this before we ask. If they say "interesting but not worth a per-seat rollout," we re-price or re-scope against the callback/ramp delta.
-
----
-
-## 10. Decisions locked (2026-05-25)
-
-- [x] **Scenario sourcing:** Hybrid — Evode drafts 10, commissions 5 from a paid senior tech ($300–500). See §5.
-- [x] **Consent legal floor:** Paid paralegal template review ($200–500) before Week 1, not a full lawyer pass. See §6.
-- [x] **Pricing:** $500/wk paid pilot with refund-if-<30-cards clause. No free-for-case-study variant. See §3 / §7.
-- [x] **Lead tech role (pilot only):** The senior tech being recorded IS the lead tech. Single neck-to-wring. See §3.
-
-### Final open item locked
-
-- [x] **Which 3 contractors specifically?** First-pass target list is in §2. Start with Cal State HVAC, North Breeze, and WISE; keep Dali and We Care Air as reserves. Method for Week 1: (a) ask the existing electrical crew which HVAC contractors they sub to or refer, (b) send the 5 DMs/calls above, (c) one ACCA-chapter intro in Bay Area / Phoenix. Aim for 5 quality leads → 3 signed.
-
----
-
-*This doc is the source of truth for pilot execution. Update it as we go. When the migration ledger in [project_act_trade_wedge](../.claude/projects/-Users-evodemanirahari/memory/project_act_trade_wedge.md) says "pilot complete," that means the §5 lagging indicators are measured and recorded here.*
+The product wins by capturing real operator-specific judgment. Anything that makes ACT look like generic HVAC chat or live advice is a regression.

@@ -18,12 +18,13 @@ import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
-import type { MomentOut } from '../api/captureApi';
+import type { MomentOut, ReviewQueueItem } from '../api/captureApi';
 import type {
   ElicitationQuestion,
   KnowledgeObject,
 } from '../api/libraryApi';
 import ReviewDebriefPanel, { type DebriefStep } from './ReviewDebriefPanel';
+import DebriefVoiceAgent from './DebriefVoiceAgent';
 import { selectEvidenceMedia } from './reviewEvidence';
 
 export type ReviewMomentCardProps = {
@@ -42,6 +43,11 @@ export type ReviewMomentCardProps = {
   onReject: () => void;
   onNeedsInfo: () => void;
   onOpenCard: (card: KnowledgeObject) => void;
+  /** Guided voice debrief mode, owned by the screen so only one agent is open. */
+  voiceDebriefOpen: boolean;
+  expertUserId?: string | null;
+  onToggleVoiceDebrief: () => void;
+  onVoiceDebriefComplete: () => void;
   /** Debrief loop actions (wired to the API clients in the screen). */
   onGenerateQuestion: () => void;
   onSubmitAnswer: (questionText: string, answerText: string) => void;
@@ -63,6 +69,10 @@ export default function ReviewMomentCard({
   onReject,
   onNeedsInfo,
   onOpenCard,
+  voiceDebriefOpen,
+  expertUserId,
+  onToggleVoiceDebrief,
+  onVoiceDebriefComplete,
   onGenerateQuestion,
   onSubmitAnswer,
   onSubmitAudioAnswer,
@@ -73,6 +83,7 @@ export default function ReviewMomentCard({
   const evidenceItems = useMemo(() => summarizeEvidence(moment.evidence_json), [moment.evidence_json]);
   const transcriptExcerpt = useMemo(() => extractTranscript(moment.evidence_json), [moment.evidence_json]);
   const evidenceMedia = useMemo(() => selectEvidenceMedia(moment), [moment]);
+  const contextItems = useMemo(() => reviewContextItems(moment), [moment]);
 
   const approved = moment.status === 'approved';
 
@@ -98,6 +109,20 @@ export default function ReviewMomentCard({
           <Text style={styles.scoreText}>{Math.round(moment.score)}</Text>
         </View>
       </View>
+
+      {contextItems.length > 0 ? (
+        <View style={styles.contextBand}>
+          <Text style={styles.contextBandLabel}>Company context</Text>
+          <View style={styles.contextRows}>
+            {contextItems.map((item) => (
+              <View key={item.key} style={styles.contextRow}>
+                <Text style={styles.contextLabel}>{item.key}</Text>
+                <Text style={styles.contextValue}>{item.value}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      ) : null}
 
       {/* Loud safety banner — lockout treatment */}
       {safety ? (
@@ -285,21 +310,77 @@ export default function ReviewMomentCard({
 
       {/* Debrief loop — visible after approve */}
       {approved ? (
-        <ReviewDebriefPanel
-          momentId={moment.id}
-          question={debriefQuestion}
-          draft={debriefDraft}
-          busyStep={debriefBusyStep}
-          published={debriefPublished}
-          answered={debriefAnswered}
-          voiceComplete={debriefVoiceComplete}
-          onGenerateQuestion={onGenerateQuestion}
-          onSubmitAnswer={onSubmitAnswer}
-          onSubmitAudioAnswer={onSubmitAudioAnswer}
-          onCompileDraft={onCompileDraft}
-          onPublish={onPublishDraft}
-          onOpenCard={onOpenCard}
-        />
+        <>
+          {!debriefPublished ? (
+            <View style={styles.debriefMode}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: !voiceDebriefOpen }}
+                onPress={() => {
+                  if (voiceDebriefOpen) onToggleVoiceDebrief();
+                }}
+                style={({ pressed }) => [
+                  styles.modeButton,
+                  !voiceDebriefOpen && styles.modeButtonActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    !voiceDebriefOpen && styles.modeButtonTextActive,
+                  ]}
+                >
+                  Manual
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: voiceDebriefOpen }}
+                onPress={() => {
+                  if (!voiceDebriefOpen) onToggleVoiceDebrief();
+                }}
+                style={({ pressed }) => [
+                  styles.modeButton,
+                  voiceDebriefOpen && styles.modeButtonActive,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.modeButtonText,
+                    voiceDebriefOpen && styles.modeButtonTextActive,
+                  ]}
+                >
+                  Guided voice
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+          {voiceDebriefOpen && !debriefPublished ? (
+            <DebriefVoiceAgent
+              momentId={moment.id}
+              expertUserId={expertUserId ?? null}
+              onComplete={onVoiceDebriefComplete}
+            />
+          ) : (
+            <ReviewDebriefPanel
+              momentId={moment.id}
+              question={debriefQuestion}
+              draft={debriefDraft}
+              busyStep={debriefBusyStep}
+              published={debriefPublished}
+              answered={debriefAnswered}
+              voiceComplete={debriefVoiceComplete}
+              onGenerateQuestion={onGenerateQuestion}
+              onSubmitAnswer={onSubmitAnswer}
+              onSubmitAudioAnswer={onSubmitAudioAnswer}
+              onCompileDraft={onCompileDraft}
+              onPublish={onPublishDraft}
+              onOpenCard={onOpenCard}
+            />
+          )}
+        </>
       ) : null}
 
     </View>
@@ -432,6 +513,26 @@ function formatEvidenceValue(value: unknown): string {
   }
 }
 
+function reviewContextItems(moment: MomentOut): EvidenceItem[] {
+  const item = moment as Partial<ReviewQueueItem>;
+  const equipment = [
+    item.system_type,
+    item.equipment_make,
+    item.equipment_model,
+  ].filter(isNonEmpty).join(' ');
+  return [
+    item.customer_site_label ? { key: 'Site', value: item.customer_site_label } : null,
+    equipment ? { key: 'Equipment', value: equipment } : null,
+    item.jurisdiction ? { key: 'Jurisdiction', value: item.jurisdiction } : null,
+  ]
+    .filter((entry): entry is EvidenceItem => entry != null)
+    .map((entry) => ({ key: entry.key, value: entry.value.slice(0, 120) }));
+}
+
+function isNonEmpty(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
 export function humanizeMomentType(value: string): string {
   return value
     .split(/[_-]/)
@@ -510,6 +611,37 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: fonts.monoSemibold,
     fontSize: 16,
+  },
+  contextBand: {
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    padding: 10,
+    gap: 8,
+  },
+  contextBandLabel: {
+    ...labelStyle,
+    color: colors.steel500,
+    fontSize: 10,
+  },
+  contextRows: { gap: 6 },
+  contextRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  contextLabel: {
+    width: 88,
+    color: colors.textMuted,
+    fontFamily: fonts.mono,
+    fontSize: 11,
+  },
+  contextValue: {
+    flex: 1,
+    color: colors.text,
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    lineHeight: 17,
   },
   safetyBanner: {
     borderRadius: 8,
@@ -744,6 +876,36 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontFamily: fonts.bold,
     fontSize: 14,
+  },
+  debriefMode: {
+    flexDirection: 'row',
+    minHeight: 44,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
+    backgroundColor: colors.surfaceAlt,
+    padding: 3,
+    gap: 3,
+  },
+  modeButton: {
+    flex: 1,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  modeButtonActive: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  modeButtonText: {
+    color: colors.textMuted,
+    fontFamily: fonts.bold,
+    fontSize: 12,
+  },
+  modeButtonTextActive: {
+    color: colors.text,
   },
   pressed: { opacity: 0.76 },
   disabled: { opacity: 0.5 },

@@ -19,7 +19,7 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#F97316",
+          "color": "#EA580C",
           "sounds": [],
           "iosDisplayInForeground": true
         }
@@ -31,17 +31,17 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.actguidance.app",
       "infoPlist": {
-        "NSUserNotificationUsageDescription": "ACT sends you a daily reminder to work on a hands-on project.",
-        "NSCameraUsageDescription": "ACT uses your camera to see what you're working on and give accurate guidance.",
-        "NSMicrophoneUsageDescription": "ACT uses your microphone so you can describe the job by speaking.",
-        "NSPhotoLibraryUsageDescription": "ACT can read photos from your library to help diagnose the job."
+        "NSUserNotificationUsageDescription": "ACT sends pilot reminders for capture review and training follow-up.",
+        "NSCameraUsageDescription": "ACT uses the camera to record approved HVAC job moments for internal training.",
+        "NSMicrophoneUsageDescription": "ACT uses the microphone to capture the senior tech's explanation during approved job recordings.",
+        "NSPhotoLibraryUsageDescription": "ACT can attach approved job photos to training cards when you choose them."
       }
     },
     "android": {
       "versionCode": 2,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#F97316"
+        "backgroundColor": "#EA580C"
       },
       "package": "com.actguidance.app",
       "permissions": [

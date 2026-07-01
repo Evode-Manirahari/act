@@ -72,6 +72,10 @@ export interface RecordingOut {
   trade: string;
   status: RecordingStatus;
   consent_state: ConsentState;
+  redaction_state: string;
+  redaction_reason: string | null;
+  redaction_requested_by: string | null;
+  redaction_requested_at: string | null;
   duration_s: number | null;
   bytes_uploaded: number | null;
   started_at: string | null;
@@ -159,6 +163,7 @@ export interface ReviewQueueItem extends MomentOut {
   equipment_make: string | null;
   equipment_model: string | null;
   customer_site_label: string | null;
+  jurisdiction: string | null;
 }
 
 export interface JobOutcomeOut {
@@ -266,6 +271,20 @@ export async function completeRecording(
       duration_s: input.durationSeconds ?? null,
       bytes_uploaded: input.bytesUploaded ?? null,
       ended_at: input.endedAt ?? null,
+    }),
+  });
+}
+
+export async function requestRecordingRedaction(input: {
+  recordingId: string;
+  reason?: string | null;
+  requestedBy?: string | null;
+}): Promise<RecordingOut> {
+  return jsonFetch<RecordingOut>(`/recordings/${input.recordingId}/redaction`, {
+    method: 'POST',
+    body: JSON.stringify({
+      reason: input.reason ?? null,
+      requested_by: input.requestedBy ?? null,
     }),
   });
 }
