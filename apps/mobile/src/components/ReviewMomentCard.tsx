@@ -18,6 +18,7 @@ import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
+import { radii } from '../design/tokens';
 import type { MomentOut, ReviewQueueItem } from '../api/captureApi';
 import type {
   ElicitationQuestion,
@@ -771,7 +772,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   metaPill: {
-    borderRadius: 999,
+    borderRadius: radii.sm, // squared instrument chip, matches ActPill
     backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 9,
     paddingVertical: 5,
