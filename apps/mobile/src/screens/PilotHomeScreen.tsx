@@ -159,7 +159,7 @@ export default function PilotHomeScreen() {
             {report.risks.slice(0, 2).map((risk) => (
               <View key={risk} style={styles.riskRow}>
                 <View style={styles.riskDot} />
-                <ActText variant="small" color="caution" style={styles.riskText}>
+                <ActText variant="small" color="caution" weight="medium" style={styles.riskText}>
                   {risk}
                 </ActText>
               </View>
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
   reportMetrics: {},
   riskRow: { flexDirection: 'row', gap: 9, alignItems: 'flex-start' },
   riskDot: { width: 6, height: 6, borderRadius: 1, backgroundColor: colors.caution, marginTop: 6 },
-  riskText: { flex: 1, fontWeight: '500' },
+  riskText: { flex: 1 },
   workflowBand: {
     minHeight: 80,
     paddingHorizontal: spacing.lg - 2,

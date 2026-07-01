@@ -2,6 +2,8 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
+import { radii } from '../design/tokens';
 
 
 export type UploadStatus =
@@ -38,17 +40,17 @@ function describe(status: UploadStatus): {
     case 'idle':
       return { label: 'Ready', tone: tones.idle };
     case 'recording':
-      return { label: `Recording • ${formatTime(status.seconds)}`, tone: tones.recording };
+      return { label: `Recording · ${formatTime(status.seconds)}`, tone: tones.recording };
     case 'saved_local':
       return {
         label:
           status.marks > 0
-            ? `Saved locally • ${status.marks} mark${status.marks === 1 ? '' : 's'}`
+            ? `Saved locally · ${status.marks} mark${status.marks === 1 ? '' : 's'}`
             : 'Saved locally',
         tone: tones.local,
       };
     case 'uploading':
-      return { label: `Uploading • ${status.remaining} pending`, tone: tones.uploading };
+      return { label: `Uploading · ${status.remaining} pending`, tone: tones.uploading };
     case 'uploaded':
       return { label: 'Uploaded', tone: tones.done };
     case 'processing':
@@ -56,7 +58,7 @@ function describe(status: UploadStatus): {
     case 'ready':
       return { label: 'Ready for review', tone: tones.done };
     case 'failed':
-      return { label: `Failed • ${status.reason}`, tone: tones.failed };
+      return { label: `Failed · ${status.reason}`, tone: tones.failed };
   }
 }
 
@@ -72,6 +74,9 @@ function formatTime(seconds: number): string {
 }
 
 
+// Token-mapped tones so the pill reads in the Field Instrument palette:
+// steel neutral (idle/local), loud error (recording/failed), caution amber
+// (uploading/processing), verified green (done). Borders match ActPill.
 const tones = {
   idle: {
     bg: colors.surfaceAlt,
@@ -80,10 +85,10 @@ const tones = {
     dot: colors.textLight,
   },
   recording: {
-    bg: '#FEE2E2',
-    border: '#FCA5A5',
-    text: '#B91C1C',
-    dot: '#DC2626',
+    bg: colors.errorLight,
+    border: '#EBC4C4',
+    text: colors.error,
+    dot: colors.error,
   },
   local: {
     bg: colors.surfaceAlt,
@@ -92,21 +97,21 @@ const tones = {
     dot: colors.primary,
   },
   uploading: {
-    bg: '#FEF3C7',
-    border: '#FCD34D',
-    text: '#92400E',
-    dot: '#F59E0B',
+    bg: colors.cautionLight,
+    border: '#F1D7A8',
+    text: colors.caution,
+    dot: colors.caution,
   },
   done: {
     bg: colors.successLight,
-    border: colors.success,
-    text: '#065F46',
+    border: '#BCE3C6',
+    text: '#0E6B30',
     dot: colors.success,
   },
   failed: {
-    bg: '#FEE2E2',
-    border: '#FCA5A5',
-    text: '#991B1B',
+    bg: colors.errorLight,
+    border: '#EBC4C4',
+    text: colors.error,
     dot: colors.error,
   },
 };
@@ -116,13 +121,19 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: radii.sm, // squared instrument chip, matches ActPill
     borderWidth: 1,
     gap: 6,
     alignSelf: 'flex-start',
   },
-  dot: { width: 8, height: 8, borderRadius: 4 },
-  text: { fontSize: 12, fontWeight: '700', flexShrink: 1, maxWidth: 220 },
+  dot: { width: 7, height: 7, borderRadius: 2 },
+  text: {
+    fontSize: 11.5,
+    fontFamily: fonts.monoSemibold, // mono readout for timers/counts
+    letterSpacing: 0.3,
+    flexShrink: 1,
+    maxWidth: 220,
+  },
 });
