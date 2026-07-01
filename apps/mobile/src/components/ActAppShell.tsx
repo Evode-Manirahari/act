@@ -1,5 +1,5 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { colors } from '../theme/colors';
@@ -14,14 +14,20 @@ import { fonts, labelStyle } from '../theme/typography';
  * docks above the safe-area inset.
  *
  * This is a field instrument, not a chat app: square-ish corners, steel
- * neutrals, one orange action color, mono instrument labels.
+ * neutrals, one orange action color, mono instrument labels. During capture,
+ * pass `recording` so the mode dot goes lockout-red and blinks — the whole app
+ * reads "live" the way a field recorder does.
  */
 export type ActAppShellProps = {
   /** Center mode pill, e.g. "Capture", "Review", "Training". */
   mode: string;
+  /** True while a recording is in flight — mode dot turns red + blinks. */
+  recording?: boolean;
   /** Top-right shortcut label, e.g. "Record". Omit to hide it. */
   rightLabel?: string;
   onRightPress?: () => void;
+  /** Dim the shortcut to steel when it's a low-emphasis jump (not the CTA). */
+  rightMuted?: boolean;
   /** Menu / history affordance (placeholder until the drawer lands). */
   onMenuPress?: () => void;
   /** Docked bottom bar (e.g. <ActBottomBar />). */
@@ -31,8 +37,10 @@ export type ActAppShellProps = {
 
 export default function ActAppShell({
   mode,
+  recording = false,
   rightLabel,
   onRightPress,
+  rightMuted = false,
   onMenuPress,
   bottomBar,
   children,
@@ -43,7 +51,7 @@ export default function ActAppShell({
         <View style={styles.side}>
           <MenuButton onPress={onMenuPress} />
         </View>
-        <ModePill label={mode} />
+        <ModePill label={mode} recording={recording} />
         <View style={[styles.side, styles.sideRight]}>
           {rightLabel ? (
             <Pressable
@@ -52,7 +60,9 @@ export default function ActAppShell({
               onPress={onRightPress}
               style={({ pressed }) => [styles.shortcut, pressed && styles.pressed]}
             >
-              <Text style={styles.shortcutLabel}>{rightLabel}</Text>
+              <Text style={[styles.shortcutLabel, rightMuted && styles.shortcutMuted]}>
+                {rightLabel}
+              </Text>
             </Pressable>
           ) : null}
         </View>
@@ -74,16 +84,39 @@ function MenuButton({ onPress }: { onPress?: () => void }) {
       style={({ pressed }) => [styles.menuButton, pressed && styles.pressed]}
     >
       <View style={styles.menuBar} />
-      <View style={styles.menuBar} />
+      <View style={[styles.menuBar, styles.menuBarShort]} />
       <View style={styles.menuBar} />
     </Pressable>
   );
 }
 
-function ModePill({ label }: { label: string }) {
+function ModePill({ label, recording }: { label: string; recording: boolean }) {
+  const blink = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!recording) {
+      blink.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(blink, { toValue: 0.25, duration: 650, useNativeDriver: true }),
+        Animated.timing(blink, { toValue: 1, duration: 650, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [recording, blink]);
+
   return (
     <View style={styles.modePill}>
-      <View style={styles.modeDot} />
+      <Animated.View
+        style={[
+          styles.modeDot,
+          recording && styles.modeDotRec,
+          recording && { opacity: blink },
+        ]}
+      />
       <Text style={styles.modeLabel}>{label}</Text>
     </View>
   );
@@ -113,6 +146,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   menuBar: { height: 2, borderRadius: 1, backgroundColor: colors.steel700 },
+  menuBarShort: { width: '70%' },
   modePill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -124,7 +158,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
-  modeDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.primary },
+  modeDot: { width: 7, height: 7, borderRadius: 3, backgroundColor: colors.primary },
+  modeDotRec: { backgroundColor: colors.error },
   modeLabel: { ...labelStyle, color: colors.steel700, fontSize: 11 },
   shortcut: {
     minWidth: 44,
@@ -135,6 +170,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   shortcutLabel: { color: colors.primary, fontSize: 15, fontFamily: fonts.semibold },
+  shortcutMuted: { color: colors.textLight },
   pressed: { opacity: 0.6 },
   main: { flex: 1 },
   bottom: {

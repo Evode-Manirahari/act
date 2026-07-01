@@ -45,12 +45,16 @@ export const MARK_CHIP_LABEL: Record<MarkType, string> = {
   counterfactual: 'Avoid',
 };
 
+// Field Instrument taxonomy: teachable=orange, safety=red, verify=green, and
+// sensory/counterfactual stay in the steel/ink family (no purple/sky) to hold
+// the "one action color, restraint" direction. Single source for both the
+// legacy MarkButton and the redesigned CaptureMarkButton.
 export const MARK_COLOR: Record<MarkType, string> = {
-  teachable: colors.primary,
-  safety: colors.error,
-  verification: colors.success,
-  sensory: '#8B5CF6',
-  counterfactual: '#0EA5E9',
+  teachable: colors.primary,   // #EA580C
+  safety: colors.error,        // #C81E1E
+  verification: colors.success,// #15803D
+  sensory: colors.steel500,    // #586170 (was #8B5CF6 purple)
+  counterfactual: colors.ink,  // #14181F (was #0EA5E9 sky)
 };
 
 interface Props {
