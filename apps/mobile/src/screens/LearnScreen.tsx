@@ -14,7 +14,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import ActAppShell from '../components/ActAppShell';
 import ActAskPanel from '../components/ActAskPanel';
 import ActBottomBar from '../components/ActBottomBar';
-import { getDemoContext } from '../api/captureApi';
+import { getPilotContext } from '../api/captureApi';
 import type { DemoContext } from '../api/captureApi';
 import { logTrainingEvent, searchLibrary } from '../api/libraryApi';
 import type { KnowledgeObject } from '../api/libraryApi';
@@ -56,7 +56,7 @@ export default function LearnScreen() {
     setLearnerLoading(true);
     setLearnerError(null);
     try {
-      setLearnerContext(await getDemoContext());
+      setLearnerContext(await getPilotContext());
     } catch (err) {
       setLearnerContext(null);
       setLearnerError(err instanceof Error ? err.message : 'apprentice identity failed');
