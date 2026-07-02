@@ -191,7 +191,8 @@ All endpoints are request/response — the SSE streaming surface went with the l
 Mobile-side only so far — the backend does not verify anything yet:
 - `apps/mobile/src/lib/supabase.ts` creates a Supabase client gated on `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`supabaseConfigStatus` from `lib/supabaseConfig.ts`). Both unset — the state today, no Supabase project exists yet — `PilotNavigator` renders the pilot stack as before (`/demo/session`). Partial or unparseable config **fails closed** to a config-error screen, as does a build with `EXPO_PUBLIC_REQUIRE_AUTH` set but no Supabase config (set that flag in the same EAS profile change that adds the Supabase vars). The gate decision is the pure `resolveAuthGate` in `src/navigation/authGateModel.ts` (tested).
 - Once configured, `PilotNavigator` requires a session and shows `LoginScreen` (email + password, invite-only, no sign-up) until one exists. PilotHome shows a "Signed in as … · Sign out" row when a session exists.
-- **Not yet done**: the FastAPI backend has no `CurrentUser`/JWT-verification dependency, so `/demo/session` and client-provided `user_id`/`account_id` (e.g. `createRecording`'s `userId`) are still trusted as-is even after mobile login. Account-scoped enforcement (deriving `user_id`/`account_id` from the verified token server-side, not the client) is a separate backend change, not yet implemented.
+- **Backend (Phase 3, act-api#38)**: `app/services/supabase_auth.py` verifies Supabase Bearer tokens (JWKS ES256/RS256 + legacy HS256), maps the token's email claim to the invite-only `users` row, and overrides client-provided actor ids with the verified identity. Env-gated like the mobile side: `SUPABASE_URL`/`SUPABASE_JWT_SECRET` unset (today) = auth off, behavior unchanged; `AUTH_REQUIRED=true` = anonymous requests rejected and `/demo/*` disabled.
+- **Not yet done (Phase 4)**: the mobile client does not attach its Supabase session token to `captureApi`/`libraryApi` calls yet, and backend list/detail queries are not account-scoped (the `_load_job_scoped(account_id)` seam in act-api `app/routes/jobs.py` is ready for it).
 - **Deferred (post-activation hardening, from the 2026-07-01 review)**: encrypt the persisted session (SecureStore-keyed storage adapter instead of raw AsyncStorage); keep `PilotStack` mounted (overlay login instead of unmount) so a `SIGNED_OUT` event mid-capture can't destroy an in-progress recording; map raw Supabase error strings to pilot-friendly copy on `LoginScreen`.
 
 ## Admin / Pilot Safety
@@ -268,3 +269,22 @@ Read **DESIGN.md** before any visual/UI work. ACT's system is "Field Instrument"
 lockout-style safety panel. Tokens live in `apps/mobile/src/theme/colors.ts` and
 `typography.ts`. Don't deviate without updating DESIGN.md. In QA, flag UI that
 doesn't match it.
+
+## Skill routing
+
+When the user's request matches an available skill, invoke it via the Skill tool. When in doubt, invoke the skill.
+
+Key routing rules:
+- Product ideas/brainstorming → invoke /office-hours
+- Strategy/scope → invoke /plan-ceo-review
+- Architecture → invoke /plan-eng-review
+- Design system/plan review → invoke /design-consultation or /plan-design-review
+- Full review pipeline → invoke /autoplan
+- Bugs/errors → invoke /investigate
+- QA/testing site behavior → invoke /qa or /qa-only
+- Code review/diff check → invoke /review
+- Visual polish → invoke /design-review
+- Ship/deploy/PR → invoke /ship or /land-and-deploy
+- Save progress → invoke /context-save
+- Resume context → invoke /context-restore
+- Author a backlog-ready spec/issue → invoke /spec
