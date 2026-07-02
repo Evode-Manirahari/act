@@ -44,6 +44,7 @@ This repo (`act/`) contains the mobile client only. The backend lives in a sibli
   - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
   - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
   - `src/screens/LearnScreen.tsx` — apprentice-facing learning surface backed by live reviewed cards
+- `apps/admin` — Next.js pilot admin (review queue, debrief answers, publish gate) behind the shared-password middleware; server-side client in `lib/api.ts`
 - `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
 - `../act-api/` — Python FastAPI backend (sibling repo, not a workspace member)
 
@@ -193,7 +194,8 @@ End-to-end wiring is in place across both repos; activation is config-only (no S
 - Once configured, `PilotNavigator` requires a session and shows `LoginScreen` (email + password, invite-only, no sign-up) until one exists. PilotHome shows a "Signed in as … · Sign out" row when a session exists.
 - **Backend (Phase 3, act-api#38)**: `app/services/supabase_auth.py` verifies Supabase Bearer tokens (JWKS ES256/RS256 + legacy HS256), maps the token's email to the invite-only `users` row, and overrides client-provided actor ids. Env-gated: `SUPABASE_URL`/`SUPABASE_JWT_SECRET` unset = auth off; `AUTH_REQUIRED=true` = anonymous rejected, `/demo/*` disabled.
 - **Phase 4 (act-api#39 + this repo)**: backend `GET /me` + account-scoped jobs/review-queue/library/dashboards; mobile attaches the session token to every API call (`src/lib/authToken.ts` → both `jsonFetch` helpers, the audio-answer upload, the dev-fallback recording upload; the presigned R2 PUT deliberately stays headerless) and bootstraps identity via `getPilotContext`/`createCaptureSession` (`/me` + real jobs when logged in, demo flow untouched otherwise).
-- **Not yet done**: per-object account scoping of the deep capture endpoints (recording detail/marks/frames by id) — single pilot account today, documented follow-up.
+- **Admin (Phase 4)**: `apps/admin/lib/actAuth.ts` — server-side service login (SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY / ADMIN_SUPABASE_EMAIL / ADMIN_SUPABASE_PASSWORD, all four together); every act-api call carries the admin user's token, and the topbar shows "acting as …" from `GET /me`. Any var unset (today) = anonymous, unchanged.
+- **Per-object account scoping** (act-api `app/services/scoping.py`): cross-tenant recording/moment/job ids 404 on the whole capture surface. Remaining: knowledge.py's question/answer/card-by-id routes — mechanical with the shared loaders.
 - **Deferred (post-activation hardening, from the 2026-07-01 review)**: encrypt the persisted session (SecureStore-keyed storage adapter instead of raw AsyncStorage); keep `PilotStack` mounted (overlay login instead of unmount) so a `SIGNED_OUT` event mid-capture can't destroy an in-progress recording; map raw Supabase error strings to pilot-friendly copy on `LoginScreen`.
 
 ## Admin / Pilot Safety
