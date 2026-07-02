@@ -4,6 +4,7 @@
  * Used by both server components (for SSR data fetches) and route handlers
  * (for client-driven mutations from the moment detail page).
  */
+import { getActAuthHeaders } from './actAuth';
 import { ACT_API_BASE } from './config';
 
 
@@ -17,6 +18,7 @@ export async function forwardMultipart<T>(path: string, form: FormData): Promise
     method: 'POST',
     body: form,
     cache: 'no-store',
+    headers: await getActAuthHeaders(),
   });
   if (!response.ok) {
     const body = await response.text().catch(() => '');
@@ -132,6 +134,7 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...(init?.headers ?? {}),
+      ...(await getActAuthHeaders()),
     },
     cache: 'no-store',
   });
@@ -145,7 +148,16 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 
+export interface MeOut {
+  user_id: string;
+  account_id: string;
+  email: string;
+  role: string;
+}
+
+
 export const api = {
+  me: () => json<MeOut>('/me'),
   reviewQueue: (status = 'proposed', limit = 50) =>
     json<MomentOut[]>(`/moments/review?status=${status}&limit=${limit}`),
   dashboardSummary: () => json<DashboardSummary>('/dashboard/summary'),
