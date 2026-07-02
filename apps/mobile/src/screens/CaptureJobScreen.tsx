@@ -46,7 +46,7 @@ import {
 import type { ConsentState, RecordingOut, RecordingStatus } from '../api/captureApi';
 import { captureQueue } from '../lib/offlineUploadQueue';
 import type { QueueItem } from '../lib/offlineUploadQueue';
-import { createDemoSession } from '../api/captureApi';
+import { createCaptureSession } from '../api/captureApi';
 import type { DemoSession } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 
@@ -111,13 +111,14 @@ export default function CaptureJobScreen() {
   const [consentState, setConsentState] = useState<ConsentState>('internal_training');
   const [lastRecordingId, setLastRecordingId] = useState<string | null>(null);
 
-  // Bootstrap a demo session on mount so the screen can create recordings.
-  // In a real pilot, user + job come from the auth/dispatch flow upstream.
+  // Bootstrap a capture session on mount so the screen can create recordings:
+  // a fresh job under the verified identity when logged in, the seeded demo
+  // session otherwise.
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       try {
-        const s = await createDemoSession();
+        const s = await createCaptureSession();
         if (!cancelled) setSession(s);
       } catch (err) {
         if (!cancelled) {

@@ -10,6 +10,7 @@
 // for presigned PUT + multipart in one call, so we use the legacy module.
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { getAuthHeaders, hasAuthSession } from '../lib/authToken';
 import { API_BASE } from '../lib/config';
 
 
@@ -46,6 +47,36 @@ export async function createDemoSession(): Promise<DemoSession> {
     throw new Error(`Session ${response.status}: ${body.slice(0, 200)}`);
   }
   return response.json();
+}
+
+/** The verified identity (act-api GET /me) — only meaningful with a session. */
+export async function getMe(): Promise<DemoContext> {
+  return jsonFetch<DemoContext>('/me', { method: 'GET' });
+}
+
+/**
+ * Identity for the pilot surfaces: the verified /me identity when logged in,
+ * the seeded demo context otherwise. Same shape either way, so screens don't
+ * care which world they're in.
+ */
+export async function getPilotContext(): Promise<DemoContext> {
+  return (await hasAuthSession()) ? getMe() : getDemoContext();
+}
+
+/**
+ * Start a capture session: a fresh job to record against, plus who's
+ * recording. Logged in, the job is created under the verified identity
+ * (the backend overrides the payload actor anyway); logged out, the
+ * pre-auth demo-session flow is unchanged.
+ */
+export async function createCaptureSession(): Promise<DemoSession> {
+  if (!(await hasAuthSession())) return createDemoSession();
+  const me = await getMe();
+  const job = await jsonFetch<{ id: string }>('/jobs', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: me.user_id }),
+  });
+  return { job_id: job.id, user_id: me.user_id, account_id: me.account_id, role: me.role };
 }
 
 
@@ -209,6 +240,7 @@ async function jsonFetch<T>(path: string, init: RequestInit): Promise<T> {
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...(init.headers ?? {}),
+      ...(await getAuthHeaders()),
     },
   });
   if (!response.ok) {
@@ -437,7 +469,9 @@ export async function uploadRecordingFile(
     return size;
   }
 
-  // Dev fallback — backend stores the bytes locally.
+  // Dev fallback — backend stores the bytes locally. Unlike the presigned PUT
+  // (whose signature an Authorization header must not touch), this hits an
+  // auth-enforced act-api route, so the session token rides along.
   const result = await FileSystem.uploadAsync(
     `${API_BASE}/recordings/${recordingId}/upload`,
     fileUri,
@@ -446,6 +480,7 @@ export async function uploadRecordingFile(
       uploadType: FileSystem.FileSystemUploadType.MULTIPART,
       fieldName: 'file',
       mimeType: contentType,
+      headers: await getAuthHeaders(),
     },
   );
   if (result.status >= 300) {

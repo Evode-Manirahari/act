@@ -12,7 +12,7 @@ import {
   type DashboardSummary,
   type PilotWeeklyReport,
 } from '../api/libraryApi';
-import { getDemoContext } from '../api/captureApi';
+import { getPilotContext } from '../api/captureApi';
 import { useAuthSession } from '../hooks/useAuthSession';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { ActCard, ActPill, ActScreen, ActText, colors, radii, shadows, spacing } from '../design';
@@ -44,7 +44,7 @@ export default function PilotHomeScreen() {
     let scopedAccountId = accountId;
     if (!scopedAccountId) {
       try {
-        const context = await getDemoContext();
+        const context = await getPilotContext();
         scopedAccountId = context.account_id;
         setAccountId(context.account_id);
       } catch {

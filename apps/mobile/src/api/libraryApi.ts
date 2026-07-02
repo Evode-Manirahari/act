@@ -3,6 +3,7 @@
  * Used by the Learn tab to browse published knowledge objects and log
  * training events when an apprentice attempts a quiz.
  */
+import { getAuthHeaders } from '../lib/authToken';
 import { API_BASE } from '../lib/config';
 
 
@@ -141,6 +142,7 @@ async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...(init?.headers ?? {}),
+      ...(await getAuthHeaders()),
     },
   });
   if (!response.ok) {
@@ -237,7 +239,7 @@ export async function submitExpertAudioAnswer(input: {
 
   const response = await fetch(`${API_BASE}/questions/${input.questionId}/answers/audio`, {
     method: 'POST',
-    headers: { Accept: 'application/json' },
+    headers: { Accept: 'application/json', ...(await getAuthHeaders()) },
     body: form,
   });
   if (!response.ok) {

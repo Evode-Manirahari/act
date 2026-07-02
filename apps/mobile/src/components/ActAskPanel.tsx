@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 import { askLibrary, type LibraryAskResponse } from '../api/libraryApi';
-import { getDemoContext } from '../api/captureApi';
+import { getPilotContext } from '../api/captureApi';
 import { colors } from '../theme/colors';
 import { fonts, labelStyle } from '../theme/typography';
 
@@ -35,7 +35,7 @@ export default function ActAskPanel({ visible, onClose, accountId }: Props) {
       let scopedAccountId = accountId ?? null;
       if (!scopedAccountId) {
         try {
-          scopedAccountId = (await getDemoContext()).account_id;
+          scopedAccountId = (await getPilotContext()).account_id;
         } catch {
           scopedAccountId = null;
         }
