@@ -13,7 +13,6 @@
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Platform,
   Pressable,
@@ -111,29 +110,9 @@ export default function CaptureJobScreen() {
   const [consentState, setConsentState] = useState<ConsentState>('internal_training');
   const [lastRecordingId, setLastRecordingId] = useState<string | null>(null);
 
-  // Bootstrap a capture session on mount so the screen can create recordings:
-  // a fresh job under the verified identity when logged in, the seeded demo
-  // session otherwise.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const s = await createCaptureSession();
-        if (!cancelled) setSession(s);
-      } catch (err) {
-        if (!cancelled) {
-          setStatus({
-            kind: 'failed',
-            reason: err instanceof Error ? err.message : 'session error',
-          });
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  // No job is created on mount. The job (and its session) materializes the
+  // moment the tech actually starts a capture — opening this screen must never
+  // leave an empty job behind in the operator's data.
   useEffect(() => {
     let cancelled = false;
     void AsyncStorage.getItem(LAST_RECORDING_KEY).then((id) => {
@@ -190,7 +169,6 @@ export default function CaptureJobScreen() {
   }, [camPerm, micPerm, requestCamPerm, requestMicPerm]);
 
   async function handleStart() {
-    if (!session) return;
     if (consentState === 'do_not_share') {
       Alert.alert('Recording blocked', 'Customer opted out. Do not start capture for this visit.');
       return;
@@ -200,9 +178,16 @@ export default function CaptureJobScreen() {
 
     try {
       setStatus({ kind: 'recording', seconds: 0 });
+      // First start on this screen: create the job now (verified identity when
+      // logged in, demo session otherwise). Reused for subsequent captures.
+      let activeSession = session;
+      if (!activeSession) {
+        activeSession = await createCaptureSession();
+        setSession(activeSession);
+      }
       const created = await createRecording({
-        jobId: session.job_id,
-        userId: session.user_id,
+        jobId: activeSession.job_id,
+        userId: activeSession.user_id,
         contentType: 'video/mp4',
         trade: 'hvac',
         consentState,
@@ -421,7 +406,7 @@ export default function CaptureJobScreen() {
     void captureQueue.flush();
   }
 
-  const canRecord = !!session && !!camPerm?.granted && consentState !== 'do_not_share';
+  const canRecord = !!camPerm?.granted && consentState !== 'do_not_share';
   const reviewRecordingId = recording?.id ?? lastRecordingId;
   const canReviewCurrent = status.kind === 'ready' && !!recording?.id;
   const blocked = consentState === 'do_not_share';
@@ -455,7 +440,7 @@ export default function CaptureJobScreen() {
         {/* ---- Status strip: job id + live status pill ---- */}
         <View style={styles.statusStrip}>
           <Text style={styles.jobLabel}>
-            {session ? `JOB ${session.job_id.slice(0, 8)}` : 'STARTING SESSION…'}
+            {session ? `JOB ${session.job_id.slice(0, 8)}` : 'NEW JOB ON START'}
           </Text>
           <UploadStatusPill status={pillStatus} />
         </View>
@@ -633,13 +618,11 @@ export default function CaptureJobScreen() {
             >
               {blocked ? (
                 <Text style={styles.startButtonText}>RECORDING BLOCKED</Text>
-              ) : session ? (
+              ) : (
                 <>
                   <Text style={styles.startButtonText}>START CAPTURE</Text>
                   <Text style={styles.startButtonDetail}>Camera + mic · 30 min max</Text>
                 </>
-              ) : (
-                <ActivityIndicator color="#fff" />
               )}
             </Pressable>
 
