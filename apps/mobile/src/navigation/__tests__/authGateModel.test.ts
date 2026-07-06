@@ -75,3 +75,52 @@ describe('pilot auth gate', () => {
     ).toBe('stack');
   });
 });
+
+describe('session loss mid-run (login overlay)', () => {
+  it('overlays the login instead of unmounting the stack when a session existed', () => {
+    expect(
+      resolveAuthGate({
+        configStatus: 'configured',
+        requireAuth: true,
+        loading: false,
+        hasSession: false,
+        hadSession: true,
+      }),
+    ).toBe('login-overlay');
+  });
+
+  it('cold start without a session is a plain login (nothing to protect)', () => {
+    expect(
+      resolveAuthGate({
+        configStatus: 'configured',
+        requireAuth: true,
+        loading: false,
+        hasSession: false,
+        hadSession: false,
+      }),
+    ).toBe('login');
+  });
+
+  it('hadSession defaults to false when omitted', () => {
+    expect(
+      resolveAuthGate({
+        configStatus: 'configured',
+        requireAuth: true,
+        loading: false,
+        hasSession: false,
+      }),
+    ).toBe('login');
+  });
+
+  it('a restored session renders the stack regardless of history', () => {
+    expect(
+      resolveAuthGate({
+        configStatus: 'configured',
+        requireAuth: true,
+        loading: false,
+        hasSession: true,
+        hadSession: true,
+      }),
+    ).toBe('stack');
+  });
+});

@@ -8,7 +8,7 @@ GBrain is installed for this ACT agent.
 
 - Codex MCP server: `gbrain`
 - Command: `/Users/evodemanirahari/.bun/bin/gbrain serve`
-- ACT source id: `gstack-code-act-b3325446`
+- ACT source id: `gstack-code-act-9d8865ff`
 - Repo policy: `read-write`
 - Worktree pin: `.gbrain-source` (ignored by git)
 

@@ -1,6 +1,6 @@
 import type { SupabaseConfigStatus } from '../lib/supabaseConfig';
 
-export type AuthGateState = 'stack' | 'loading' | 'login' | 'config-error';
+export type AuthGateState = 'stack' | 'loading' | 'login' | 'login-overlay' | 'config-error';
 
 export interface AuthGateInputs {
   configStatus: SupabaseConfigStatus;
@@ -10,6 +10,11 @@ export interface AuthGateInputs {
   requireAuth: boolean;
   loading: boolean;
   hasSession: boolean;
+  /** A session existed earlier in this app run. Losing it mid-use (refresh
+   * token revoked while the tech is in a basement, admin deactivation) must
+   * not unmount the pilot stack — an in-progress recording lives there.
+   * Defaults to false (cold start). */
+  hadSession?: boolean;
 }
 
 /**
@@ -19,6 +24,8 @@ export interface AuthGateInputs {
  * - misconfigured (partial env vars / unparseable URL) always fails closed
  * - unconfigured fails open to the demo flow only when the build doesn't
  *   demand auth; with requireAuth it fails closed
+ * - a session lost mid-run overlays the login on top of the still-mounted
+ *   stack ('login-overlay') instead of destroying it
  */
 export function resolveAuthGate(inputs: AuthGateInputs): AuthGateState {
   if (inputs.configStatus === 'misconfigured') return 'config-error';
@@ -26,5 +33,6 @@ export function resolveAuthGate(inputs: AuthGateInputs): AuthGateState {
     return inputs.requireAuth ? 'config-error' : 'stack';
   }
   if (inputs.loading) return 'loading';
-  return inputs.hasSession ? 'stack' : 'login';
+  if (inputs.hasSession) return 'stack';
+  return (inputs.hadSession ?? false) ? 'login-overlay' : 'login';
 }
