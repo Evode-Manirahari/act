@@ -7,8 +7,8 @@
  * chain compiles the training card automatically. Answer → done; no other
  * buttons, because the tech is standing in a parking lot between calls.
  */
-import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 
@@ -19,8 +19,13 @@ import {
   submitExpertAudioAnswer,
   type PendingDebriefItem,
 } from '../api/libraryApi';
-import { canSubmitDebriefAnswer } from './debriefModel';
-import { ActButton, ActCard, ActEmptyState, ActScreen, ActText, colors, radii, spacing } from '../design';
+import { canSubmitDebriefAnswer, debriefSubmissionNotice } from './debriefModel';
+import { ActButton, ActCard, ActEmptyState, ActInput, ActScreen, ActText, colors, radii, spacing } from '../design';
+
+type SubmittedDebrief = {
+  question: string;
+  momentId: string;
+};
 
 export default function DebriefScreen() {
   const [items, setItems] = useState<PendingDebriefItem[] | null>(null);
@@ -28,8 +33,10 @@ export default function DebriefScreen() {
   const [transcript, setTranscript] = useState('');
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [lastSubmitted, setLastSubmitted] = useState<SubmittedDebrief | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -44,6 +51,18 @@ export default function DebriefScreen() {
   useFocusEffect(
     useCallback(() => {
       void refresh();
+      return () => {
+        const activeRecording = recordingRef.current;
+        if (activeRecording) {
+          recordingRef.current = null;
+          setRecording(null);
+          void activeRecording.stopAndUnloadAsync().catch(() => undefined);
+        }
+        void Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+        }).catch(() => undefined);
+      };
     }, [refresh]),
   );
 
@@ -58,9 +77,11 @@ export default function DebriefScreen() {
     setError(null);
     try {
       if (recording) {
+        recordingRef.current = null;
         await recording.stopAndUnloadAsync();
         setAudioUri(recording.getURI());
         setRecording(null);
+        await Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true });
         return;
       }
       const perm = await Audio.requestPermissionsAsync();
@@ -73,9 +94,11 @@ export default function DebriefScreen() {
       await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await rec.startAsync();
       setAudioUri(null);
+      recordingRef.current = rec;
       setRecording(rec);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'recording failed');
+      recordingRef.current = null;
       setRecording(null);
     }
   }
@@ -90,6 +113,7 @@ export default function DebriefScreen() {
       } else {
         await submitExpertAnswer({ questionId: item.question_id, transcript: transcript.trim() });
       }
+      setLastSubmitted({ question: item.question, momentId: item.moment_id });
       setOpenId(null);
       setTranscript('');
       setAudioUri(null);
@@ -102,6 +126,7 @@ export default function DebriefScreen() {
   }
 
   const canSubmit = canSubmitDebriefAnswer({ transcript, audioUri, submitting });
+  const submittedNotice = lastSubmitted ? debriefSubmissionNotice(lastSubmitted.question) : null;
 
   return (
     <ActAppShell mode="Debrief">
@@ -109,6 +134,25 @@ export default function DebriefScreen() {
         <ActText variant="label" color="textMuted">
           QUESTIONS FROM YOUR REVIEWED MOMENTS
         </ActText>
+
+        {submittedNotice ? (
+          <ActCard tone="ok" accent="ok">
+            <ActText variant="label" color="success">
+              {submittedNotice.title}
+            </ActText>
+            <ActText variant="body" weight="semibold" style={styles.noticeBody}>
+              {submittedNotice.body}
+            </ActText>
+            {submittedNotice.detail ? (
+              <ActText variant="small" color="steel700">
+                {submittedNotice.detail}
+              </ActText>
+            ) : null}
+            <ActText variant="small" mono color="textMuted" style={styles.noticeMeta}>
+              MOMENT {lastSubmitted?.momentId.slice(0, 8)}
+            </ActText>
+          </ActCard>
+        ) : null}
 
         {items === null ? (
           <View style={styles.loading}>
@@ -153,12 +197,10 @@ export default function DebriefScreen() {
                   <ActText variant="small" color="textMuted">
                     or type it:
                   </ActText>
-                  <TextInput
-                    style={styles.input}
+                  <ActInput
                     value={transcript}
                     onChangeText={setTranscript}
                     placeholder="What told you? What would a newer tech get wrong?"
-                    placeholderTextColor={colors.textMuted}
                     multiline
                     editable={!submitting && !recording}
                   />
@@ -187,6 +229,8 @@ export default function DebriefScreen() {
 
 const styles = StyleSheet.create({
   loading: { paddingVertical: spacing.xl, alignItems: 'center' },
+  noticeBody: { marginTop: spacing.xs },
+  noticeMeta: { marginTop: spacing.sm },
   reason: { marginTop: spacing.xs },
   answerBlock: { marginTop: spacing.md, gap: spacing.sm },
   recordButton: {
@@ -197,13 +241,4 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   recordButtonLive: { backgroundColor: colors.primary },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    padding: spacing.sm,
-    minHeight: 88,
-    color: colors.text,
-    textAlignVertical: 'top',
-  },
 });
