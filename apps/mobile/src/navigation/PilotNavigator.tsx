@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -43,16 +43,21 @@ function PilotStack() {
  * an unauthenticated session shows LoginScreen instead; there is no public
  * sign-up, only invite-only accounts. Partial/invalid config, or a build
  * that sets EXPO_PUBLIC_REQUIRE_AUTH without Supabase vars, fails closed
- * (see authGateModel.ts).
+ * (see authGateModel.ts). A session lost mid-run overlays the login on the
+ * still-mounted stack so an in-progress capture is never destroyed.
  */
 export default function PilotNavigator() {
   const { session, loading } = useAuthSession();
+
+  const hadSessionRef = useRef(false);
+  if (session) hadSessionRef.current = true;
 
   const gate = resolveAuthGate({
     configStatus: supabaseConfigStatus,
     requireAuth,
     loading,
     hasSession: Boolean(session),
+    hadSession: hadSessionRef.current,
   });
 
   switch (gate) {
@@ -60,6 +65,15 @@ export default function PilotNavigator() {
       return <PilotStack />;
     case 'login':
       return <LoginScreen />;
+    case 'login-overlay':
+      return (
+        <View style={styles.flex}>
+          <PilotStack />
+          <View style={StyleSheet.absoluteFill}>
+            <LoginScreen />
+          </View>
+        </View>
+      );
     case 'loading':
       return (
         <View style={styles.loading}>
@@ -82,6 +96,7 @@ export default function PilotNavigator() {
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   loading: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
   configError: {
     flex: 1,

@@ -195,8 +195,8 @@ End-to-end wiring is in place across both repos; activation is config-only (no S
 - **Backend (Phase 3, act-api#38)**: `app/services/supabase_auth.py` verifies Supabase Bearer tokens (JWKS ES256/RS256 + legacy HS256), maps the token's email to the invite-only `users` row, and overrides client-provided actor ids. Env-gated: `SUPABASE_URL`/`SUPABASE_JWT_SECRET` unset = auth off; `AUTH_REQUIRED=true` = anonymous rejected, `/demo/*` disabled.
 - **Phase 4 (act-api#39 + this repo)**: backend `GET /me` + account-scoped jobs/review-queue/library/dashboards; mobile attaches the session token to every API call (`src/lib/authToken.ts` → both `jsonFetch` helpers, the audio-answer upload, the dev-fallback recording upload; the presigned R2 PUT deliberately stays headerless) and bootstraps identity via `getPilotContext`/`createCaptureSession` (`/me` + real jobs when logged in, demo flow untouched otherwise).
 - **Admin (Phase 4)**: `apps/admin/lib/actAuth.ts` — server-side service login (SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY / ADMIN_SUPABASE_EMAIL / ADMIN_SUPABASE_PASSWORD, all four together); every act-api call carries the admin user's token, and the topbar shows "acting as …" from `GET /me`. Any var unset (today) = anonymous, unchanged.
-- **Per-object account scoping** (act-api `app/services/scoping.py`): cross-tenant recording/moment/job ids 404 on the whole capture surface. Remaining: knowledge.py's question/answer/card-by-id routes — mechanical with the shared loaders.
-- **Deferred (post-activation hardening, from the 2026-07-01 review)**: encrypt the persisted session (SecureStore-keyed storage adapter instead of raw AsyncStorage); keep `PilotStack` mounted (overlay login instead of unmount) so a `SIGNED_OUT` event mid-capture can't destroy an in-progress recording; map raw Supabase error strings to pilot-friendly copy on `LoginScreen`.
+- **Per-object account scoping — complete** (act-api `app/services/scoping.py`, finished in act-api#42): cross-tenant recording/moment/job/question/answer/card ids 404 across the entire API; list routes can't enumerate another tenant's ids.
+- **Hardening (from the 2026-07-01 review, all done)**: session persisted encrypted (`src/lib/secureSessionStorage.ts` — AES key in the OS keychain via expo-secure-store, ciphertext in AsyncStorage); a session lost mid-run overlays `LoginScreen` on the still-mounted `PilotStack` (`login-overlay` gate state) so an in-progress capture is never destroyed; raw Supabase errors map to pilot-friendly copy (`friendlyAuthError` in `loginScreenModel.ts`).
 
 ## Admin / Pilot Safety
 
@@ -224,10 +224,9 @@ Use the `/browse` skill from gstack for all web browsing tasks.
 - MCP registered: yes, via Codex global config at `~/.codex/config.toml`
 - Codex MCP command: `/Users/evodemanirahari/.bun/bin/gbrain serve`
 - Current repo policy: read-write
-- Current repo source: `gstack-code-act-b3325446`
+- Current repo source: `gstack-code-act-9d8865ff`
 - Worktree pin: `.gbrain-source` (ignored by git)
 - Artifacts sync: off
-- Known warning: vector embeddings are not populated until `ZEROENTROPY_API_KEY` or another embedding provider is configured. Keyword search and symbol code lookup still work.
 
 ## GBrain Search Guidance (configured by /setup-gbrain)
 <!-- gstack-gbrain-search-guidance:start -->
@@ -235,7 +234,7 @@ Use the `/browse` skill from gstack for all web browsing tasks.
 GBrain is installed and synced for this ACT worktree. Prefer gbrain over Grep when the question is semantic, architectural, or symbol-based and you do not already know the exact string to search.
 
 Indexed ACT code source:
-- `gstack-code-act-b3325446` for `/Users/evodemanirahari/act`
+- `gstack-code-act-9d8865ff` for `/Users/evodemanirahari/act-1`
 
 Prefer gbrain when:
 - "Where is X handled?" or intent-based lookup:
@@ -247,7 +246,7 @@ Prefer gbrain when:
 - "What calls Y?" or "What does Y call?":
   `gbrain code-callers <symbol>` / `gbrain code-callees <symbol>`
 - "What did we decide last time?":
-  `gbrain search "<terms>" --source gstack-code-act-b3325446` for ACT-specific indexed content, then fall back to local project docs if needed.
+  `gbrain search "<terms>" --source gstack-code-act-9d8865ff` for ACT-specific indexed content, then fall back to local project docs if needed.
 
 Grep is still right for exact strings, regex, file globs, and very small local checks. Run `/sync-gbrain` or:
 `bun ~/.codex/skills/gstack/bin/gstack-gbrain-sync.ts --code-only --full`

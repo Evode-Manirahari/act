@@ -18,3 +18,28 @@ describe('login screen submit predicate', () => {
     expect(canSubmitLogin({ email: 'a@b.c', password: 'x', submitting: false })).toBe(true);
   });
 });
+
+describe('friendlyAuthError', () => {
+  const { friendlyAuthError } = require('../loginScreenModel');
+
+  it('maps bad credentials to invite-only guidance', () => {
+    expect(friendlyAuthError('Invalid login credentials')).toContain('invite-only');
+  });
+
+  it('maps unconfirmed email to admin follow-up', () => {
+    expect(friendlyAuthError('Email not confirmed')).toContain('ACT admin');
+  });
+
+  it('maps rate limiting to wait-and-retry', () => {
+    expect(friendlyAuthError('Too many requests, please retry')).toContain('Wait a minute');
+  });
+
+  it('maps network failures to connection guidance', () => {
+    expect(friendlyAuthError('Network request failed')).toContain('connection');
+    expect(friendlyAuthError('TypeError: Failed to fetch')).toContain('connection');
+  });
+
+  it('keeps the raw message as detail for unknown errors', () => {
+    expect(friendlyAuthError('weird upstream error')).toBe('Sign-in failed: weird upstream error');
+  });
+});

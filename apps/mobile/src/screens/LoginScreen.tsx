@@ -10,7 +10,7 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, StyleSheet, View } from 'react-native';
 
 import { useAuthSession } from '../hooks/useAuthSession';
-import { canSubmitLogin } from './loginScreenModel';
+import { canSubmitLogin, friendlyAuthError } from './loginScreenModel';
 import { ActButton, ActCard, ActInput, ActScreen, ActText, colors, spacing } from '../design';
 
 export default function LoginScreen() {
@@ -28,7 +28,7 @@ export default function LoginScreen() {
     setError(null);
     const { error: signInError } = await signInWithPassword(email.trim(), password);
     if (signInError) {
-      setError(signInError);
+      setError(friendlyAuthError(signInError));
       setSubmitting(false);
     }
     // On success, useAuthSession's onAuthStateChange fires and PilotNavigator
