@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 
 import ActAppShell from '../components/ActAppShell';
+import DebriefVoiceAgent from '../components/DebriefVoiceAgent';
 import {
   getPendingDebrief,
   submitExpertAnswer,
@@ -179,6 +180,19 @@ export default function DebriefScreen() {
 
               {openId === item.question_id ? (
                 <View style={styles.answerBlock}>
+                  <DebriefVoiceAgent
+                    momentId={item.moment_id}
+                    expertUserId={item.recorded_by}
+                    onComplete={() => {
+                      setLastSubmitted({ question: item.question, momentId: item.moment_id });
+                      setOpenId(null);
+                      void refresh();
+                    }}
+                  />
+
+                  <ActText variant="small" color="textMuted">
+                    Quick answer to the drafted question:
+                  </ActText>
                   <Pressable
                     style={[styles.recordButton, recording && styles.recordButtonLive]}
                     onPress={() => void toggleRecording()}

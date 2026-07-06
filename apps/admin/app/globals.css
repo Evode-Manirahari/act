@@ -163,6 +163,12 @@ textarea { min-height: 120px; resize: vertical; }
   color: var(--text-muted);
 }
 
+.lesson-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
 .empty {
   padding: 40px 20px;
   text-align: center;

@@ -126,6 +126,17 @@ export interface DashboardSummary {
   jobs_with_outcomes: number;
 }
 
+export interface LibraryAskCitation {
+  card_id: string;
+  title: string;
+}
+
+export interface LibraryAskResponse {
+  answer: string;
+  citations: LibraryAskCitation[];
+  refusal_reason: string | null;
+}
+
 
 async function json<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${ACT_API_BASE}${path}`, {
@@ -264,4 +275,14 @@ export const api = {
       `/library/search${params.toString() ? `?${params}` : ''}`,
     );
   },
+  askLibrary: (body: { query: string; trade?: string; limit?: number }) =>
+    json<LibraryAskResponse>('/library/ask', {
+      method: 'POST',
+      body: JSON.stringify({
+        query: body.query,
+        trade: body.trade ?? 'hvac',
+        account_id: null,
+        limit: body.limit ?? 3,
+      }),
+    }),
 };
