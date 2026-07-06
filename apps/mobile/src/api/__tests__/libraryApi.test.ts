@@ -326,3 +326,43 @@ function trainingCard(overrides: Partial<{
     created_at: '2026-05-28T00:00:00.000Z',
   };
 }
+
+describe('pending debrief feed', () => {
+  const originalFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = originalFetch;
+    jest.restoreAllMocks();
+  });
+
+  it('fetches the pending questions for the badge', async () => {
+    const body = {
+      count: 1,
+      items: [
+        {
+          question_id: 'q1',
+          question: 'What told you it was airflow?',
+          reason: 'novice trap',
+          moment_id: 'm1',
+          recording_id: 'r1',
+          job_id: 'j1',
+          recorded_by: 'u1',
+          created_at: '2026-07-06T00:00:00Z',
+        },
+      ],
+    };
+    const fetchMock = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => body,
+      text: async () => JSON.stringify(body),
+    } as unknown as Response);
+    global.fetch = fetchMock as typeof fetch;
+
+    const { getPendingDebrief } = require('../libraryApi');
+    const pending = await getPendingDebrief();
+
+    expect(fetchMock.mock.calls[0][0]).toContain('/debrief/pending');
+    expect(pending.count).toBe(1);
+    expect(pending.items[0].question_id).toBe('q1');
+  });
+});
