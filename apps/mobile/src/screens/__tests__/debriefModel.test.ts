@@ -1,4 +1,4 @@
-import { canSubmitDebriefAnswer, debriefBadge } from '../debriefModel';
+import { canSubmitDebriefAnswer, debriefBadge, debriefSubmissionNotice } from '../debriefModel';
 
 describe('debrief answer submit predicate', () => {
   it('allows typed text', () => {
@@ -31,5 +31,19 @@ describe('debrief badge', () => {
     expect(debriefBadge(-1)).toBeNull();
     expect(debriefBadge(1)).toBe('1 waiting');
     expect(debriefBadge(3)).toBe('3 waiting');
+  });
+});
+
+describe('debrief submission notice', () => {
+  it('confirms the async compile handoff and keeps the answered question visible', () => {
+    expect(debriefSubmissionNotice('  What told you it was airflow?  ')).toEqual({
+      title: 'Answer saved',
+      body: 'ACT is compiling a draft card for lead review.',
+      detail: 'What told you it was airflow?',
+    });
+  });
+
+  it('omits blank detail text', () => {
+    expect(debriefSubmissionNotice('   ').detail).toBeNull();
   });
 });

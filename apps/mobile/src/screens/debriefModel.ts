@@ -18,3 +18,16 @@ export function debriefBadge(count: number): string | null {
   if (count <= 0) return null;
   return count === 1 ? '1 waiting' : `${count} waiting`;
 }
+
+export function debriefSubmissionNotice(question: string): {
+  title: string;
+  body: string;
+  detail: string | null;
+} {
+  const trimmedQuestion = question.trim();
+  return {
+    title: 'Answer saved',
+    body: 'ACT is compiling a draft card for lead review.',
+    detail: trimmedQuestion.length > 0 ? trimmedQuestion : null,
+  };
+}
