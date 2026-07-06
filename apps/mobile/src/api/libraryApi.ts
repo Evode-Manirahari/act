@@ -177,6 +177,28 @@ export async function searchLibrary(input: {
   return jsonFetch<KnowledgeObject[]>(`/library/search${suffix}`);
 }
 
+export interface PendingDebriefItem {
+  question_id: string;
+  question: string;
+  reason: string | null;
+  moment_id: string;
+  recording_id: string;
+  job_id: string;
+  recorded_by: string;
+  created_at: string | null;
+}
+
+export interface PendingDebrief {
+  count: number;
+  items: PendingDebriefItem[];
+}
+
+/** Questions the auto-chain drafted that still need an expert's answer —
+ * drives the "debrief waiting" badge on PilotHome. */
+export async function getPendingDebrief(): Promise<PendingDebrief> {
+  return jsonFetch<PendingDebrief>('/debrief/pending');
+}
+
 export async function generateMomentQuestion(
   momentId: string,
 ): Promise<ElicitationQuestion> {

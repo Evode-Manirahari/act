@@ -8,10 +8,12 @@ import ActAskPanel from '../components/ActAskPanel';
 import ActBottomBar from '../components/ActBottomBar';
 import {
   getDashboardSummary,
+  getPendingDebrief,
   getPilotWeeklyReport,
   type DashboardSummary,
   type PilotWeeklyReport,
 } from '../api/libraryApi';
+import { debriefBadge } from './debriefModel';
 import { getPilotContext } from '../api/captureApi';
 import { useAuthSession } from '../hooks/useAuthSession';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
@@ -31,6 +33,7 @@ export default function PilotHomeScreen() {
   const [report, setReport] = useState<PilotWeeklyReport | null>(null);
   const [accountId, setAccountId] = useState<string | null>(null);
   const [askOpen, setAskOpen] = useState(false);
+  const [debriefCount, setDebriefCount] = useState(0);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
   async function handleSignOut() {
@@ -56,6 +59,12 @@ export default function PilotHomeScreen() {
       setSummary(await getDashboardSummary());
     } catch {
       // Offline or API down: tiles stay at "—". Never show made-up counts.
+    }
+
+    try {
+      setDebriefCount((await getPendingDebrief()).count);
+    } catch {
+      // Older API deployment or offline: no badge, never a fake count.
     }
 
     try {
@@ -130,6 +139,12 @@ export default function PilotHomeScreen() {
             detail="Approve moments across ready recordings"
             badge={queueCount > 0 ? `${queueCount} ready` : undefined}
             onPress={() => navigation.navigate('PilotReview', { queue: true })}
+          />
+          <HomeAction
+            label="Answer debrief"
+            detail="30 seconds in your own words builds the card"
+            badge={debriefBadge(debriefCount) ?? undefined}
+            onPress={() => navigation.navigate('Debrief')}
           />
           <HomeAction
             label="Measure outcome"
