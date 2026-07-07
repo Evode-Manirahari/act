@@ -1,0 +1,34 @@
+<svg width="1160" height="720" viewBox="0 0 1160 720" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Example ACT training card</title>
+  <desc id="desc">A stylized ACT lesson card showing expert reasoning, a novice trap, a safety boundary, and a quiz.</desc>
+  <rect width="1160" height="720" rx="0" fill="#111827"/>
+  <rect x="30" y="30" width="1100" height="660" rx="18" fill="#F8FAFC"/>
+  <rect x="30" y="30" width="1100" height="90" rx="18" fill="#182230"/>
+  <text x="68" y="82" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="800" fill="#FFFFFF">ACT Capture</text>
+  <text x="900" y="82" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16" font-weight="700" fill="#FDBA74">REVIEWED LESSON</text>
+  <rect x="68" y="155" width="150" height="34" rx="17" fill="#FFEDD5"/>
+  <text x="88" y="177" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="800" fill="#C2410C">CALLBACK RISK</text>
+  <rect x="232" y="155" width="188" height="34" rx="17" fill="#DCFCE7"/>
+  <text x="252" y="177" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" font-weight="800" fill="#166534">COMPRESSOR SAFE</text>
+  <text x="68" y="238" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="850" fill="#0F172A">Frost on the suction line means</text>
+  <text x="68" y="286" font-family="Inter, Arial, sans-serif" font-size="40" font-weight="850" fill="#0F172A">airflow first, not charge</text>
+  <rect x="68" y="328" width="656" height="132" rx="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="96" y="370" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900" fill="#EA580C">EXPERT REASONING</text>
+  <text x="96" y="404" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="650" fill="#111827">Low charge can frost too, but it would not leave</text>
+  <text x="96" y="432" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="650" fill="#111827">the return warm. Warm return plus frost means</text>
+  <text x="96" y="460" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="650" fill="#111827">starved airflow before touching refrigerant.</text>
+  <rect x="68" y="484" width="656" height="92" rx="12" fill="#FFF1F2" stroke="#FDA4AF" stroke-width="2"/>
+  <text x="96" y="526" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900" fill="#BE123C">NOVICE TRAP</text>
+  <text x="96" y="558" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700" fill="#881337">Adding refrigerant to a starved coil overcharges</text>
+  <text x="96" y="586" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700" fill="#881337">the system and can slug the compressor.</text>
+  <rect x="760" y="328" width="302" height="126" rx="12" fill="#FEFCE8" stroke="#FACC15" stroke-width="2"/>
+  <text x="788" y="370" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900" fill="#A16207">SAFETY BOUNDARY</text>
+  <text x="788" y="404" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="700" fill="#422006">Recover refrigerant before</text>
+  <text x="788" y="430" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="700" fill="#422006">opening any line. Do not vent.</text>
+  <rect x="760" y="480" width="302" height="96" rx="12" fill="#EFF6FF" stroke="#93C5FD" stroke-width="2"/>
+  <text x="788" y="522" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="900" fill="#1D4ED8">QUIZ CHECK</text>
+  <text x="788" y="554" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="700" fill="#1E3A8A">Frost with warm return points to</text>
+  <text x="788" y="580" font-family="Inter, Arial, sans-serif" font-size="19" font-weight="700" fill="#1E3A8A">restricted airflow.</text>
+  <line x1="68" y1="623" x2="1062" y2="623" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="68" y="656" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" font-weight="800" fill="#64748B">SOURCE: SENIOR TECH DEBRIEF - REVIEWED BY LEAD TECH - PUBLISHED TO LEARN LIBRARY</text>
+</svg>

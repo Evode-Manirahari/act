@@ -1,134 +1,183 @@
-# ACT — Actober AI
+# ACT - Actober AI
 
-**Your best HVAC techs retire. Their judgment doesn't have to.**
+**Your best HVAC techs retire. Their judgment does not have to.**
 
-ACT captures how senior technicians diagnose real jobs — from the truck, in their own words — and turns it into reviewed, company-specific training that cuts callbacks and gets new hires billable on your own install base.
+ACT turns real service calls into reviewed, company-specific training: what the expert noticed, why it mattered, what a newer tech would miss, the safety line, and a quick check that proves the lesson transferred.
 
-> "Generic training teaches your new hire what a capacitor is. It can't teach them how your lead tech, who retires in 14 months, fixes the recurring fault at your three biggest commercial accounts. We capture that, before he leaves, and put it on every truck."
+It is built for multi-site HVAC operators who need to cut callbacks, ramp new hires faster, and preserve senior-technician knowledge before it walks out the door.
 
-The expert never writes a word. AI works behind the scenes — detecting the teachable moment, asking the right question after the job, compiling the lesson, pre-checking safety — and a lead tech approves everything before an apprentice ever sees it.
+![Example ACT lesson card](docs/assets/act-lesson-card.svg)
 
-> **Capture → Detect → Ask → Structure → Review → Teach → Measure**
+> "Generic training teaches your new hire what a capacitor is. It cannot teach them how your lead tech, who retires in 14 months, fixes the recurring fault at your three biggest commercial accounts. We capture that, before he leaves, and put it on every truck."
 
-## The training object
+ACT is not a live copilot telling techs what to do in the field. It is the capture layer for company-specific judgment. The expert stays in control, AI handles the paperwork between human gates, and a lead tech approves every lesson before an apprentice sees it.
 
-Every published lesson carries the same anatomy — the cue, the reasoning, the trap, the safety line, a quiz:
+**Capture -> Detect -> Ask -> Structure -> Review -> Teach -> Measure**
 
-<!-- TODO: replace with a real app screenshot of a published card -->
+## Why It Matters
 
-> ### Frost on the suction line means airflow first, not charge
->
-> `CALLBACK AVOIDED · COMPRESSOR PROTECTED`
->
-> **The expert's reasoning** — Low charge frosts too, but it wouldn't leave the return warm. Warm return plus frost is starved airflow. Check the filter and static pressure before touching refrigerant.
->
-> **Novice trap** — ✕ Adding refrigerant to a starved coil: overcharges the system and slugs the compressor.
->
-> **⚠️ SAFETY BOUNDARY** — Recover the refrigerant before opening any line. Do not vent — EPA 608.
->
-> **Quiz** — Frost with a warm return points to? *(Restricted airflow)*
+HVAC operators already feel the cost ACT is aimed at:
 
-*(Example card — the same anatomy renders in the mobile Learn library, the web lessons portal, and the [marketing site](apps/site).)*
+- **Callbacks**: industry-average first-time-fix is about 80%; a typical callback runs [about $650 (ACCA)](https://hvac-blog.acca.org/the-true-cost-of-callbacks-and-how-to-stop-the-bleeding/), with inadequate documentation and technician knowledge gaps among named causes.
+- **Early turnover**: much of technician attrition happens in the first 30-90 days; [replacing a technician can cost 100-150% of salary](https://applausehq.com/blog/how-retaining-your-home-services-technicians-saves-thousands-vs-hiring).
+- **Ramp time**: [new hires can take 6-12 months to full productivity](https://thebluecollarrecruiter.com/hvac-technician-turnover-costs-jacksonville-the-real-cost-of-hvac-technician-turnover-a-jacksonville/), while the company still pays for partial output.
 
-## What works today
+When a senior tech retires, the diagnostic shortcuts that prevent callbacks on that operator's own install base usually leave with them. ACT captures those shortcuts from real work, in the expert's own words.
 
-The full loop runs end to end against the deployed backend (`https://act-api-evode.fly.dev`):
+## What Works Today
 
-- **Capture** — one-button, glove-friendly job recording with "mark this" taps, consent selector, and offline upload retry/resume
-- **Detect** — durable Postgres-queued pipeline: frame extraction, Deepgram transcription, moment detection (rules + Claude re-ranking)
-- **Ask** — the pipeline runs itself between the two human gates: an approved moment drafts its own debrief question; the senior tech's phone shows *"1 waiting"*; they answer in 30 seconds of voice (or a guided voice debrief) or text
-- **Structure** — the answer compiles into a training card with safety review and evidence-grounding checks pre-run
-- **Review & publish** — lead-tech approval gates in mobile and the web admin; nothing publishes itself
-- **Teach** — mobile Learn library with quizzes, a web lessons portal (`/learn`), and **Ask ACT**: answers drawn only from published cards, with citations — it refuses live job diagnosis
-- **Measure** — per-job outcomes (first-time fix / callback), a live ops dashboard, and a weekly operator report
-- **Trust** — invite-only auth across mobile, backend, and admin (activation is config-only); per-account tenant isolation; customer-requested redaction and purge
+The ACT loop runs end to end against the deployed backend at `https://act-api-evode.fly.dev`.
 
-## Who buys ACT, and the dollar it moves
+| Step | Live capability |
+| --- | --- |
+| Capture | One-button, glove-friendly job recording with consent state, "mark this" taps, and offline upload retry/resume. |
+| Detect | Postgres-backed processing pipeline for frame extraction, Deepgram transcription, moment detection, and Claude ranking. |
+| Ask | Approved moments auto-chain into drafted debrief questions. The senior tech sees a waiting-question badge and answers by voice, guided voice debrief, or text. |
+| Structure | Expert answers compile into lesson cards with evidence grounding, novice traps, safety boundaries, and quiz checks. |
+| Review | Mobile and web-admin gates keep lead tech approval in the loop; nothing publishes itself. |
+| Teach | Mobile Learn library, web lessons portal, and Ask ACT, which answers only from published cards with citations and refuses live job diagnosis. |
+| Measure | Per-job outcome capture, callback / first-time-fix signals, dashboard summaries, and weekly operator reports. |
+| Trust | Invite-only auth, server-side token verification, per-account tenant isolation, and customer-requested redaction / purge. |
 
-ACT's **users** are the senior tech (capture), the lead tech (review), and the apprentice (learn). ACT's **buyer** is the ops director / regional service director at a **multi-site operator or consolidator** — the ARS, CoolSys, Service Champions, and franchise-network operators of the world. Not solo shops.
+## The Product
 
-That buyer already tracks the dollars ACT moves:
+ACT creates one durable training object from one real teachable moment:
 
-- **Callbacks** — industry-average first-time-fix is ~80%; a typical callback runs [~$650 (ACCA)](https://hvac-blog.acca.org/the-true-cost-of-callbacks-and-how-to-stop-the-bleeding/), and two of the named top-five callback causes are *inadequate documentation* and *gaps in technician knowledge*.
-- **First-90-day turnover** — most tech attrition happens in the first 30–90 days; [replacing a tech costs 100–150% of salary](https://applausehq.com/blog/how-retaining-your-home-services-technicians-saves-thousands-vs-hiring).
-- **Ramp** — [new hires take 6–12 months to full productivity](https://thebluecollarrecruiter.com/hvac-technician-turnover-costs-jacksonville-the-real-cost-of-hvac-technician-turnover-a-jacksonville/); the first three months alone burn salary against partial output.
+1. **Record** - a senior tech captures a real job from a phone, chest mount, or existing camera.
+2. **Mark** - the tech taps moments worth remembering: sensory cue, safety call, verification step, counterfactual, novice trap.
+3. **Detect** - the backend processes video, audio, transcript, and frames to propose expertise-rich moments.
+4. **Ask** - after the job, ACT asks the expert the question an apprentice would ask if they knew what to notice.
+5. **Structure** - the answer becomes a lesson card: situation, cue, reasoning, trap, safety boundary, quiz.
+6. **Review** - a lead tech approves, edits, or rejects before publishing.
+7. **Measure** - apprentice usage and job outcomes show whether the lesson reduced callback risk and improved ramp.
 
-When a senior tech retires, the company-specific reasoning that prevents callbacks on *that operator's own install base* walks out the door. ACT captures it first.
+The expert never has to write documentation. The apprentice gets company-specific judgment, not generic textbook training.
 
-## Where ACT sits (vs. generic training)
+## Buyer And Users
 
-Generic simulation training (e.g. [Interplay Learning](https://www.interplaylearning.com/industries/hvac/)) teaches the textbook: how a heat pump works, how to braze, how to troubleshoot a *typical* system. ACT does not compete there — it is the layer on top, capturing what a generic catalog structurally cannot hold: how *your* best tech diagnoses *your* hardest jobs on *your* accounts. That non-genericness is the moat.
+The buyer is the ops director, regional service director, or service manager at a multi-site HVAC operator, consolidator, or franchise network. They care about callbacks, first-time-fix, technician ramp, turnover, and consistency across branches.
 
-**Go-to-market**: a **60-day paid concierge pilot** — one operator, one senior/retiring tech, ~20 company-specific training cards on real callback-prone accounts, measured against the operator's own callback and ramp numbers — proving willingness to pay before building self-serve.
+The users are different:
 
-## Current wedge: HVAC
+- **Senior techs** capture real jobs and answer quick debrief questions.
+- **Lead techs** review and publish the lessons.
+- **Apprentices and newer techs** learn from approved company-specific cards.
+- **Operators** track whether the training is moving callback and ramp metrics.
 
-First trade is HVAC residential/commercial troubleshooting — no-cool, no-heat, refrigerant, compressor, airflow, electrical faults.
+ACT is not for solo shops first, and it is not generic apprentice training. The wedge is operators with enough volume, turnover, and repeated job patterns to make captured institutional knowledge valuable.
 
-- Tight feedback loops — no-cool / no-heat is a repeated, controlled event
-- Measurable outcomes — first-time fix rate, callbacks, time-to-diagnosis
-- Rich tacit signals — sound, vibration, line temp, frost patterns, gauge readings
-- BLS: [425,200 jobs in 2024, 8% projected growth through 2034, ~40,100 openings per year](https://www.bls.gov/ooh/installation-maintenance-and-repair/heating-air-conditioning-and-refrigeration-mechanics-and-installers.htm)
+## Positioning
 
-**Beyond HVAC** (expansion signal, not the wedge): the same retirement wave hits every trade — [average U.S. farm producer is 58.1 years old (USDA)](https://www.nass.usda.gov/Newsroom/2024/02-13-2024.php); [construction needs ~439k net new workers in 2025 (ABC estimate)](https://www.abc.org/News-Media/News-Releases/abc-construction-industry-must-attract-439000-workers-in-2025). Earlier electrician discovery work is preserved behind a `trade` flag.
+Generic simulation training, such as [Interplay Learning](https://www.interplaylearning.com/industries/hvac/), teaches the textbook: how a heat pump works, how to braze, how to troubleshoot a typical system.
 
-## Product guardrails
+ACT is the layer above that. It captures how your best tech diagnoses your hardest jobs on your accounts, with your equipment history, your customer context, your install patterns, and your recurring failure modes.
 
-- **No custom hardware first.** Phones and chest mounts until the software workflow proves what hardware is missing.
-- **Not surveillance.** The expert controls capture, marks the moments, can delete or reject, and approves what enters the library.
-- **Don't keep everything.** Keep diagnostic shortcuts, sensory cues, counterfactuals, novice traps, threshold judgments, safety boundaries, verification, and customer/context reads.
-- **Humans keep the judgment.** Moment approval and publish are human gates — the automation runs *between* them, never around them.
+That non-genericness is the moat.
+
+## Go To Market
+
+The first motion is a **60-day paid concierge pilot**:
+
+- One HVAC operator
+- One senior or retiring technician
+- One callback-prone install base or branch
+- About 20 company-specific training cards from real jobs
+- A before / after read on callbacks, first-time-fix, apprentice confidence, and manager-observed ramp
+
+The pilot is intentionally narrow. It proves willingness to pay for captured company knowledge before building self-serve onboarding.
+
+## Current Wedge
+
+First trade: HVAC residential and light-commercial troubleshooting.
+
+Best early job types:
+
+- No-cool / no-heat calls
+- Refrigerant and airflow diagnosis
+- Compressor protection and verification
+- Electrical faults inside HVAC workflow
+- Repeated failures on known accounts or install types
+
+Why HVAC first:
+
+- Tight feedback loops: no-cool and no-heat are repeated, controlled events.
+- Measurable outcomes: first-time-fix, callbacks, time-to-diagnosis, and return visits.
+- Rich tacit signals: sound, vibration, line temperature, frost pattern, gauge readings, filter state, static pressure.
+- Large labor market: BLS reports [425,200 HVAC mechanics/installers in 2024, 8% projected growth through 2034, and about 40,100 openings per year](https://www.bls.gov/ooh/installation-maintenance-and-repair/heating-air-conditioning-and-refrigeration-mechanics-and-installers.htm).
+
+Beyond HVAC, the same retirement and ramp problem appears across trades. Earlier electrical discovery remains in the codebase behind trade-aware knowledge stubs, but HVAC is the first pilot market.
+
+## Product Guardrails
+
+- **No custom hardware first.** Use phones, chest mounts, GoPros, or existing smart glasses until the software loop proves what hardware is missing.
+- **Not surveillance.** Expert-controlled capture, explicit consent state, redaction paths, and review gates are product requirements.
+- **No real-time diagnosis promises.** Ask ACT answers from published training cards only; it does not diagnose live jobs.
+- **Do not keep everything.** Keep the moments that carry judgment: shortcuts, sensory cues, counterfactuals, thresholds, safety boundaries, verification steps, customer/context reads.
+- **Humans keep judgment.** Automation runs between approval gates, never around them.
 
 ---
 
-## Repo layout
+## Repo Layout
 
 This repo contains the mobile client, web admin, and marketing site. The backend lives in a sibling repo.
 
-- `apps/mobile` — React Native Expo app (capture, review, debrief, learn, outcomes)
-  - `src/screens/CaptureJobScreen.tsx` — record, mark teachable moments, upload with retry
-  - `src/screens/DebriefScreen.tsx` — the expert's answer surface: pending questions, voice/text answers, guided voice debrief
-  - `src/screens/PilotReviewScreen.tsx` / `PilotHomeScreen.tsx` / `LearnScreen.tsx` / `PilotOutcomeScreen.tsx`
-  - `src/api/captureApi.ts`, `src/api/libraryApi.ts` — typed clients for the deployed backend
-- `apps/admin` — Next.js pilot admin: review queue, debrief answers, publish gate, web lessons portal (`/learn`)
-- `apps/site` — Actober AI marketing site (static export; store-link slots, privacy, support)
-- `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
-- [`../act-api`](https://github.com/Evode-Manirahari/act-api) — Python FastAPI backend, deployed at `https://act-api-evode.fly.dev`
+- `apps/mobile` - React Native Expo app for capture, review, debrief, learning, and outcomes
+  - `src/screens/CaptureJobScreen.tsx` - record, mark teachable moments, upload with retry
+  - `src/screens/DebriefScreen.tsx` - pending questions, voice/text answers, guided voice debrief
+  - `src/screens/PilotReviewScreen.tsx` - review, debrief, compile, publish
+  - `src/screens/LearnScreen.tsx` - apprentice-facing library and quiz events
+  - `src/screens/PilotOutcomeScreen.tsx` - callback / first-time-fix / ramp signal capture
+  - `src/api/captureApi.ts`, `src/api/libraryApi.ts` - typed clients for the deployed backend
+- `apps/admin` - Next.js pilot admin: review queue, debrief answers, publish gate, web lessons portal (`/learn`)
+- `apps/site` - Actober AI marketing site: static export, privacy, support, store-link slots
+- `packages/act-kb` - trade-aware knowledge stubs; electrical retained pending migration
+- [`../act-api`](https://github.com/Evode-Manirahari/act-api) - Python FastAPI backend, deployed at `https://act-api-evode.fly.dev`
 
 ## Stack
 
-- **Mobile**: React Native (Expo SDK 54), TypeScript, Zustand
-- **Backend** (`act-api/`): Python 3.13, FastAPI, async SQLAlchemy 2.0, Alembic, PostgreSQL; durable Postgres job queue (no Redis)
-- **AI**: Claude (Haiku 4.5 for classification/questions, Sonnet 4.6 for compile/safety/reports) via the Anthropic Python SDK; Deepgram `nova-3` speech-to-text
-- **Storage**: Cloudflare R2 (video, frames)
-- **Auth**: Supabase (invite-only), JWT verification server-side, per-account tenant isolation
+- **Mobile**: React Native, Expo SDK 54, TypeScript, Zustand
+- **Backend**: Python 3.13, FastAPI, async SQLAlchemy 2.0, Alembic, PostgreSQL, durable Postgres job queue
+- **AI**: Claude via the Anthropic Python SDK; Deepgram `nova-3` speech-to-text
+- **Storage**: Cloudflare R2 for video and extracted frames
+- **Auth**: Supabase invite-only auth, server-side JWT verification, per-account tenant isolation
 - **Monorepo**: pnpm workspaces
 
-## Run the mobile slice
+## Run The Mobile Slice
 
 ```bash
 pnpm install
-cd apps/mobile && pnpm start
+cd apps/mobile
+pnpm start
 ```
 
 Then on your phone:
-1. Install **Expo Go** ([iOS](https://apps.apple.com/app/expo-go/id982107779) | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent))
-2. Make sure phone and Mac are on the **same WiFi**
-3. Scan the QR code in the terminal, or paste `exp://<lan-ip>:8081` via "Enter URL manually"
 
-Mobile reads the API base URL through `apps/mobile/src/lib/config.ts` — set `EXPO_PUBLIC_API_BASE_URL` for local dev; otherwise it falls back to the deployed backend. Backend env vars: see `act-api/.env.example`. Pilot deployment path: [`docs/hvac-pilot-go-live.md`](docs/hvac-pilot-go-live.md).
+1. Install **Expo Go** ([iOS](https://apps.apple.com/app/expo-go/id982107779) | [Android](https://play.google.com/store/apps/details?id=host.exp.exponent)).
+2. Make sure phone and Mac are on the same WiFi.
+3. Scan the QR code in the terminal, or paste `exp://<lan-ip>:8081` via "Enter URL manually".
 
-## Product framing (do not drift)
+Mobile reads the API base URL through `apps/mobile/src/lib/config.ts`. Set `EXPO_PUBLIC_API_BASE_URL` for local dev; otherwise it falls back to the deployed backend.
 
-- **Say (buyer value)**: "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire."
-- **Say (user value)**: "Your senior techs pass on what they know without writing a word — captured from real jobs, in their own words."
-- **Do not say**: "AI tells techs what to do in real time." (retired copilot framing)
-- **Do not say**: "Train the next generation" / generic apprentice training sold to solo shops. (the incumbent's hill — ACT loses there)
+Backend env vars live in `act-api/.env.example`. Pilot deployment steps are in [`docs/hvac-pilot-go-live.md`](docs/hvac-pilot-go-live.md).
 
-## Engineering workflow
+## Product Framing
 
-AI-assisted workflow tooling (gstack skills, gbrain memory) is documented in [`docs/internal-tooling.md`](docs/internal-tooling.md).
+Say:
+
+- "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire."
+- "Your senior techs pass on what they know without writing a word, captured from real jobs in their own words."
+- "Generic training teaches the textbook. ACT captures the way your company actually solves recurring jobs."
+
+Do not say:
+
+- "AI tells techs what to do in real time."
+- "Generic apprentice training for solo shops."
+- "Fully automated publishing."
+
+## Engineering Workflow
+
+AI-assisted workflow tooling, including gstack skills and gbrain memory, is documented in [`docs/internal-tooling.md`](docs/internal-tooling.md).
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
