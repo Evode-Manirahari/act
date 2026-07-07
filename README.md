@@ -1,20 +1,51 @@
-# ACT
+# ACT — Actober AI
 
-**ACT captures how your best HVAC techs diagnose your hardest jobs — before they retire — and turns it into company-specific training that cuts callbacks and gets new hires billable on your own install base.**
+**Your best HVAC techs retire. Their judgment doesn't have to.**
 
-*Sold to multi-site HVAC operators. Measured in callbacks, first-90-day turnover, and time-to-billable. No documentation and no writing: the expertise is captured from real jobs in the expert's own words.*
+ACT captures how senior technicians diagnose real jobs — from the truck, in their own words — and turns it into reviewed, company-specific training that cuts callbacks and gets new hires billable on your own install base.
 
-ACT Capture turns ride-alongs and senior service calls into reviewed training objects — short clips of a teachable moment, paired with the expert's reasoning, the novice traps to avoid, the safety boundaries, and a quick quiz to check transfer.
+> "Generic training teaches your new hire what a capacitor is. It can't teach them how your lead tech, who retires in 14 months, fixes the recurring fault at your three biggest commercial accounts. We capture that, before he leaves, and put it on every truck."
 
-The core invention is not smart glasses, a live AI copilot, or a generic training app. It is the tacit knowledge engine: detect teachable events in the field, ask the expert the right question at a safe time *after* the job, structure the answer into a reviewed training object, publish it, and measure whether apprentices actually improve.
+The expert never writes a word. AI works behind the scenes — detecting the teachable moment, asking the right question after the job, compiling the lesson, pre-checking safety — and a lead tech approves everything before an apprentice ever sees it.
 
-The product loop is:
+> **Capture → Detect → Ask → Structure → Review → Teach → Measure**
 
-> **Capture → Detect → Ask → Structure → Review → Teach → Improve**
+## The training object
+
+Every published lesson carries the same anatomy — the cue, the reasoning, the trap, the safety line, a quiz:
+
+<!-- TODO: replace with a real app screenshot of a published card -->
+
+> ### Frost on the suction line means airflow first, not charge
+>
+> `CALLBACK AVOIDED · COMPRESSOR PROTECTED`
+>
+> **The expert's reasoning** — Low charge frosts too, but it wouldn't leave the return warm. Warm return plus frost is starved airflow. Check the filter and static pressure before touching refrigerant.
+>
+> **Novice trap** — ✕ Adding refrigerant to a starved coil: overcharges the system and slugs the compressor.
+>
+> **⚠️ SAFETY BOUNDARY** — Recover the refrigerant before opening any line. Do not vent — EPA 608.
+>
+> **Quiz** — Frost with a warm return points to? *(Restricted airflow)*
+
+*(Example card — the same anatomy renders in the mobile Learn library, the web lessons portal, and the [marketing site](apps/site).)*
+
+## What works today
+
+The full loop runs end to end against the deployed backend (`https://act-api-evode.fly.dev`):
+
+- **Capture** — one-button, glove-friendly job recording with "mark this" taps, consent selector, and offline upload retry/resume
+- **Detect** — durable Postgres-queued pipeline: frame extraction, Deepgram transcription, moment detection (rules + Claude re-ranking)
+- **Ask** — the pipeline runs itself between the two human gates: an approved moment drafts its own debrief question; the senior tech's phone shows *"1 waiting"*; they answer in 30 seconds of voice (or a guided voice debrief) or text
+- **Structure** — the answer compiles into a training card with safety review and evidence-grounding checks pre-run
+- **Review & publish** — lead-tech approval gates in mobile and the web admin; nothing publishes itself
+- **Teach** — mobile Learn library with quizzes, a web lessons portal (`/learn`), and **Ask ACT**: answers drawn only from published cards, with citations — it refuses live job diagnosis
+- **Measure** — per-job outcomes (first-time fix / callback), a live ops dashboard, and a weekly operator report
+- **Trust** — invite-only auth across mobile, backend, and admin (activation is config-only); per-account tenant isolation; customer-requested redaction and purge
 
 ## Who buys ACT, and the dollar it moves
 
-ACT's **users** are the senior tech (capture), the lead tech (review), and the apprentice (learn). ACT's **buyer** is different: the ops director / regional service director / service manager at a **multi-site operator or consolidator** — the ARS, CoolSys, Service Champions, and franchise-network operators of the world. Not solo shops. Not the apprentice.
+ACT's **users** are the senior tech (capture), the lead tech (review), and the apprentice (learn). ACT's **buyer** is the ops director / regional service director at a **multi-site operator or consolidator** — the ARS, CoolSys, Service Champions, and franchise-network operators of the world. Not solo shops.
 
 That buyer already tracks the dollars ACT moves:
 
@@ -26,85 +57,52 @@ When a senior tech retires, the company-specific reasoning that prevents callbac
 
 ## Where ACT sits (vs. generic training)
 
-Generic simulation training (e.g. [Interplay Learning](https://www.interplaylearning.com/industries/hvac/)) teaches the textbook: how a heat pump works, how to braze, how to troubleshoot a *typical* system. ACT does not compete there and should not try to.
+Generic simulation training (e.g. [Interplay Learning](https://www.interplaylearning.com/industries/hvac/)) teaches the textbook: how a heat pump works, how to braze, how to troubleshoot a *typical* system. ACT does not compete there — it is the layer on top, capturing what a generic catalog structurally cannot hold: how *your* best tech diagnoses *your* hardest jobs on *your* accounts. That non-genericness is the moat.
 
-ACT is the layer on top: it captures how *your* best tech diagnoses *your* hardest jobs on *your* accounts — the tribal knowledge a generic catalog structurally cannot hold. That non-genericness is the moat. The pitch that lands with a buyer:
-
-> "Generic training teaches your new hire what a capacitor is. It can't teach them how your lead tech, who retires in 14 months, fixes the recurring fault at your three biggest commercial accounts. We capture that, before he leaves, and put it on every truck."
-
-First go-to-market motion is a **60-day paid concierge pilot**: one operator, one senior/retiring tech, ~20 company-specific training cards on real callback-prone accounts, measured against the callback/ramp signal — proving willingness to pay before building self-serve.
+**Go-to-market**: a **60-day paid concierge pilot** — one operator, one senior/retiring tech, ~20 company-specific training cards on real callback-prone accounts, measured against the operator's own callback and ramp numbers — proving willingness to pay before building self-serve.
 
 ## Current wedge: HVAC
 
 First trade is HVAC residential/commercial troubleshooting — no-cool, no-heat, refrigerant, compressor, airflow, electrical faults.
 
-Why HVAC:
-- Tight feedback loops — no-cool / no-heat is a repeated controlled event
+- Tight feedback loops — no-cool / no-heat is a repeated, controlled event
 - Measurable outcomes — first-time fix rate, callbacks, time-to-diagnosis
 - Rich tacit signals — sound, vibration, line temp, frost patterns, gauge readings
-- BLS: [425,200 jobs in 2024, 8% projected growth from 2024-2034, and about 40,100 openings per year](https://www.bls.gov/ooh/installation-maintenance-and-repair/heating-air-conditioning-and-refrigeration-mechanics-and-installers.htm)
+- BLS: [425,200 jobs in 2024, 8% projected growth through 2034, ~40,100 openings per year](https://www.bls.gov/ooh/installation-maintenance-and-repair/heating-air-conditioning-and-refrigeration-mechanics-and-installers.htm)
 
-Adjacent-market signal, not the first wedge:
-- USDA's 2022 Census of Agriculture reported average U.S. producer age at [58.1](https://www.nass.usda.gov/Newsroom/2024/02-13-2024.php), with producers under 35 comprising [9%](https://www.nass.usda.gov/Newsroom/2024/02-13-2024.php) of all producers.
-- ABC estimated construction needs [439,000 net new workers in 2025 and 499,000 in 2026](https://www.abc.org/News-Media/News-Releases/abc-construction-industry-must-attract-439000-workers-in-2025); this is ABC's proprietary model, not a government statistic.
-
-Earlier electrician customer-discovery work is preserved as input but is not the first pilot target. Existing electrical prompts and KB entries stay in the codebase behind a `trade` flag during the migration — they are not being deleted.
-
-## The Capture flow
-
-1. **Record** — senior tech starts a job recording from their phone
-2. **Mark** — they tap "mark this" at teachable moments (one-handed, glove-friendly)
-3. **Detect** — backend processing proposes expertise-rich moments from transcript, marks, frames, and job context
-4. **Ask** — after the job, ACT asks targeted why/how/counterfactual/safety questions
-5. **Structure** — clip + situation + observation + expert reasoning + novice trap + safety + quiz become one training object
-6. **Review & publish** — a lead tech approves before it goes into the apprentice library
-7. **Teach & improve** — apprentice quiz results and job outcomes close the loop
+**Beyond HVAC** (expansion signal, not the wedge): the same retirement wave hits every trade — [average U.S. farm producer is 58.1 years old (USDA)](https://www.nass.usda.gov/Newsroom/2024/02-13-2024.php); [construction needs ~439k net new workers in 2025 (ABC estimate)](https://www.abc.org/News-Media/News-Releases/abc-construction-industry-must-attract-439000-workers-in-2025). Earlier electrician discovery work is preserved behind a `trade` flag.
 
 ## Product guardrails
 
-- Do not build custom hardware first. Use phones, GoPros, chest mounts, or existing smart glasses until the software workflow proves what hardware is missing.
-- Do not position ACT as surveillance. The expert controls capture, can mark moments, can delete or reject, and approves what enters the training library.
-- Do not keep everything. Keep diagnostic shortcuts, sensory cues, counterfactuals, novice traps, threshold judgments, safety boundaries, repair verification, and customer/context reads.
-- Do not automate everything on day one. The first serious MVP is human-marked moments plus AI-generated training cards; automatic moment detection expands after the loop proves value.
+- **No custom hardware first.** Phones and chest mounts until the software workflow proves what hardware is missing.
+- **Not surveillance.** The expert controls capture, marks the moments, can delete or reject, and approves what enters the library.
+- **Don't keep everything.** Keep diagnostic shortcuts, sensory cues, counterfactuals, novice traps, threshold judgments, safety boundaries, verification, and customer/context reads.
+- **Humans keep the judgment.** Moment approval and publish are human gates — the automation runs *between* them, never around them.
 
-## Current MVP status
-
-| Spec principle | Current state |
-| --- | --- |
-| HVAC wedge | Implemented in docs, app copy, live library copy, and pilot shell. |
-| Capture from phone | Implemented in `CaptureJobScreen` with camera/audio recording, consent state, marks, upload queue, and retry. |
-| Moment marking | Implemented with explicit mark types: teachable, safety, verification, sensory, counterfactual. |
-| Safe post-job review | Implemented as `PilotReviewScreen`; current mobile copy focuses on review/publish after capture. |
-| Structured training cards | Implemented in `LearnScreen` and mobile API calls for compile/publish. |
-| Expert approval | Implemented as mobile review actions before publish. |
-| Apprentice library + quiz | Implemented with live library search, quiz events, completion tracking, and an honest empty state when no reviewed card exists. |
-| Outcome tracking | Implemented in `PilotOutcomeScreen`: final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, apprentice-progress note, and one-row-per-job outcome upsert for a real captured job. |
-| Fully automatic moment detection | Not a day-one requirement; backend proposed moments are supported, but human marks remain the MVP control. |
+---
 
 ## Repo layout
 
-This repo contains the **mobile client only**. The backend lives in a sibling repo.
+This repo contains the mobile client, web admin, and marketing site. The backend lives in a sibling repo.
 
-- `apps/mobile` — React Native Expo app
-  - `App.tsx` — pilot shell for the Capture → Review → Training flow
-  - `src/screens/CaptureJobScreen.tsx` — capture flow: record, mark teachable moments, upload with retry
-  - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
-  - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
-  - `src/screens/LearnScreen.tsx` — apprentice-facing published-card library backed by live `/library/search` results
-  - `src/screens/PilotOutcomeScreen.tsx` — manager-facing outcome capture for callback signal, diagnosis time, and apprentice progress on a selected job
+- `apps/mobile` — React Native Expo app (capture, review, debrief, learn, outcomes)
+  - `src/screens/CaptureJobScreen.tsx` — record, mark teachable moments, upload with retry
+  - `src/screens/DebriefScreen.tsx` — the expert's answer surface: pending questions, voice/text answers, guided voice debrief
+  - `src/screens/PilotReviewScreen.tsx` / `PilotHomeScreen.tsx` / `LearnScreen.tsx` / `PilotOutcomeScreen.tsx`
   - `src/api/captureApi.ts`, `src/api/libraryApi.ts` — typed clients for the deployed backend
+- `apps/admin` — Next.js pilot admin: review queue, debrief answers, publish gate, web lessons portal (`/learn`)
+- `apps/site` — Actober AI marketing site (static export; store-link slots, privacy, support)
 - `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
-- `../act-api/` — Python FastAPI backend, deployed at https://act-api-evode.fly.dev ([sibling repo](https://github.com/Evode-Manirahari/act-api))
-
-Active branch: **`main`** — where the current mobile pilot flow is landing.
+- [`../act-api`](https://github.com/Evode-Manirahari/act-api) — Python FastAPI backend, deployed at `https://act-api-evode.fly.dev`
 
 ## Stack
 
-- **Mobile**: React Native (Expo SDK 51), TypeScript, Zustand
-- **Backend** (`act-api/`): Python 3.13, FastAPI, async SQLAlchemy 2.0, Alembic, PostgreSQL (Neon)
-- **AI**: Claude `claude-sonnet-4-6` via Anthropic Python SDK (vision + streaming, prompt caching)
-- **Speech-to-text**: Deepgram (`nova-3`)
-- **Monorepo (mobile only)**: pnpm workspaces
+- **Mobile**: React Native (Expo SDK 54), TypeScript, Zustand
+- **Backend** (`act-api/`): Python 3.13, FastAPI, async SQLAlchemy 2.0, Alembic, PostgreSQL; durable Postgres job queue (no Redis)
+- **AI**: Claude (Haiku 4.5 for classification/questions, Sonnet 4.6 for compile/safety/reports) via the Anthropic Python SDK; Deepgram `nova-3` speech-to-text
+- **Storage**: Cloudflare R2 (video, frames)
+- **Auth**: Supabase (invite-only), JWT verification server-side, per-account tenant isolation
+- **Monorepo**: pnpm workspaces
 
 ## Run the mobile slice
 
@@ -118,64 +116,18 @@ Then on your phone:
 2. Make sure phone and Mac are on the **same WiFi**
 3. Scan the QR code in the terminal, or paste `exp://<lan-ip>:8081` via "Enter URL manually"
 
-The app launches into the HVAC training-capture shell: Record senior tech → Review moments → Apprentice training → Measure outcome. The pre-pivot consumer-DIY flow was removed 2026-06-02 and the legacy copilot surface (`AskActScreen`, the SSE `actApi.ts` client, `packages/act-prompts`) on 2026-06-09 — both were dead code off the pilot path.
-
-## Backend (sibling repo)
-
-See [Evode-Manirahari/act-api](https://github.com/Evode-Manirahari/act-api) for the FastAPI service the mobile slice talks to.
-
-## Environment
-
-Mobile reads the API base URL through `apps/mobile/src/lib/config.ts`. Set `EXPO_PUBLIC_API_BASE_URL` for local or preview environments; otherwise it falls back to `https://act-api-evode.fly.dev`. Backend env vars live in `act-api/.env` — see `act-api/.env.example`.
+Mobile reads the API base URL through `apps/mobile/src/lib/config.ts` — set `EXPO_PUBLIC_API_BASE_URL` for local dev; otherwise it falls back to the deployed backend. Backend env vars: see `act-api/.env.example`. Pilot deployment path: [`docs/hvac-pilot-go-live.md`](docs/hvac-pilot-go-live.md).
 
 ## Product framing (do not drift)
 
-- **Say (buyer value)**: "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire." Sold to multi-site operators; measured in callbacks / first-90-day turnover / time-to-billable.
+- **Say (buyer value)**: "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire."
 - **Say (user value)**: "Your senior techs pass on what they know without writing a word — captured from real jobs, in their own words."
-- **Do not say (retired framing)**: "AI tells techs what to do in real time." The old copilot pitch; it leaks into product decisions if you let it.
-- **Do not say (retired framing)**: "Train the next generation" / "generic apprentice training" sold to solo shops. That is the incumbent's (Interplay) hill and ACT loses there. ACT is the company-specific capture layer *on top of* generic training.
+- **Do not say**: "AI tells techs what to do in real time." (retired copilot framing)
+- **Do not say**: "Train the next generation" / generic apprentice training sold to solo shops. (the incumbent's hill — ACT loses there)
 
-The product's **users** are the senior tech (capture), the lead tech (review), and the apprentice (learn). The product's **buyer** is the multi-site operator / consolidator. Not the AI, not the solo shop.
+## Engineering workflow
 
-## AI workflow helper (gstack)
-
-This repo standardizes on [garrytan/gstack](https://github.com/garrytan/gstack) as the default AI workflow helper for planning, implementation, review, and QA.
-
-### Local install (one-time)
-```bash
-git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git ~/.claude/skills/gstack
-cd ~/.claude/skills/gstack && ./setup
-```
-
-### Team usage in this project
-- Start product discovery with `/office-hours` + `/plan-ceo-review`
-- Validate implementation with `/plan-eng-review` before coding
-- Run `/review` before opening a PR
-- Run `/qa` against the changed experience before merge
-- Run `/ship` when ready to push and open PRs
-
-## ACT agent memory (gbrain)
-
-This repo is wired for [garrytan/gbrain](https://github.com/garrytan/gbrain) in the ACT agent context.
-
-- Codex MCP server: `gbrain`
-- Command: `/Users/evodemanirahari/.bun/bin/gbrain serve`
-- ACT source id: `gstack-code-act-b3325446`
-- Repo policy: `read-write`
-- Worktree pin: `.gbrain-source` (ignored by git)
-
-Use gbrain for semantic or symbol-based questions:
-
-```bash
-gbrain search "<terms>"
-gbrain query "<question>"
-gbrain code-def <symbol>
-gbrain code-refs <symbol>
-gbrain code-callers <symbol>
-gbrain code-callees <symbol>
-```
-
-Use `rg` for exact strings, regexes, file globs, and small local checks.
+AI-assisted workflow tooling (gstack skills, gbrain memory) is documented in [`docs/internal-tooling.md`](docs/internal-tooling.md).
 
 ## License
 
