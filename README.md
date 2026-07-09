@@ -14,13 +14,15 @@ ACT is not a live copilot telling techs what to do in the field. It is the captu
 
 ## Why It Matters
 
-HVAC operators already feel the cost ACT is aimed at:
+HVAC operators already feel every one of these:
 
-- **Callbacks**: industry-average first-time-fix is about 80%; a typical callback runs [about $650 (ACCA)](https://hvac-blog.acca.org/the-true-cost-of-callbacks-and-how-to-stop-the-bleeding/), with inadequate documentation and technician knowledge gaps among named causes.
-- **Early turnover**: much of technician attrition happens in the first 30-90 days; [replacing a technician can cost 100-150% of salary](https://applausehq.com/blog/how-retaining-your-home-services-technicians-saves-thousands-vs-hiring).
-- **Ramp time**: [new hires can take 6-12 months to full productivity](https://thebluecollarrecruiter.com/hvac-technician-turnover-costs-jacksonville-the-real-cost-of-hvac-technician-turnover-a-jacksonville/), while the company still pays for partial output.
+- **High callbacks**: industry-average first-time-fix is about 80%; a typical callback runs [about $650 (ACCA)](https://hvac-blog.acca.org/the-true-cost-of-callbacks-and-how-to-stop-the-bleeding/), with inadequate documentation and technician knowledge gaps among named causes.
+- **Retiring senior techs**: when a 30-year tech retires, the diagnostic shortcuts that keep callbacks low on that operator's own install base retire with them. Nobody wrote it down, because writing it down was never the job.
+- **Inconsistent diagnosis**: two techs on the same account, same fault, often reach different conclusions — one from pattern recognition built over a decade, one from guesswork. That inconsistency is what shows up downstream as a callback or a return visit.
+- **New hires slow to billable**: [new hires can take 6-12 months to full productivity](https://thebluecollarrecruiter.com/hvac-technician-turnover-costs-jacksonville-the-real-cost-of-hvac-technician-turnover-a-jacksonville/), and much of early attrition happens in the first 30-90 days; [replacing a technician can cost 100-150% of salary](https://applausehq.com/blog/how-retaining-your-home-services-technicians-saves-thousands-vs-hiring).
+- **Weak field documentation**: senior techs are rarely willing or able to write up their reasoning after a full day of calls, so the knowledge that would shorten a new hire's ramp never gets captured in the first place.
 
-When a senior tech retires, the diagnostic shortcuts that prevent callbacks on that operator's own install base usually leave with them. ACT captures those shortcuts from real work, in the expert's own words.
+ACT is built to close exactly these gaps: the expert's real reasoning, from a real job, with no writing required.
 
 ## What Works Today
 
