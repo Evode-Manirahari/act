@@ -178,6 +178,9 @@ Do not say:
 
 AI-assisted workflow tooling, including gstack skills and gbrain memory, is documented in [`docs/internal-tooling.md`](docs/internal-tooling.md).
 
+OpenClaw is available as an optional pilot notification/control channel. Setup
+and usage live in [`docs/openclaw.md`](docs/openclaw.md).
+
 ## License
 
 MIT - see [LICENSE](LICENSE).
