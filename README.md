@@ -55,7 +55,7 @@ The expert never has to write documentation. The apprentice gets company-specifi
 
 ## Buyer And Users
 
-The buyer is the ops director, regional service director, or service manager at a multi-site HVAC operator, consolidator, or franchise network. They care about callbacks, first-time-fix, technician ramp, turnover, and consistency across branches.
+The buyer is the Owner-GM, service manager, operations director, regional service director, or training leader at a 20-250 tech HVAC/resi-commercial service operator — multi-site operators, franchise groups, and consolidator-owned branches. They care about callbacks, first-time-fix, technician ramp, turnover, and consistency across branches.
 
 The users are different:
 

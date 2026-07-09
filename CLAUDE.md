@@ -14,7 +14,7 @@ ACT Capture turns ride-alongs and senior service calls into reviewed training ob
 - **Do not say / do not position as (retired framing)**: "Train the next generation" / "generic apprentice training" sold to solo shops. That is the incumbent's (Interplay) position; ACT is the company-specific capture layer *on top of* generic training.
 
 **Users**: senior tech (capture), lead tech (review), apprentice (learn).
-**Buyer**: ops director / regional service director / service manager at a multi-site operator or consolidator (ARS, CoolSys, Service Champions, franchise networks). Not the AI, not the solo shop.
+**Buyer**: Owner-GM / service manager / operations director / regional service director / training leader at a 20-250 tech multi-site HVAC/resi-commercial operator, franchise group, or consolidator-owned branch (ARS, CoolSys, Service Champions, franchise networks). Not the AI, not the solo shop.
 
 **Where ACT sits**: on top of generic simulation training (e.g. Interplay Learning), not against it. Generic training teaches the textbook; ACT captures the company-specific tribal knowledge a generic catalog cannot hold. That non-genericness is the moat.
 

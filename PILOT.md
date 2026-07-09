@@ -3,7 +3,7 @@
 **Status:** current pilot operating plan, 2026-06-30
 **Wedge:** HVAC residential and light-commercial troubleshooting
 **Mode:** ACT Capture. Record senior-tech jobs, mark teachable moments, debrief after the job, publish reviewed training cards, and measure apprentice transfer.
-**Buyer:** multi-site HVAC operator, consolidator, franchise network, or regional service director. Not a solo shop. Not the apprentice.
+**Buyer:** Owner-GM, service manager, operations director, regional service director, or training leader at a 20-250 tech multi-site HVAC/resi-commercial service operator, franchise group, or consolidator-owned branch. Not a solo shop. Not the apprentice.
 
 ## 1. Pilot Thesis
 
@@ -21,8 +21,8 @@ Start with one paid concierge pilot. Do not spread across several small shops.
 
 Target profile:
 
-1. Multi-site or multi-truck HVAC operator with service volume high enough that callbacks and ramp time matter.
-2. Ops director, regional service director, service manager, or training owner with budget or direct influence over callback/ramp metrics.
+1. 20-250 tech HVAC/resi-commercial service operator — multi-site operator, franchise group, or consolidator-owned branch — with service volume high enough that callbacks and ramp time matter.
+2. Owner-GM, service manager, operations director, regional service director, or training leader with budget or direct influence over callback/ramp metrics.
 3. At least one senior tech with 10+ years of field judgment who is willing to be recorded on real jobs.
 4. At least two apprentices, helpers, or early-career techs who can use the cards during the measurement window.
 5. Access to callback, first-time-fix, and time-to-billable signals, even if the baseline is imperfect.

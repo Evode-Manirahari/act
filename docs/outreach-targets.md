@@ -1,9 +1,10 @@
 # ACT Capture — Outreach Target List (v1, 2026-06-10)
 
-Replaces the superseded solo-shop list in PILOT.md §2. ICP per the 2026-05-29
-reframe: **multi-site operator or consolidator brand**, buyer = ops director /
-regional service director / service manager who owns the callback + ramp P&L,
-with ≥1 senior tech (10+ yrs) and ≥2 newer techs.
+Replaces the superseded solo-shop list in PILOT.md §2. ICP: **20-250 tech
+HVAC/resi-commercial service operator** — multi-site operator, franchise
+group, or consolidator-owned branch. Buyer = Owner-GM / service manager /
+operations director / regional service director / training leader who owns
+the callback + ramp P&L, with ≥1 senior tech (10+ yrs) and ≥2 newer techs.
 
 > **Integrity note:** every entry below was inferred from public web research
 > on 2026-06-10. **Zero have been contacted. A target is not demand
