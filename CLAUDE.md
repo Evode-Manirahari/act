@@ -119,13 +119,15 @@ Read a file before touching it. Understand before changing.
 *(Exceptions taken: 2026-04-23 backend rewritten from Node to Python because the vision/audio pipeline is materially easier in Python. 2026-05-19 product pivot from live copilot to ACT Capture — superseded vision/persona but did not require a code rewrite; the retained copilot surface was finally removed 2026-06-09.)*
 
 ## Colors
-- Primary: #F97316 (warm orange)
-- Background: #FAFAF8 (warm off-white)
+See DESIGN.md for the full "Field Instrument" system (steel scale, semantic
+colors, motion, spacing). Quick reference, matching `apps/mobile/src/theme/colors.ts`:
+- Primary: #EA580C (safety orange)
+- Background: #F5F6F7 (cool steel neutral)
 - Surface: #FFFFFF
-- Text: #1A1A1A
-- TextMuted: #6B7280
-- Border: #E5E7EB
-- Success: #10B981 (green)
+- Text (ink): #14181F
+- TextMuted: #586170
+- Border: #E4E7EB
+- Success: #15803D (green)
 
 ## ACT Persona
 
