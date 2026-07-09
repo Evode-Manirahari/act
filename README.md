@@ -2,9 +2,7 @@
 
 **Your best HVAC techs retire. Their judgment does not have to.**
 
-ACT turns real service calls into reviewed, company-specific training: what the expert noticed, why it mattered, what a newer tech would miss, the safety line, and a quick check that proves the lesson transferred.
-
-It is built for multi-site HVAC operators who need to cut callbacks, ramp new hires faster, and preserve senior-technician knowledge before it walks out the door.
+ACT helps HVAC teams capture what their best senior technicians know while they are doing real jobs, then turns those teachable moments into training for newer techs. The goal is to help companies reduce callbacks and keep important field knowledge from walking out the door when experienced techs retire. AI agents work behind the scenes to capture events, detect teachable moments, ask post-job questions, compile cards, enforce review, and measure outcomes.
 
 ![Example ACT lesson card](docs/assets/act-lesson-card.svg)
 
