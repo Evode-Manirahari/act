@@ -7,9 +7,15 @@
     "dev:mobile": "pnpm --filter mobile start",
     "build": "pnpm --recursive build",
     "test": "pnpm --recursive test",
-    "typecheck": "pnpm --recursive --if-present typecheck"
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "openclaw:doctor": "openclaw doctor",
+    "openclaw:gateway": "openclaw gateway run --port 18789",
+    "openclaw:gateway:status": "openclaw gateway status",
+    "openclaw:channels": "openclaw channels list",
+    "openclaw:notify": "node scripts/openclaw-notify.mjs"
   },
   "devDependencies": {
+    "openclaw": "2026.4.29",
     "typescript": "^5.4.0"
   },
   "dependencies": {

@@ -101,6 +101,11 @@ Pilot distribution:
 5. Run one shop practice capture before a real customer job.
 6. First week target: 3 recorded jobs, 5 published cards, 2 apprentice lesson completions.
 
+Optional: wire OpenClaw as the pilot notification/control channel after the
+core app loop works. See [`docs/openclaw.md`](openclaw.md). Keep OpenClaw to
+operator notifications such as waiting debrief questions, published lessons,
+and weekly pilot reports; do not use it for live field diagnosis.
+
 ## Market Path
 
 Do not launch a broad self-serve product yet. Sell the first version as a
