@@ -28,22 +28,6 @@ export const colors = {
   errorLight: '#FDEBEB',
   caution: '#B45309',
   cautionLight: '#FEF3C7',
-
-  // legacy project-category colors (retained so old screens don't break)
-  make: '#3B82F6',
-  makeLight: '#DBEAFE',
-  improve: '#8B5CF6',
-  improveLight: '#EDE9FE',
-  grow: '#15803D',
-  growLight: '#DCFCE7',
-  create: '#EA580C',
-  createLight: '#FFF4ED',
-
-  // ACT chat bubbles
-  actBubble: '#FFFFFF',
-  actBubbleBorder: '#E4E7EB',
-  userBubble: '#EA580C',
-  userBubbleText: '#FFFFFF',
 } as const;
 
 export type Colors = typeof colors;
