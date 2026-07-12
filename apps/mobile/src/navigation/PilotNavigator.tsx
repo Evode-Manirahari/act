@@ -16,7 +16,7 @@ import { resolveAuthGate } from './authGateModel';
 import { ActText, colors, spacing } from '../design';
 
 export type PilotStackParamList = {
-  PilotHome: undefined;
+  PilotHome: { openAsk?: boolean } | undefined;
   CaptureJob: undefined;
   PilotReview: { recordingId?: string; queue?: boolean } | undefined;
   Learn: { card?: KnowledgeObject; cardId?: string } | undefined;
