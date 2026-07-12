@@ -6,7 +6,7 @@ import type { RouteProp } from '@react-navigation/native';
 
 import ActAppShell from '../components/ActAppShell';
 import ActAskPanel from '../components/ActAskPanel';
-import ActBottomBar from '../components/ActBottomBar';
+import ActHomeHero from '../components/ActHomeHero';
 import ActSidebar from '../components/ActSidebar';
 import {
   getDashboardSummary,
@@ -104,11 +104,7 @@ export default function PilotHomeScreen() {
   });
 
   return (
-    <ActAppShell
-      mode="ACT"
-      onMenuPress={() => setSidebarOpen(true)}
-      bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
-    >
+    <ActAppShell mode="ACT" onMenuPress={() => setSidebarOpen(true)}>
       <ActAskPanel visible={askOpen} onClose={() => setAskOpen(false)} accountId={accountId} />
       <ActSidebar
         visible={sidebarOpen}
@@ -121,6 +117,8 @@ export default function PilotHomeScreen() {
       />
 
       <ActScreen>
+        <ActHomeHero onAsk={() => setAskOpen(true)} items={sidebarItems} />
+
         {report ? (
           <ActCard>
             <ActText variant="label" color="textMuted">
