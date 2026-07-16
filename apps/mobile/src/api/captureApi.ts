@@ -55,6 +55,23 @@ export async function getMe(): Promise<DemoContext> {
 }
 
 /**
+ * Delete my account (App Store 5.1.1(v)). Removes the login + PII on the
+ * backend; the jobs/recordings/cards this person captured are kept, not
+ * deleted — see act-api's services/account_deletion.py. DELETE /me returns
+ * 204 with no body, so this bypasses jsonFetch (which always parses JSON).
+ */
+export async function deleteAccount(): Promise<void> {
+  const response = await fetch(`${API_BASE}/me`, {
+    method: 'DELETE',
+    headers: await getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new CaptureApiError(`DELETE /me -> ${response.status}: ${body.slice(0, 200)}`, response.status);
+  }
+}
+
+/**
  * Identity for the pilot surfaces: the verified /me identity when logged in,
  * the seeded demo context otherwise. Same shape either way, so screens don't
  * care which world they're in.
