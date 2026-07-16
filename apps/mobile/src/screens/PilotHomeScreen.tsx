@@ -159,6 +159,19 @@ export default function PilotHomeScreen() {
             ) : null}
           </Pressable>
         ) : null}
+
+        {session ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Delete my account"
+            onPress={() => navigation.navigate('DeleteAccount')}
+            style={({ pressed }) => [styles.signOutRow, pressed && styles.pressed]}
+          >
+            <ActText variant="label" color="textMuted">
+              Delete my account
+            </ActText>
+          </Pressable>
+        ) : null}
       </ActScreen>
     </ActAppShell>
   );

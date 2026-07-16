@@ -4,6 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import CaptureJobScreen from '../screens/CaptureJobScreen';
 import DebriefScreen from '../screens/DebriefScreen';
+import DeleteAccountScreen from '../screens/DeleteAccountScreen';
 import LearnScreen from '../screens/LearnScreen';
 import LoginScreen from '../screens/LoginScreen';
 import PilotHomeScreen from '../screens/PilotHomeScreen';
@@ -22,6 +23,7 @@ export type PilotStackParamList = {
   Learn: { card?: KnowledgeObject; cardId?: string } | undefined;
   PilotOutcome: { jobId?: string; recordedBy?: string; sourceRecordingId?: string } | undefined;
   Debrief: undefined;
+  DeleteAccount: undefined;
 };
 
 const Stack = createNativeStackNavigator<PilotStackParamList>();
@@ -35,6 +37,7 @@ function PilotStack() {
       <Stack.Screen name="Learn" component={LearnScreen} />
       <Stack.Screen name="PilotOutcome" component={PilotOutcomeScreen} />
       <Stack.Screen name="Debrief" component={DebriefScreen} />
+      <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
     </Stack.Navigator>
   );
 }
