@@ -1,16 +1,20 @@
 # ACT — CLAUDE.md
 
 ## Product Vision
-ACT Capture turns ride-alongs and senior service calls into reviewed training objects — short clips of a teachable moment, paired with the expert's reasoning, the novice traps to avoid, the safety boundaries, and a quick quiz to check transfer.
+**Pitch (founder, 2026-07-16)**: "Actober AI is building the intelligence layer for physical work, starting with HVAC. Expert technicians film their jobs on a phone or wearable camera. Actober turns what they do, see, and reason through into verified knowledge that guides other techs in the field — with the original footage as proof. Over time, Actober becomes the operating layer coordinating human workers, AI agents, and robots."
+
+Today's product: ACT Capture turns ride-alongs and senior service calls into reviewed training objects — short clips of a teachable moment, paired with the expert's reasoning, the novice traps to avoid, the safety boundaries, and a quick quiz to check transfer.
 
 **Core invention**: detect teachable moments in the field → ask the expert the right question at a safe time *after* the job → compile a structured training object → review → publish → measure apprentice transfer.
 
-**This is NOT a real-time AI copilot telling techs what to do.** That was the prior framing and it leaks into product decisions if you let it.
+**Guidance boundary (product truth, not just framing)**: techs in the field get guidance from *verified* knowledge — published, footage-backed, lead-tech-approved cards (library + Ask ACT with citations). The AI never improvises live diagnosis outside that reviewed corpus; `/library/ask` refuses live-diagnosis-shaped queries by design. (History: an earlier "no real-time copilot at all" rule was reversed by the founder on 2026-07-12 in favor of this verified-guidance framing — the chat-shell IA and this pitch both follow from that reversal.)
 
 **Product framing**:
+- **Say (vision)**: "Actober AI is building the intelligence layer for physical work, starting with HVAC." / "80% of the global workforce doesn't sit at a desk."
 - **Say (buyer value)**: "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire." Sold to multi-site operators; measured in callbacks / first-90-day turnover / time-to-billable.
 - **Say (user value)**: "Your senior techs pass on what they know without writing a word — captured from real jobs, in their own words."
-- **Do not say (retired framing)**: "AI tells techs what to do in real time." (old copilot pitch)
+- **Do not say**: "AI improvises answers in the field." (Guidance is verified, footage-backed, lead-tech-approved.)
+- **Do not say**: "Employee-retention software." (Actober assumes people leave; the knowledge stays — Bill discovery interview, July 2026.)
 - **Do not say / do not position as (retired framing)**: "Train the next generation" / "generic apprentice training" sold to solo shops. That is the incumbent's (Interplay) position; ACT is the company-specific capture layer *on top of* generic training.
 
 **Users**: senior tech (capture), lead tech (review), apprentice (learn).

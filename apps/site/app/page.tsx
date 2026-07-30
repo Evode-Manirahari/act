@@ -1,9 +1,10 @@
 /**
- * ACT Capture marketing site.
+ * Actober AI marketing site.
  *
  * The first viewport must make the product obvious: a field recording becomes
- * a reviewed HVAC lesson. Keep the buyer promise concrete and do not drift into
- * live-copilot positioning.
+ * verified knowledge on every truck. Pitch = "the intelligence layer for
+ * physical work, starting with HVAC"; the guidance techs get in the field is
+ * always verified, footage-backed, and lead-tech-approved — never improvised.
  */
 const APP_STORE_URL = process.env.NEXT_PUBLIC_APP_STORE_URL;
 const PLAY_STORE_URL = process.env.NEXT_PUBLIC_PLAY_STORE_URL;
@@ -97,12 +98,13 @@ export default function Home() {
         </div>
 
         <div className="heroCopy">
-          <p className="heroKicker">ACT Capture for HVAC operators</p>
-          <h1>Capture how your best techs think on real calls.</h1>
+          <p className="heroKicker">Actober AI · The intelligence layer for physical work</p>
+          <h1>Your best techs film the job. Every truck gets their judgment.</h1>
           <p className="lede">
-            ACT turns senior technician ride-alongs into reviewed, company-specific
-            training cards for new techs. The product happens after the job:
-            capture, debrief, review, publish, measure.
+            80% of the global workforce doesn&apos;t sit at a desk. Expert technicians
+            film their jobs on a phone or wearable camera, and Actober turns what they
+            do, see, and reason through into verified knowledge that guides your other
+            techs in the field — with the original footage as proof.
           </p>
           <div className="heroActions">
             <a className="pilotCta" href="#pilot">
@@ -112,7 +114,7 @@ export default function Home() {
             <StoreBadge href={PLAY_STORE_URL} small="Get it on" big="Google Play" />
           </div>
           <div className="trustRail">
-            <span>Not a live diagnostic copilot</span>
+            <span>Footage-backed answers, never improvised</span>
             <span>Lead-tech publish gate</span>
             <span>Built around callback reduction</span>
           </div>

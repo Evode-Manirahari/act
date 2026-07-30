@@ -8,9 +8,9 @@ import Link from 'next/link';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'ACT Capture - capture senior HVAC knowledge before it walks out the door',
+  title: 'Actober AI - the intelligence layer for physical work, starting with HVAC',
   description:
-    'ACT Capture turns senior HVAC diagnostic calls into reviewed, company-specific training that cuts callbacks and ramps new hires faster.',
+    'Expert technicians film their jobs; Actober turns what they do, see, and reason through into verified knowledge that guides other techs in the field - with the original footage as proof.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

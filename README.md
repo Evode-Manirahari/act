@@ -1,14 +1,16 @@
 # ACT - Actober AI
 
-**Your best HVAC techs retire. Their judgment does not have to.**
+**Actober AI is building the intelligence layer for physical work, starting with HVAC.**
 
-ACT helps HVAC teams capture what their best senior technicians know while they are doing real jobs, then turns those teachable moments into training for newer techs. The goal is to help companies reduce callbacks and keep important field knowledge from walking out the door when experienced techs retire. AI agents work behind the scenes to capture events, detect teachable moments, ask post-job questions, compile cards, enforce review, and measure outcomes.
+80% of the global workforce doesn't sit at a desk. Expert technicians film their jobs on a phone or wearable camera. Actober turns what they do, see, and reason through into verified knowledge that guides other techs in the field — with the original footage as proof. Over time, Actober becomes the operating layer coordinating human workers, AI agents, and robots.
+
+Today that starts with one sharp problem: your best HVAC techs retire, and their judgment walks out the door with them. ACT captures what senior technicians know while they are doing real jobs, turns those teachable moments into verified lessons, and measures whether they cut callbacks and speed up new-hire ramp. AI agents work behind the scenes to capture events, detect teachable moments, ask post-job questions, compile cards, enforce review, and measure outcomes.
 
 ![Example ACT lesson card](docs/assets/act-lesson-card.svg)
 
 > "Generic training teaches your new hire what a capacitor is. It cannot teach them how your lead tech, who retires in 14 months, fixes the recurring fault at your three biggest commercial accounts. We capture that, before he leaves, and put it on every truck."
 
-ACT is not a live copilot telling techs what to do in the field. It is the capture layer for company-specific judgment. The expert stays in control, AI handles the paperwork between human gates, and a lead tech approves every lesson before an apprentice sees it.
+Every lesson that guides a tech in the field is verified before it gets there: grounded in real footage, compiled by AI between human gates, and approved by a lead tech before anyone learns from it. The expert stays in control, and the original recording is always the proof behind the answer.
 
 **Capture -> Detect -> Ask -> Structure -> Review -> Teach -> Measure**
 
@@ -164,13 +166,15 @@ Backend env vars live in `act-api/.env.example`. Pilot deployment steps are in [
 
 Say:
 
+- "Actober AI is building the intelligence layer for physical work, starting with HVAC."
+- "Expert techs film their jobs; Actober turns what they do, see, and reason through into verified knowledge that guides other techs in the field — with the original footage as proof."
 - "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire."
-- "Your senior techs pass on what they know without writing a word, captured from real jobs in their own words."
 - "Generic training teaches the textbook. ACT captures the way your company actually solves recurring jobs."
 
 Do not say:
 
-- "AI tells techs what to do in real time."
+- "AI improvises answers in the field." (Guidance comes from verified, footage-backed, lead-tech-approved knowledge.)
+- "Employee-retention software." (Actober assumes people leave; the knowledge stays.)
 - "Generic apprentice training for solo shops."
 - "Fully automated publishing."
 
