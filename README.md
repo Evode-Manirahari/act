@@ -2,7 +2,7 @@
 
 **Actober AI is building the intelligence layer for physical work, starting with HVAC.**
 
-80% of the global workforce doesn't sit at a desk. Expert technicians film their jobs on a phone or wearable camera. Actober turns what they do, see, and reason through into verified knowledge that guides other techs in the field — with the original footage as proof. Over time, Actober becomes the operating layer coordinating human workers, AI agents, and robots.
+80% of the global workforce doesn't sit at a desk. Expert technicians film their jobs on a phone or wearable camera. Actober turns what they do, see, and reason through into verified knowledge that train other techs in the field — with the original footage as proof. Over time, Actober becomes the operating layer coordinating human workers, AI agents, and robots.
 
 Today that starts with one sharp problem: your best HVAC techs retire, and their judgment walks out the door with them. ACT captures what senior technicians know while they are doing real jobs, turns those teachable moments into verified lessons, and measures whether they cut callbacks and speed up new-hire ramp. AI agents work behind the scenes to capture events, detect teachable moments, ask post-job questions, compile cards, enforce review, and measure outcomes.
 
