@@ -8,12 +8,34 @@ Decision rules: [founder-principles.md](founder-principles.md).*
 
 ## 1. The market truth
 
+> **CORRECTION (2026-07-31, from Experiment #1's corpus autopsy —
+> act-api `evals/exp1_evidence_value/FINDINGS.md`):** the first two
+> "verified" items below were wrong. The 22 recordings are app tests, not
+> field jobs (the longest transcript narrates a demo of the app itself);
+> the 5 published cards were AI-compiled from a bare mark timestamp with no
+> transcript or genuine expert answer. **Capture of real work is NOT yet
+> proven and moves back to the hypothesis column**; the review "bottleneck"
+> reading was an artifact of test data. Everything downstream of those two
+> items stands, and the recommended direction is unchanged — but its first
+> prerequisite is now Capture Week (see the experiment package), not the
+> offline eval itself.
+>
+> **Follow-up (2026-07-31):** the previous five published cards were
+> fabricated and have been deleted. They are not evidence of customer usage,
+> field capture, product quality, or traction. Retrieval and every
+> pilot/business-metric endpoint now hard-require explicit evidence
+> provenance (act-api migration 0020) so fabricated content structurally
+> cannot re-enter the library or the dashboard numbers; see act-api
+> `evals/exp1_evidence_value/deletion_audit.md`.
+
 **Verified (repo data, pilot dashboard, Bill interview — n=1 shop, n=1 vet):**
 
-- Senior techs will record real jobs. 22 jobs captured against a target of 20,
-  by a real HVAC company, with a working consent flow. Capture is not the risk.
-- The human review loop is the bottleneck: 5 cards published against a target
-  of 50. Knowledge distillation is rate-limited by lead-tech attention, not AI.
+- ~~Senior techs will record real jobs. 22 jobs captured against a target of
+  20, by a real HVAC company, with a working consent flow. Capture is not
+  the risk.~~ *(corrected above — recordings were app tests)*
+- ~~The human review loop is the bottleneck: 5 cards published against a
+  target of 50. Knowledge distillation is rate-limited by lead-tech
+  attention, not AI.~~ *(corrected above — test-data artifact)*
 - Zero evidence that captured knowledge changes field behavior. `training_events`
   records views and quizzes; no "applied on a job" event has ever been logged.
 - HVAC expertise is deep, fragmented, and dangerous: ~5 years to journeyman,
