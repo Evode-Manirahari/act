@@ -19,6 +19,14 @@ Decision rules: [founder-principles.md](founder-principles.md).*
 > items stands, and the recommended direction is unchanged — but its first
 > prerequisite is now Capture Week (see the experiment package), not the
 > offline eval itself.
+>
+> **Follow-up (2026-07-31):** the previous five published cards were
+> fabricated and have been deleted. They are not evidence of customer usage,
+> field capture, product quality, or traction. Retrieval and every
+> pilot/business-metric endpoint now hard-require explicit evidence
+> provenance (act-api migration 0020) so fabricated content structurally
+> cannot re-enter the library or the dashboard numbers; see act-api
+> `evals/exp1_evidence_value/deletion_audit.md`.
 
 **Verified (repo data, pilot dashboard, Bill interview — n=1 shop, n=1 vet):**
 
