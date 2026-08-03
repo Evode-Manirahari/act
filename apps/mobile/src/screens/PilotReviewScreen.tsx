@@ -66,6 +66,7 @@ import {
   type MomentServerState,
 } from './debriefHydration';
 import { createHydrator, type Hydrator } from './debriefSync';
+import { isUncertainOutcome } from './debriefFailure';
 import { createSingleFlight, flightKey } from './singleFlight';
 import {
   createReconciliationController,
@@ -242,7 +243,7 @@ export default function PilotReviewScreen() {
   const hydrator = useRef<Hydrator | null>(null);
   if (hydrator.current === null) {
     hydrator.current = createHydrator({
-      api: { resolveMomentQuestion, listKnowledgeObjects },
+      api: { listRecordingMoments, resolveMomentQuestion, listKnowledgeObjects },
       controller: reconciler.current,
       flight: flight.current,
       apply: (server) => applyServerStateRef.current(server),
@@ -251,7 +252,12 @@ export default function PilotReviewScreen() {
 
   const hydrate = useCallback(async (nextMoments: MomentOut[]) => {
     await hydrator.current?.(
-      nextMoments.map((moment) => ({ id: moment.id, status: moment.status })),
+      nextMoments.map((moment) => ({
+        id: moment.id,
+        // Local status seeds the initial UI only; hydration re-reads it.
+        status: moment.status,
+        recordingId: moment.recording_id,
+      })),
     );
   }, []);
 
@@ -315,8 +321,9 @@ export default function PilotReviewScreen() {
    * dropped response into a duplicate question or a second card.
    */
   const reconcileMoment = useCallback(
-    async (momentId: string, momentStatus: string) => {
-      await hydrate([{ id: momentId, status: momentStatus } as MomentOut]).catch(() => {
+    async (momentId: string, moment: MomentOut | undefined) => {
+      if (!moment) return;
+      await hydrate([moment]).catch(() => {
         // Leave the machine as-is; the banner already says the last action
         // failed and the reviewer can pull-to-refresh.
       });
@@ -343,7 +350,7 @@ export default function PilotReviewScreen() {
     // tick cannot also claim it.
     reconciler.current.claim(momentId);
     const moment = moments.find((item) => item.id === momentId);
-    void reconcileMoment(momentId, moment?.status ?? 'approved');
+    void reconcileMoment(momentId, moment);
   }, [debriefs, moments, reconcileMoment]);
 
   /**
@@ -354,7 +361,7 @@ export default function PilotReviewScreen() {
   const retryMoment = useCallback(
     (momentId: string) => {
       const moment = moments.find((item) => item.id === momentId);
-      void reconcileMoment(momentId, moment?.status ?? 'approved');
+      void reconcileMoment(momentId, moment);
     },
     [moments, reconcileMoment],
   );
@@ -426,6 +433,21 @@ export default function PilotReviewScreen() {
     return flight.current.run(key, fn);
   }
 
+  /**
+   * A write failed. If its outcome is genuinely unknown, open a new
+   * reconciliation generation for the moment so this write gets its own
+   * automatic attempt — independent of any earlier hydration that may have
+   * already been attempted and failed.
+   *
+   * Called synchronously here rather than inside the state updater: updaters
+   * must stay pure, and React may invoke them more than once.
+   */
+  function noteFailure(momentId: string, err: unknown) {
+    if (isUncertainOutcome(err)) {
+      reconciler.current.beginGeneration(momentId);
+    }
+  }
+
   async function approveForDebrief(moment: MomentOut) {
     const state = machineFor(moment);
     if (isBusy(state)) return;
@@ -443,6 +465,7 @@ export default function PilotReviewScreen() {
         updateMachine(moment.id, momentApproved);
         emitReviewEvent('review_decision', updated, { status: 'approved' });
       } catch (err) {
+        noteFailure(moment.id, err);
         updateMachine(moment.id, (s) => applyFailure(s, err));
         setError(errorMessage(err, 'approve failed'));
       } finally {
@@ -469,6 +492,7 @@ export default function PilotReviewScreen() {
           answered ? answerAccepted(questionReady(s, question.id)) : questionReady(s, question.id),
         );
       } catch (err) {
+        noteFailure(momentId, err);
         updateMachine(momentId, (s) => applyFailure(s, err));
         setError(errorMessage(err, 'could not load the debrief question'));
       }
@@ -509,6 +533,7 @@ export default function PilotReviewScreen() {
         // Only now is the moment debriefed — the server stored a real answer.
         updateMachine(momentId, answerAccepted);
       } catch (err) {
+        noteFailure(momentId, err);
         updateMachine(momentId, (s) => applyFailure(s, err));
         setError(errorMessage(err, 'could not save answer'));
       }
@@ -535,6 +560,7 @@ export default function PilotReviewScreen() {
         updateMachine(momentId, answerAccepted);
         return answer.transcript;
       } catch (err) {
+        noteFailure(momentId, err);
         updateMachine(momentId, (s) => applyFailure(s, err));
         setError(errorMessage(err, 'could not save voice answer'));
         throw err;
@@ -561,6 +587,7 @@ export default function PilotReviewScreen() {
       } catch (err) {
         // Compile is not idempotent server-side, so a lost response must be
         // resolved by asking which card exists — never by compiling again.
+        noteFailure(momentId, err);
         updateMachine(momentId, (s) => applyFailure(s, err));
         setError(errorMessage(err, 'could not compile draft'));
       }
@@ -599,6 +626,7 @@ export default function PilotReviewScreen() {
           });
         }
       } catch (err) {
+        noteFailure(momentId, err);
         updateMachine(momentId, (s) => applyFailure(s, err));
         setError(errorMessage(err, 'publish failed'));
       }

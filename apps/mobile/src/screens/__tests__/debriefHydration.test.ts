@@ -84,7 +84,7 @@ function confirmed(
 ): MomentServerState {
   return {
     momentId: MOMENT_ID,
-    momentStatus: overrides.momentStatus ?? 'approved',
+    momentStatus: readOk(overrides.momentStatus ?? 'approved'),
     question: readOk(overrides.question ?? null),
     card: readOk(overrides.card ?? null),
   };
@@ -198,7 +198,7 @@ describe('a failed read is never authoritative absence', () => {
 
     const hydrated = hydrateState(compiled, {
       momentId: MOMENT_ID,
-      momentStatus: 'approved',
+      momentStatus: readOk('approved'),
       question: readOk({ question: question({ status: 'answered' }), answered: true }),
       card: readFailed(new HttpError(503)),
     });
@@ -211,7 +211,7 @@ describe('a failed read is never authoritative absence', () => {
     const answered: DebriefState = { ...COLD_RELOAD, phase: 'answered' };
     const hydrated = hydrateState(answered, {
       momentId: MOMENT_ID,
-      momentStatus: 'approved',
+      momentStatus: readOk('approved'),
       question: readOk({ question: question({ status: 'answered' }), answered: true }),
       card: readFailed(new HttpError(503)),
     });
@@ -231,7 +231,7 @@ describe('a failed read is never authoritative absence', () => {
       { ...COLD_RELOAD, phase: 'compiled' },
       {
         momentId: MOMENT_ID,
-        momentStatus: 'approved',
+        momentStatus: readOk('approved'),
         question: readFailed(new HttpError(503)),
         card: readOk(card()),
       },
@@ -245,7 +245,7 @@ describe('a failed read is never authoritative absence', () => {
   it('shows the retry state', () => {
     const hydrated = hydrateState(COLD_RELOAD, {
       momentId: MOMENT_ID,
-      momentStatus: 'approved',
+      momentStatus: readOk('approved'),
       question: readFailed(new HttpError(503)),
       card: readOk(null),
     });
@@ -265,7 +265,7 @@ describe('a failed read is never authoritative absence', () => {
 
     const hydrated = hydrateState(uncertain, {
       momentId: MOMENT_ID,
-      momentStatus: 'approved',
+      momentStatus: readOk('approved'),
       question: readOk({ question: question({ status: 'answered' }), answered: true }),
       card: readFailed(new HttpError(503)),
     });
@@ -278,7 +278,7 @@ describe('a failed read is never authoritative absence', () => {
     const typing = setDraftAnswer(COLD_RELOAD, 'TEST_DATA words in progress');
     const hydrated = hydrateState(typing, {
       momentId: MOMENT_ID,
-      momentStatus: 'approved',
+      momentStatus: readOk('approved'),
       question: readFailed(new HttpError(401)),
       card: readFailed(new HttpError(401)),
     });
@@ -310,7 +310,7 @@ describe('a failed read is never authoritative absence', () => {
     expect(
       firstReadError({
         momentId: MOMENT_ID,
-        momentStatus: 'approved',
+        momentStatus: readOk('approved'),
         question: readFailed(err),
         card: readOk(null),
       }),
@@ -323,7 +323,7 @@ describe('a failed read is never authoritative absence', () => {
     expect(
       isFullyConfirmed({
         momentId: MOMENT_ID,
-        momentStatus: 'approved',
+        momentStatus: readOk('approved'),
         question: readOk(null),
         card: readFailed(new HttpError(503)),
       }),
@@ -343,7 +343,7 @@ describe('the required failure scenarios end to end', () => {
 
     const hydrated = hydrateState(lost, {
       momentId: MOMENT_ID,
-      momentStatus: 'approved',
+      momentStatus: readOk('approved'),
       question: readOk({ question: question({ status: 'answered' }), answered: true }),
       card: readFailed(new HttpError(503)),
     });
@@ -364,7 +364,7 @@ describe('the required failure scenarios end to end', () => {
 
     const hydrated = hydrateState(published, {
       momentId: MOMENT_ID,
-      momentStatus: 'approved',
+      momentStatus: readOk('approved'),
       question: readFailed(new HttpError(401)),
       card: readFailed(new HttpError(401)),
     });
@@ -422,6 +422,11 @@ describe('the required failure scenarios end to end', () => {
 describe('fetchMomentServerState surfaces read outcomes', () => {
   function api(overrides: Partial<HydrationApi> = {}): HydrationApi {
     return {
+      listRecordingMoments: jest.fn().mockImplementation(async () => [
+        { id: 'TEST_DATA-m1', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
+        { id: 'TEST_DATA-m2', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
+        { id: MOMENT_ID, status: 'approved', recordingId: 'TEST_DATA-rec-1' },
+      ]),
       resolveMomentQuestion: jest.fn().mockResolvedValue(null),
       listKnowledgeObjects: jest.fn().mockResolvedValue([]),
       ...overrides,
@@ -431,8 +436,8 @@ describe('fetchMomentServerState surfaces read outcomes', () => {
   it('fetches cards once for the whole batch', async () => {
     const listKnowledgeObjects = jest.fn().mockResolvedValue([]);
     await fetchMomentServerState(api({ listKnowledgeObjects }), [
-      { id: 'TEST_DATA-m1', status: 'approved' },
-      { id: 'TEST_DATA-m2', status: 'approved' },
+      { id: 'TEST_DATA-m1', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
+      { id: 'TEST_DATA-m2', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
     ]);
     expect(listKnowledgeObjects).toHaveBeenCalledTimes(1);
   });
@@ -445,8 +450,8 @@ describe('fetchMomentServerState surfaces read outcomes', () => {
     });
 
     const result = await fetchMomentServerState(deps, [
-      { id: 'TEST_DATA-m1', status: 'approved' },
-      { id: 'TEST_DATA-m2', status: 'approved' },
+      { id: 'TEST_DATA-m1', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
+      { id: 'TEST_DATA-m2', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
     ]);
 
     expect(result[0].card).toEqual({ ok: true, value: expect.objectContaining({ status: 'published' }) });
@@ -459,8 +464,8 @@ describe('fetchMomentServerState surfaces read outcomes', () => {
     const deps = api({ listKnowledgeObjects: jest.fn().mockRejectedValue(err) });
 
     const result = await fetchMomentServerState(deps, [
-      { id: 'TEST_DATA-m1', status: 'approved' },
-      { id: 'TEST_DATA-m2', status: 'approved' },
+      { id: 'TEST_DATA-m1', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
+      { id: 'TEST_DATA-m2', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
     ]);
 
     // One 401 must not read as "the whole account has no cards".
@@ -478,8 +483,8 @@ describe('fetchMomentServerState surfaces read outcomes', () => {
       );
 
     const result = await fetchMomentServerState(api({ resolveMomentQuestion }), [
-      { id: 'TEST_DATA-m1', status: 'approved' },
-      { id: 'TEST_DATA-m2', status: 'approved' },
+      { id: 'TEST_DATA-m1', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
+      { id: 'TEST_DATA-m2', status: 'approved', recordingId: 'TEST_DATA-rec-1' },
     ]);
 
     expect(result[0].question).toEqual({ ok: false, error: err });
@@ -494,7 +499,7 @@ describe('fetchMomentServerState surfaces read outcomes', () => {
     });
 
     const [result] = await fetchMomentServerState(deps, [
-      { id: MOMENT_ID, status: 'approved' },
+      { id: MOMENT_ID, status: 'approved', recordingId: 'TEST_DATA-rec-1' },
     ]);
 
     expect(result.question.ok).toBe(true);

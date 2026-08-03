@@ -38,9 +38,11 @@ import {
   type DebriefState,
 } from '../reviewDebriefModel';
 import { AuthRequiredError } from '../../lib/authToken';
+import { isUncertainOutcome } from '../debriefFailure';
 import type { ElicitationQuestion, KnowledgeObject } from '../../api/libraryApi';
 
 const MOMENT_ID = 'TEST_DATA-moment-1';
+const RECORDING_ID = 'TEST_DATA-recording-1';
 
 function question(overrides: Partial<ElicitationQuestion> = {}): ElicitationQuestion {
   return {
@@ -108,13 +110,19 @@ function harness(api: HydrationApi) {
     set(next: DebriefState) {
       state = next;
     },
+    /** Mirrors the screen: uncertain outcomes open a new generation. */
+    failWrite(error: unknown) {
+      const uncertain = isUncertainOutcome(error);
+      if (uncertain) controller.beginGeneration(MOMENT_ID);
+      state = actionFailed(state, 'TEST_DATA write failed', { uncertain });
+    },
     /** The screen's useEffect body. Returns true if a request was issued. */
     async runEffect(): Promise<boolean> {
       const momentId = nextMomentToReconcile(controller, [[MOMENT_ID, { machine: state }]]);
       if (!momentId) return false;
       controller.claim(momentId);
       const [server] = await fetchMomentServerState(api, [
-        { id: MOMENT_ID, status: 'approved' },
+        { id: MOMENT_ID, status: 'approved', recordingId: RECORDING_ID },
       ]);
       state = hydrateState(state, server);
       settle(server);
@@ -124,7 +132,7 @@ function harness(api: HydrationApi) {
     async manualRefresh(): Promise<void> {
       controller.allowRetry();
       const [server] = await fetchMomentServerState(api, [
-        { id: MOMENT_ID, status: 'approved' },
+        { id: MOMENT_ID, status: 'approved', recordingId: RECORDING_ID },
       ]);
       state = hydrateState(state, server);
       settle(server);
@@ -135,6 +143,7 @@ function harness(api: HydrationApi) {
 function failingApi(error: unknown): HydrationApi & { calls: () => number } {
   let calls = 0;
   return {
+    listRecordingMoments: async () => [{ id: MOMENT_ID, status: 'approved', recordingId: RECORDING_ID } as never],
     resolveMomentQuestion: async () => {
       calls += 1;
       throw error;
@@ -159,7 +168,7 @@ describe('an uncertain write triggers exactly one automatic hydration', () => {
     const h = harness(api);
 
     // A write whose outcome we could not observe.
-    h.set(actionFailed(h.state, 'TEST_DATA connection lost', { uncertain: true }));
+    h.failWrite(new HttpError(503));
     expect(h.state.needsRefetch).toBe(true);
 
     expect(await h.runEffect()).toBe(true);
@@ -181,7 +190,7 @@ describe('an uncertain write triggers exactly one automatic hydration', () => {
   it('does not restart merely because state was updated again', async () => {
     const api = failingApi(new HttpError(503));
     const h = harness(api);
-    h.set(actionFailed(h.state, 'TEST_DATA lost', { uncertain: true }));
+    h.failWrite(new HttpError(503));
     await h.runEffect();
     const calls = api.calls();
 
@@ -200,7 +209,7 @@ describe('an uncertain write triggers exactly one automatic hydration', () => {
   it('does not clear the uncertainty just to stop the loop', async () => {
     const api = failingApi(new HttpError(503));
     const h = harness(api);
-    h.set(actionFailed(h.state, 'TEST_DATA lost', { uncertain: true }));
+    h.failWrite(new HttpError(503));
     await h.runEffect();
 
     // The write is still genuinely unresolved, and the state says so.
@@ -212,7 +221,7 @@ describe('an uncertain write triggers exactly one automatic hydration', () => {
     const api = failingApi(new AuthRequiredError());
     const h = harness(api);
     h.set(setDraftAnswer(h.state, 'TEST_DATA what I actually saw'));
-    h.set(actionFailed(h.state, 'TEST_DATA lost', { uncertain: true }));
+    h.failWrite(new HttpError(503));
 
     expect(await h.runEffect()).toBe(true);
     const calls = api.calls();
@@ -232,7 +241,7 @@ describe('explicit user action starts a new attempt', () => {
   it('manual refresh performs exactly one new attempt', async () => {
     const api = failingApi(new HttpError(503));
     const h = harness(api);
-    h.set(actionFailed(h.state, 'TEST_DATA lost', { uncertain: true }));
+    h.failWrite(new HttpError(503));
 
     await h.runEffect();
     const afterAuto = api.calls();
@@ -263,6 +272,7 @@ describe('explicit user action starts a new attempt', () => {
   it('a later successful refresh clears the unresolved state', async () => {
     let healthy = false;
     const api: HydrationApi = {
+      listRecordingMoments: async () => [{ id: MOMENT_ID, status: 'approved', recordingId: RECORDING_ID } as never],
       resolveMomentQuestion: async () =>
         healthy
           ? { question: question({ status: 'answered' }), answered: true }
@@ -272,7 +282,7 @@ describe('explicit user action starts a new attempt', () => {
     };
 
     const h = harness(api);
-    h.set(actionFailed(h.state, 'TEST_DATA lost', { uncertain: true }));
+    h.failWrite(new HttpError(503));
 
     await h.runEffect();
     expect(h.state.needsRefetch).toBe(true);
@@ -288,13 +298,22 @@ describe('explicit user action starts a new attempt', () => {
     expect(canPublish(h.state)).toBe(true);
   });
 
-  it('re-arms the automatic attempt once resolved, for a future write', async () => {
+  it('gives a later uncertain write its own generation and attempt', async () => {
     const controller = createReconciliationController();
+
+    // An ordinary hydration (first load, refresh) claims the moment even though
+    // nothing was uncertain.
     controller.claim(MOMENT_ID);
     expect(controller.shouldAttempt(MOMENT_ID, { needsRefetch: true })).toBe(false);
 
-    controller.resolve(MOMENT_ID);
+    // A genuinely uncertain write later opens a NEW generation, which is owed
+    // its own attempt. Before generations existed, that spent claim starved
+    // this write of any automatic reconciliation at all.
+    controller.beginGeneration(MOMENT_ID);
     expect(controller.shouldAttempt(MOMENT_ID, { needsRefetch: true })).toBe(true);
+
+    controller.claim(MOMENT_ID);
+    expect(controller.shouldAttempt(MOMENT_ID, { needsRefetch: true })).toBe(false);
   });
 
   it('never attempts for a moment with no unresolved write', () => {
@@ -307,6 +326,7 @@ describe('explicit user action starts a new attempt', () => {
 describe('an unconfirmed read blocks only what depends on it', () => {
   it('question lookup failure preserves the question but blocks answering', async () => {
     const api: HydrationApi = {
+      listRecordingMoments: async () => [{ id: MOMENT_ID, status: 'approved', recordingId: RECORDING_ID } as never],
       resolveMomentQuestion: async () => Promise.reject(new HttpError(503)),
       listKnowledgeObjects: async () => [],
     };
@@ -318,7 +338,7 @@ describe('an unconfirmed read blocks only what depends on it', () => {
       questionId: 'TEST_DATA-question-1',
       draftAnswer: 'TEST_DATA a real answer',
     });
-    h.set(actionFailed(h.state, 'TEST_DATA lost', { uncertain: true }));
+    h.failWrite(new HttpError(503));
     await h.runEffect();
 
     expect(h.state.questionUnconfirmed).toBe(true);
@@ -334,13 +354,14 @@ describe('an unconfirmed read blocks only what depends on it', () => {
 
   it('card lookup failure blocks compile and publish but not answering', async () => {
     const api: HydrationApi = {
+      listRecordingMoments: async () => [{ id: MOMENT_ID, status: 'approved', recordingId: RECORDING_ID } as never],
       resolveMomentQuestion: async () => ({ question: question(), answered: false }),
       listKnowledgeObjects: async () => Promise.reject(new HttpError(503)),
     };
 
     const h = harness(api);
     h.set(setDraftAnswer(h.state, 'TEST_DATA a real answer'));
-    h.set(actionFailed(h.state, 'TEST_DATA lost', { uncertain: true }));
+    h.failWrite(new HttpError(503));
     await h.runEffect();
 
     expect(h.state.cardUnconfirmed).toBe(true);
@@ -353,6 +374,7 @@ describe('an unconfirmed read blocks only what depends on it', () => {
 
   it('card lookup failure preserves a stale card without allowing action on it', async () => {
     const api: HydrationApi = {
+      listRecordingMoments: async () => [{ id: MOMENT_ID, status: 'approved', recordingId: RECORDING_ID } as never],
       resolveMomentQuestion: async () => ({
         question: question({ status: 'answered' }),
         answered: true,
@@ -362,7 +384,7 @@ describe('an unconfirmed read blocks only what depends on it', () => {
 
     const h = harness(api);
     h.set({ ...h.state, phase: 'compiled' });
-    h.set(actionFailed(h.state, 'TEST_DATA lost', { uncertain: true }));
+    h.failWrite(new HttpError(503));
     await h.runEffect();
 
     // The reviewer keeps seeing the card they were working on...

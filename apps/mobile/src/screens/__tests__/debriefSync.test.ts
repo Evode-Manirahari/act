@@ -20,7 +20,12 @@ import {
   nextMomentToReconcile,
 } from '../debriefReconciler';
 import { createSingleFlight } from '../singleFlight';
-import { hydrateState, type HydrationApi, type MomentServerState } from '../debriefHydration';
+import {
+  firstReadError,
+  hydrateState,
+  type HydrationApi,
+  type MomentServerState,
+} from '../debriefHydration';
 import {
   actionFailed,
   canCompile,
@@ -31,11 +36,13 @@ import {
   type DebriefState,
 } from '../reviewDebriefModel';
 import { isAuthenticationError, authErrorMessage } from '../../lib/authErrors';
+import { isUncertainOutcome } from '../debriefFailure';
 import { LibraryApiError } from '../../api/libraryApi';
 import type { ElicitationQuestion, KnowledgeObject } from '../../api/libraryApi';
 
 const MOMENT_ID = 'TEST_DATA-moment-1';
-const TARGETS = [{ id: MOMENT_ID, status: 'approved' }];
+const RECORDING_ID = 'TEST_DATA-recording-1';
+const TARGETS = [{ id: MOMENT_ID, status: 'approved', recordingId: RECORDING_ID }];
 
 function question(overrides: Partial<ElicitationQuestion> = {}): ElicitationQuestion {
   return {
@@ -93,9 +100,13 @@ function screen(api: HydrationApi) {
   let state: DebriefState = initialStateForMoment('approved');
 
   const apply = (server: MomentServerState[]) => {
-    for (const entry of server) {
+    // This harness holds state for a single moment; a batch may legitimately
+    // carry siblings, and those must not be folded into it.
+    for (const entry of server.filter((item) => item.momentId === MOMENT_ID)) {
       state = hydrateState(state, entry);
-      const readError = entry.question.ok ? null : entry.question.error;
+      // Same classification the screen uses — any failed read, moment status
+      // included, not just the question.
+      const readError = firstReadError(entry);
       if (isAuthenticationError(readError)) {
         state = sessionExpired(state, authErrorMessage(readError));
       }
@@ -111,6 +122,15 @@ function screen(api: HydrationApi) {
     },
     set(next: DebriefState) {
       state = next;
+    },
+    /**
+     * A write failed — mirrors the screen: classify the outcome, open a new
+     * reconciliation generation when it is genuinely uncertain, then record it.
+     */
+    failWrite(error: unknown) {
+      const uncertain = isUncertainOutcome(error);
+      if (uncertain) controller.beginGeneration(MOMENT_ID);
+      state = actionFailed(state, 'TEST_DATA write failed', { uncertain });
     },
     hydrate,
     /** The automatic effect's body. Returns true if it issued a request. */
@@ -133,20 +153,33 @@ function gatedApi() {
   // second read waiting on a promise nothing resolves.
   let gate = deferred<void>();
   let fail: unknown = null;
+  let momentFail: unknown = null;
+  let momentStatus = 'approved';
+  let questionValue: { question: ElicitationQuestion; answered: boolean } | null = {
+    question: question(),
+    answered: true,
+  };
+  let cardValues: KnowledgeObject[] = [card()];
 
   return {
     api: {
+      async listRecordingMoments() {
+        await gate.promise;
+        if (momentFail) throw momentFail;
+        if (fail) throw fail;
+        return [{ id: MOMENT_ID, status: momentStatus } as never];
+      },
       async resolveMomentQuestion() {
         questionCalls += 1;
         await gate.promise;
         if (fail) throw fail;
-        return { question: question(), answered: true };
+        return questionValue;
       },
       async listKnowledgeObjects() {
         cardCalls += 1;
         await gate.promise;
         if (fail) throw fail;
-        return [card()];
+        return cardValues;
       },
     } as HydrationApi,
     questionCalls: () => questionCalls,
@@ -161,8 +194,27 @@ function gatedApi() {
     failWith(error: unknown) {
       fail = error;
     },
+    /** Fail only the moment-status read. */
+    failMomentsWith(error: unknown) {
+      momentFail = error;
+    },
+    setMomentStatus(status: string) {
+      momentStatus = status;
+    },
+    setQuestion(value: { question: ElicitationQuestion; answered: boolean } | null) {
+      questionValue = value;
+    },
+    setCards(values: KnowledgeObject[]) {
+      cardValues = values;
+    },
+    /** Nothing debriefed yet: no question, no card. */
+    setBare() {
+      questionValue = null;
+      cardValues = [];
+    },
     succeed() {
       fail = null;
+      momentFail = null;
     },
   };
 }
@@ -173,7 +225,7 @@ describe('a manual hydration cannot be raced by the automatic effect', () => {
     const s = screen(g.api);
 
     // An uncertain write leaves the moment owed an automatic attempt.
-    s.set(actionFailed(s.state, 'TEST_DATA lost', { uncertain: true }));
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
 
     // The manual refresh starts. The hydrator claims synchronously, so by the
     // time anything else can run, the moment is no longer owed an attempt.
@@ -194,7 +246,7 @@ describe('a manual hydration cannot be raced by the automatic effect', () => {
   it('the per-moment Retry causes exactly one hydration', async () => {
     const g = gatedApi();
     const s = screen(g.api);
-    s.set(actionFailed(s.state, 'TEST_DATA lost', { uncertain: true }));
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
 
     const retry = s.hydrate(TARGETS);
     expect(s.runEffect()).toBe(false);
@@ -226,7 +278,7 @@ describe('a manual hydration cannot be raced by the automatic effect', () => {
     const g = gatedApi();
     g.failWith(new LibraryApiError('TEST_DATA 503', 503));
     const s = screen(g.api);
-    s.set(actionFailed(s.state, 'TEST_DATA lost', { uncertain: true }));
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
 
     const manual = s.hydrate(TARGETS);
     g.release();
@@ -242,7 +294,7 @@ describe('a manual hydration cannot be raced by the automatic effect', () => {
   it('re-arms after a fully successful hydration', async () => {
     const g = gatedApi();
     const s = screen(g.api);
-    s.set(actionFailed(s.state, 'TEST_DATA lost', { uncertain: true }));
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
 
     const manual = s.hydrate(TARGETS);
     g.release();
@@ -252,16 +304,16 @@ describe('a manual hydration cannot be raced by the automatic effect', () => {
     expect(isUnconfirmed(s.state)).toBe(false);
 
     // A *later* uncertain write gets its own automatic attempt.
-    s.set(actionFailed(s.state, 'TEST_DATA lost again', { uncertain: true }));
+    s.failWrite(new LibraryApiError('TEST_DATA lost again', 503));
     expect(s.runEffect()).toBe(true);
   });
 
   it('keys the flight by batch so different batches do not collapse', () => {
-    expect(hydrationKey([{ id: 'b', status: 'approved' }, { id: 'a', status: 'approved' }])).toBe(
-      hydrationKey([{ id: 'a', status: 'approved' }, { id: 'b', status: 'approved' }]),
+    expect(hydrationKey([{ id: 'b', status: 'approved', recordingId: RECORDING_ID }, { id: 'a', status: 'approved', recordingId: RECORDING_ID }])).toBe(
+      hydrationKey([{ id: 'a', status: 'approved', recordingId: RECORDING_ID }, { id: 'b', status: 'approved', recordingId: RECORDING_ID }]),
     );
-    expect(hydrationKey([{ id: 'a', status: 'approved' }])).not.toBe(
-      hydrationKey([{ id: 'b', status: 'approved' }]),
+    expect(hydrationKey([{ id: 'a', status: 'approved', recordingId: RECORDING_ID }])).not.toBe(
+      hydrationKey([{ id: 'b', status: 'approved', recordingId: RECORDING_ID }]),
     );
   });
 });
@@ -304,7 +356,7 @@ describe('backend 401/403 during hydration is an auth failure, not a retry error
     const s = screen(g.api);
     s.set(setDraftAnswer(s.state, 'TEST_DATA real words'));
     // Pretend a publish went out and the response was lost.
-    s.set(actionFailed(s.state, 'TEST_DATA lost', { uncertain: true }));
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
 
     const manual = s.hydrate(TARGETS);
     g.release();
@@ -321,7 +373,7 @@ describe('backend 401/403 during hydration is an auth failure, not a retry error
     const g = gatedApi();
     g.failWith(new LibraryApiError('TEST_DATA 401', 401));
     const s = screen(g.api);
-    s.set(actionFailed(s.state, 'TEST_DATA lost', { uncertain: true }));
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
 
     const failed = s.hydrate(TARGETS);
     g.release();
@@ -353,5 +405,205 @@ describe('backend 401/403 during hydration is an auth failure, not a retry error
 
     expect(s.state.block.kind).toBe('error');
     expect(isUnconfirmed(s.state)).toBe(true);
+  });
+});
+
+describe('attempts belong to an uncertain-write generation', () => {
+  it('a failed ordinary hydration does not starve a later uncertain write', async () => {
+    // The exact regression: routine initial-load hydration claims the moment
+    // while needsRefetch is false. If that claim were permanent, the genuinely
+    // uncertain write that follows would silently get no reconciliation at all.
+    const g = gatedApi();
+    g.failWith(new LibraryApiError('TEST_DATA 503', 503));
+    const s = screen(g.api);
+
+    const initial = s.hydrate(TARGETS);
+    g.release();
+    await initial;
+    expect(s.state.needsRefetch).toBe(false); // nothing was uncertain yet
+
+    // Now an answer/compile/publish response is lost.
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
+    expect(s.state.needsRefetch).toBe(true);
+
+    // Exactly one automatic reconciliation for the new write.
+    expect(s.runEffect()).toBe(true);
+    // ...and it does not loop after failing.
+    expect(s.runEffect()).toBe(false);
+    expect(s.runEffect()).toBe(false);
+  });
+
+  it('gives two separate uncertain writes one attempt each', async () => {
+    const g = gatedApi();
+    g.failWith(new LibraryApiError('TEST_DATA 503', 503));
+    const s = screen(g.api);
+
+    s.failWrite(new LibraryApiError('TEST_DATA lost 1', 503));
+    expect(s.runEffect()).toBe(true);
+    expect(s.runEffect()).toBe(false);
+
+    // A second uncertain write opens its own generation.
+    s.failWrite(new LibraryApiError('TEST_DATA lost 2', 503));
+    expect(s.runEffect()).toBe(true);
+    expect(s.runEffect()).toBe(false);
+  });
+
+  it.each([
+    ['401', 401],
+    ['403', 403],
+    ['422', 422],
+  ])('does not open a generation for an ordinary %s rejection', async (_label, status) => {
+    const g = gatedApi();
+    const s = screen(g.api);
+
+    s.failWrite(new LibraryApiError(`TEST_DATA ${status}`, status));
+
+    // The server considered the request and refused it — nothing was written,
+    // so there is nothing to reconcile and no attempt is owed.
+    expect(s.state.needsRefetch).toBe(false);
+    expect(s.runEffect()).toBe(false);
+  });
+});
+
+describe('moment status is read from the backend, not from local state', () => {
+  it('restores pending_debrief when an approval landed but the response was lost', async () => {
+    // Local status is still `proposed` — the value that is wrong here.
+    const g = gatedApi();
+    g.setBare();
+    g.setMomentStatus('approved');
+    const s = screen(g.api);
+    s.set({ ...s.state, phase: 'unreviewed' });
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
+
+    const manual = s.hydrate([
+      { id: MOMENT_ID, status: 'proposed', recordingId: RECORDING_ID },
+    ]);
+    g.release();
+    await manual;
+
+    expect(s.state.phase).toBe('pending_debrief');
+    expect(s.state.needsRefetch).toBe(false);
+  });
+
+  it('restores unreviewed when the approval never landed', async () => {
+    const g = gatedApi();
+    g.setBare();
+    g.setMomentStatus('proposed');
+    const s = screen(g.api);
+    s.set({ ...s.state, phase: 'pending_debrief' });
+
+    const manual = s.hydrate([
+      { id: MOMENT_ID, status: 'proposed', recordingId: RECORDING_ID },
+    ]);
+    g.release();
+    await manual;
+
+    expect(s.state.phase).toBe('unreviewed');
+  });
+
+  it('reports approved even when question generation has not completed', async () => {
+    const g = gatedApi();
+    g.setBare(); // no question drafted yet, no card
+    g.setMomentStatus('approved');
+    const s = screen(g.api);
+
+    const manual = s.hydrate(TARGETS);
+    g.release();
+    await manual;
+
+    expect(s.state.phase).toBe('pending_debrief');
+  });
+
+  it('preserves the phase and the attempt when the status read 503s', async () => {
+    const g = gatedApi();
+    g.setBare();
+    const s = screen(g.api);
+    s.set({ ...s.state, phase: 'pending_debrief' });
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
+
+    g.failMomentsWith(new LibraryApiError('TEST_DATA 503', 503));
+    const manual = s.hydrate(TARGETS);
+    g.release();
+    await manual;
+
+    // A failed status read is not "unchanged" and not "proposed".
+    expect(s.state.phase).toBe('pending_debrief');
+    expect(s.state.needsRefetch).toBe(true);
+    expect(s.state.questionUnconfirmed).toBe(true);
+    // Only the current generation's attempt was consumed — no loop.
+    expect(s.runEffect()).toBe(false);
+  });
+
+  it('produces the auth state on a 401 moment read and keeps the write unresolved', async () => {
+    const g = gatedApi();
+    const s = screen(g.api);
+    s.set(setDraftAnswer(s.state, 'TEST_DATA real words'));
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
+
+    g.failMomentsWith(new LibraryApiError('TEST_DATA 401', 401));
+    const manual = s.hydrate(TARGETS);
+    g.release();
+    await manual;
+
+    expect(s.state.block.kind).toBe('auth');
+    expect(s.state.needsRefetch).toBe(true);
+    expect(s.state.draftAnswer).toBe('TEST_DATA real words');
+  });
+});
+
+describe('overlapping hydrations never apply stale results', () => {
+  it('an older batch response does not overwrite a newer per-moment Retry', async () => {
+    // [A, B] full refresh and [A] Retry have different flight keys, so both run.
+    // The batch is slower and carries an older view of the moment.
+    const batchGate = deferred<void>();
+    const retryGate = deferred<void>();
+    let momentCall = 0;
+
+    const api: HydrationApi = {
+      async listRecordingMoments() {
+        const index = momentCall;
+        momentCall += 1;
+        await (index === 0 ? batchGate.promise : retryGate.promise);
+        // Call 0 is the batch and reports the stale pre-approval status.
+        return [
+          { id: MOMENT_ID, status: index === 0 ? 'proposed' : 'approved' } as never,
+        ];
+      },
+      async resolveMomentQuestion() {
+        return null;
+      },
+      async listKnowledgeObjects() {
+        return [];
+      },
+    };
+
+    const s = screen(api);
+    s.set({ ...s.state, phase: 'unreviewed' });
+
+    const batch = s.hydrate([
+      { id: MOMENT_ID, status: 'proposed', recordingId: RECORDING_ID },
+      { id: 'TEST_DATA-moment-2', status: 'proposed', recordingId: RECORDING_ID },
+    ]);
+
+    // Let the batch reach its moment-status read, so call ordering is not a
+    // matter of microtask luck.
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(momentCall).toBe(1);
+
+    const retry = s.hydrate(TARGETS);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(momentCall).toBe(2);
+
+    // The newer Retry finishes FIRST and writes the authoritative answer.
+    retryGate.resolve();
+    await retry;
+    expect(s.state.phase).toBe('pending_debrief');
+
+    // The older batch response arrives afterwards carrying stale data.
+    batchGate.resolve();
+    await batch;
+
+    // It must not roll the moment back to the pre-approval view.
+    expect(s.state.phase).toBe('pending_debrief');
   });
 });

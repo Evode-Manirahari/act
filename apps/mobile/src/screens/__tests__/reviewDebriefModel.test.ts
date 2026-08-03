@@ -339,7 +339,7 @@ describe('double taps do not fan out the workflow', () => {
 
     // The write had in fact landed.
     const reconciled = reconcile(uncertain, {
-      momentStatus: 'approved',
+      moment: { status: 'approved' },
       question: { questionId: 'TEST_DATA-question-1', answered: true },
       card: { status: null },
     });
@@ -355,7 +355,7 @@ describe('double taps do not fan out the workflow', () => {
       { uncertain: true },
     );
     const reconciled = reconcile(uncertain, {
-      momentStatus: 'approved',
+      moment: { status: 'approved' },
       question: { questionId: 'TEST_DATA-question-1', answered: false },
       card: { status: null },
     });

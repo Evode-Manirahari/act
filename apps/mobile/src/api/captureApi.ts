@@ -365,9 +365,13 @@ export async function listRecordingMoments(input: {
   const params = new URLSearchParams();
   if (input.status) params.set('status', input.status);
   const suffix = params.toString() ? `?${params}` : '';
+  // Auth required: hydration reads moment status from here to decide whether a
+  // moment is approved, so an anonymous 401 must fail at the session boundary
+  // rather than arrive at the state machine as an ambiguous empty list.
   return jsonFetch<MomentOut[]>(
     `/recordings/${input.recordingId}/moments${suffix}`,
     { method: 'GET' },
+    { requireAuth: true },
   );
 }
 

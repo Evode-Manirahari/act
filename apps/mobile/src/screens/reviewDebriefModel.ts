@@ -314,24 +314,19 @@ export function actionFailed(
 export function reconcile(
   state: DebriefState,
   server: {
-    momentStatus: string;
-    /** Omitted when the question read failed — then nothing question-derived applies. */
+    /** Omitted when the moment-status read failed. */
+    moment?: { status: string | null };
+    /** Omitted when the question read failed. */
     question?: { questionId: string | null; answered: boolean };
-    /** Omitted when the card read failed — then nothing card-derived applies. */
+    /** Omitted when the card read failed. */
     card?: { status: string | null };
   },
 ): DebriefState {
+  const momentConfirmed = server.moment !== undefined;
   const questionConfirmed = server.question !== undefined;
   const cardConfirmed = server.card !== undefined;
 
-  // Where each confirmed read says this moment sits, on its own.
-  const fromQuestion: DebriefPhase | null = server.question
-    ? server.question.answered
-      ? 'answered'
-      : server.momentStatus === 'approved'
-        ? 'pending_debrief'
-        : 'unreviewed'
-    : null;
+  // A card is the strongest signal and needs no other read to interpret.
   const fromCard: DebriefPhase | null = server.card
     ? server.card.status
       ? server.card.status === 'published'
@@ -340,32 +335,38 @@ export function reconcile(
       : null // confirmed: no card exists
     : null;
 
-  let phase = state.phase;
-  if (questionConfirmed && cardConfirmed) {
-    // Both reads landed — this is the fully authoritative case, and the only
-    // one allowed to move the phase anywhere at all.
-    phase = fromCard ?? (fromQuestion as DebriefPhase);
-  } else if (cardConfirmed) {
-    // We know the card truth but not the question truth.
-    if (fromCard) {
-      phase = fromCard;
-    } else if (phaseAtLeast(state.phase, 'compiled')) {
-      // Confirmed absence of a card disproves compiled/published. It says
-      // nothing about answered, which the failed question read owns, so fall
-      // back only as far as that.
-      phase = 'answered';
-    }
-  } else if (questionConfirmed) {
-    // We know the question truth but not the card truth. A card we may still
-    // have outranks it, so never lower a compiled/published moment here.
-    if (!phaseAtLeast(state.phase, 'compiled')) {
-      phase = fromQuestion as DebriefPhase;
+  // The question tells us "answered" on its own, but distinguishing
+  // unreviewed from pending_debrief needs the moment's status — which is a
+  // read in its own right, not the caller's stale local copy.
+  let fromQuestion: DebriefPhase | null = null;
+  if (server.question) {
+    if (server.question.answered) {
+      fromQuestion = 'answered';
+    } else if (server.moment) {
+      fromQuestion = server.moment.status === 'approved' ? 'pending_debrief' : 'unreviewed';
     }
   }
 
-  const questionUnconfirmed = !questionConfirmed;
-  const cardUnconfirmed = !cardConfirmed;
-  const fullyConfirmed = questionConfirmed && cardConfirmed;
+  let phase = state.phase;
+  if (momentConfirmed && questionConfirmed && cardConfirmed) {
+    // Everything landed — the only case allowed to move the phase anywhere.
+    phase = fromCard ?? (fromQuestion as DebriefPhase);
+  } else if (cardConfirmed && fromCard) {
+    // A confirmed card outranks whatever else we could or couldn't read.
+    phase = fromCard;
+  } else if (cardConfirmed && phaseAtLeast(state.phase, 'compiled')) {
+    // Confirmed absence of a card disproves compiled/published. It says nothing
+    // about answered, so fall back only as far as that.
+    phase = 'answered';
+  } else if (fromQuestion && !phaseAtLeast(state.phase, 'compiled')) {
+    // A question-derived phase never lowers a moment whose card we could not
+    // re-check. `fromQuestion` is null unless the moment status was confirmed
+    // too, so the unreviewed/pending_debrief boundary can only move on
+    // authoritative status.
+    phase = fromQuestion;
+  }
+
+  const fullyConfirmed = momentConfirmed && questionConfirmed && cardConfirmed;
 
   return {
     ...state,
@@ -376,8 +377,11 @@ export function reconcile(
     // the write outcome open — but see debriefReconciler: unresolved does not
     // mean "retry now".
     needsRefetch: fullyConfirmed ? false : state.needsRefetch,
-    questionUnconfirmed,
-    cardUnconfirmed,
+    // A failed moment-status read leaves the approval boundary unverifiable, so
+    // it counts against the question side of the loop: nothing that acts on the
+    // question may run until we know whether the moment is even approved.
+    questionUnconfirmed: !questionConfirmed || !momentConfirmed,
+    cardUnconfirmed: !cardConfirmed,
     block: nextBlock(state, phase, fullyConfirmed),
   };
 }
