@@ -264,11 +264,23 @@ export async function getPendingDebrief(): Promise<PendingDebrief> {
   return jsonFetch<PendingDebrief>('/debrief/pending');
 }
 
-/** Questions already drafted for this moment, newest first. */
+/**
+ * Questions already drafted for this moment, newest first.
+ *
+ * Auth is required, not optional. This read decides whether a moment counts as
+ * debriefed, and an anonymous call against an account-scoped route returns 401 —
+ * which, if it reached the hydration layer as an ordinary failure, would be one
+ * step away from being read as "no questions exist". Failing at the session
+ * boundary keeps that ambiguity out of the state machine entirely.
+ */
 export async function listMomentQuestions(
   momentId: string,
 ): Promise<ElicitationQuestion[]> {
-  return jsonFetch<ElicitationQuestion[]>(`/moments/${momentId}/questions`);
+  return jsonFetch<ElicitationQuestion[]>(
+    `/moments/${momentId}/questions`,
+    undefined,
+    { requireAuth: true },
+  );
 }
 
 export async function generateMomentQuestion(
@@ -462,6 +474,10 @@ export async function publishKnowledgeObject(
  * act-api has no `moment_id` filter on this route, so hydration pulls the
  * account's cards once per refresh and indexes them locally rather than issuing
  * a request per moment.
+ *
+ * Auth is required for the same reason as `listMomentQuestions`: this read
+ * decides whether a moment is already compiled or published, and an anonymous
+ * 401 must never be mistakable for "this account has no cards".
  */
 export async function listKnowledgeObjects(input: {
   status?: string;
@@ -472,7 +488,11 @@ export async function listKnowledgeObjects(input: {
   if (input.status) params.set('status', input.status);
   if (input.trade) params.set('trade', input.trade);
   params.set('limit', String(input.limit ?? 200));
-  return jsonFetch<KnowledgeObject[]>(`/knowledge-objects?${params}`);
+  return jsonFetch<KnowledgeObject[]>(
+    `/knowledge-objects?${params}`,
+    undefined,
+    { requireAuth: true },
+  );
 }
 
 /**

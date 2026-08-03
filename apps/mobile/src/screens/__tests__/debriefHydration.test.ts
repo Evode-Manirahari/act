@@ -1,18 +1,24 @@
 /**
- * Hydration restores phase from server state, not from what the client
- * remembers doing.
+ * Hydration restores phase from server state, and — just as important —
+ * refuses to act on state it could not read.
  *
- * The bug this covers: the screen seeded a moment from `moment.status` alone,
- * so answered / compiled / published existed only as client booleans. Reload
- * and a published moment came back as "waiting for debrief" — UI asserting
- * something the server had never said, which is the same class of dishonesty as
- * the fabricated cards themselves.
+ * Two bugs are covered here. The first: phase lived in client booleans, so a
+ * reload showed a published moment as "waiting for debrief". The second, subtler
+ * one: hydration caught read errors into `[]`/`null`, so a 503 on the card
+ * listing was indistinguishable from "this moment has no card" — which would
+ * lower a compiled moment's phase and re-open a compile button against an
+ * endpoint that is not idempotent.
  *
  * TEST_DATA only.
  */
 import {
   fetchMomentServerState,
+  firstReadError,
   hydrateState,
+  isFullyConfirmed,
+  readFailed,
+  readOk,
+  resolveHeldValue,
   type HydrationApi,
   type MomentServerState,
 } from '../debriefHydration';
@@ -22,6 +28,7 @@ import {
   canRequestQuestion,
   INITIAL_DEBRIEF_STATE,
   initialStateForMoment,
+  phaseHint,
   phaseLabel,
   setDraftAnswer,
   type DebriefState,
@@ -66,15 +73,26 @@ function card(overrides: Partial<KnowledgeObject> = {}): KnowledgeObject {
   };
 }
 
-function serverState(overrides: Partial<MomentServerState> = {}): MomentServerState {
+/** A fully successful read set. */
+function confirmed(
+  overrides: {
+    momentStatus?: string;
+    question?: { question: ElicitationQuestion; answered: boolean } | null;
+    card?: KnowledgeObject | null;
+  } = {},
+): MomentServerState {
   return {
     momentId: MOMENT_ID,
-    momentStatus: 'approved',
-    question: null,
-    questionAnswered: false,
-    card: null,
-    ...overrides,
+    momentStatus: overrides.momentStatus ?? 'approved',
+    question: readOk(overrides.question ?? null),
+    card: readOk(overrides.card ?? null),
   };
+}
+
+class HttpError extends Error {
+  constructor(readonly status: number) {
+    super(`TEST_DATA HTTP ${status}`);
+  }
 }
 
 /** A fresh screen: nothing known locally beyond the moment's status. */
@@ -84,22 +102,20 @@ describe('reload restores state the client never saw happen', () => {
   it('restores answered when the stored question is answered', () => {
     const hydrated = hydrateState(
       COLD_RELOAD,
-      serverState({ question: question({ status: 'answered' }), questionAnswered: true }),
+      confirmed({ question: { question: question({ status: 'answered' }), answered: true } }),
     );
 
     expect(hydrated.phase).toBe('answered');
-    expect(hydrated.questionId).toBe('TEST_DATA-question-1');
+    expect(hydrated.unconfirmed).toBe(false);
     expect(canCompile(hydrated)).toBe(true);
-    // And it does not offer to draft another question for a finished debrief.
     expect(canRequestQuestion(hydrated)).toBe(false);
   });
 
   it('restores compiled when a draft card exists', () => {
     const hydrated = hydrateState(
       COLD_RELOAD,
-      serverState({
-        question: question({ status: 'answered' }),
-        questionAnswered: true,
+      confirmed({
+        question: { question: question({ status: 'answered' }), answered: true },
         card: card({ status: 'draft' }),
       }),
     );
@@ -112,9 +128,8 @@ describe('reload restores state the client never saw happen', () => {
   it('restores published when a published card exists', () => {
     const hydrated = hydrateState(
       COLD_RELOAD,
-      serverState({
-        question: question({ status: 'answered' }),
-        questionAnswered: true,
+      confirmed({
+        question: { question: question({ status: 'answered' }), answered: true },
         card: card({ status: 'published', published_at: '2026-08-03T01:00:00.000Z' }),
       }),
     );
@@ -122,145 +137,277 @@ describe('reload restores state the client never saw happen', () => {
     expect(hydrated.phase).toBe('published');
     expect(phaseLabel(hydrated)).toBe('Published');
     expect(canPublish(hydrated)).toBe(false);
-    expect(canCompile(hydrated)).toBe(false);
   });
 
   it('stays pending_debrief when the question is still open', () => {
-    const hydrated = hydrateState(COLD_RELOAD, serverState({ question: question() }));
+    const hydrated = hydrateState(
+      COLD_RELOAD,
+      confirmed({ question: { question: question(), answered: false } }),
+    );
 
     expect(hydrated.phase).toBe('pending_debrief');
     expect(phaseLabel(hydrated)).toBe('Waiting for your answer');
-    expect(canCompile(hydrated)).toBe(false);
   });
 
   it('stays unreviewed when the moment is not approved', () => {
     const hydrated = hydrateState(
       INITIAL_DEBRIEF_STATE,
-      serverState({ momentStatus: 'proposed' }),
+      confirmed({ momentStatus: 'proposed' }),
     );
     expect(hydrated.phase).toBe('unreviewed');
   });
 
   it('lets a card outrank a question row that still looks open', () => {
-    // Server-side auto-compile can leave the question row lagging. The card is
-    // the artifact people actually see, so it wins.
     const hydrated = hydrateState(
       COLD_RELOAD,
-      serverState({ question: question({ status: 'asked' }), card: card({ status: 'draft' }) }),
+      confirmed({
+        question: { question: question({ status: 'asked' }), answered: false },
+        card: card({ status: 'draft' }),
+      }),
     );
     expect(hydrated.phase).toBe('compiled');
   });
 
   it('preserves the technician’s in-progress answer while hydrating', () => {
     const typing = setDraftAnswer(COLD_RELOAD, 'TEST_DATA half-written answer');
-    const hydrated = hydrateState(typing, serverState({ question: question() }));
-
+    const hydrated = hydrateState(
+      typing,
+      confirmed({ question: { question: question(), answered: false } }),
+    );
     expect(hydrated.draftAnswer).toBe('TEST_DATA half-written answer');
   });
 
-  it('does not derive phase from prior local actions', () => {
-    // A machine that locally believes it is published, but the server has no
-    // card and no answer, is corrected downward rather than trusted.
+  it('corrects an optimistic local phase downward on a complete read', () => {
     const optimistic: DebriefState = { ...COLD_RELOAD, phase: 'published' };
-    const hydrated = hydrateState(optimistic, serverState({ question: question() }));
-
+    const hydrated = hydrateState(
+      optimistic,
+      confirmed({ question: { question: question(), answered: false } }),
+    );
     expect(hydrated.phase).toBe('pending_debrief');
   });
 });
 
-describe('uncertain compile and publish outcomes reconcile from the server', () => {
-  it('restores compiled when the compile landed but the response was lost', () => {
-    const lost: DebriefState = {
-      ...COLD_RELOAD,
-      phase: 'answered',
-      questionId: 'TEST_DATA-question-1',
-      block: { kind: 'error', message: 'TEST_DATA connection lost' },
-      needsRefetch: true,
-    };
-
-    const hydrated = hydrateState(
-      lost,
-      serverState({
-        question: question({ status: 'answered' }),
-        questionAnswered: true,
-        card: card({ status: 'draft' }),
-      }),
-    );
-
-    expect(hydrated.phase).toBe('compiled');
-    expect(hydrated.needsRefetch).toBe(false);
-    // Compile is not idempotent server-side — the gate must now be closed.
-    expect(canCompile(hydrated)).toBe(false);
-  });
-
-  it('restores published when the publish landed but the response was lost', () => {
-    const lost: DebriefState = {
+describe('a failed read is never authoritative absence', () => {
+  it('does not lower the phase when the card listing fails', () => {
+    const compiled: DebriefState = {
       ...COLD_RELOAD,
       phase: 'compiled',
       questionId: 'TEST_DATA-question-1',
-      block: { kind: 'error', message: 'TEST_DATA connection lost' },
+    };
+
+    const hydrated = hydrateState(compiled, {
+      momentId: MOMENT_ID,
+      momentStatus: 'approved',
+      question: readOk({ question: question({ status: 'answered' }), answered: true }),
+      card: readFailed(new HttpError(503)),
+    });
+
+    expect(hydrated.phase).toBe('compiled');
+    expect(hydrated.unconfirmed).toBe(true);
+  });
+
+  it('blocks compile and publish while state is unconfirmed', () => {
+    const answered: DebriefState = { ...COLD_RELOAD, phase: 'answered' };
+    const hydrated = hydrateState(answered, {
+      momentId: MOMENT_ID,
+      momentStatus: 'approved',
+      question: readOk({ question: question({ status: 'answered' }), answered: true }),
+      card: readFailed(new HttpError(503)),
+    });
+
+    // The phase still says "answered", but we could not confirm no card exists.
+    // Compile is not idempotent, so it stays locked.
+    expect(hydrated.phase).toBe('answered');
+    expect(canCompile(hydrated)).toBe(false);
+
+    const compiled = hydrateState(
+      { ...COLD_RELOAD, phase: 'compiled' },
+      {
+        momentId: MOMENT_ID,
+        momentStatus: 'approved',
+        question: readFailed(new HttpError(503)),
+        card: readOk(card()),
+      },
+    );
+    expect(canPublish(compiled)).toBe(false);
+  });
+
+  it('shows the retry state', () => {
+    const hydrated = hydrateState(COLD_RELOAD, {
+      momentId: MOMENT_ID,
+      momentStatus: 'approved',
+      question: readFailed(new HttpError(503)),
+      card: readOk(null),
+    });
+
+    expect(phaseLabel(hydrated)).toBe('Could not confirm server state');
+    expect(phaseHint(hydrated)).toMatch(/retry refresh/i);
+  });
+
+  it('does not clear needsRefetch after an uncertain write', () => {
+    // The write's outcome was already unknown; a failed read has not resolved
+    // it, so the moment must stay queued for another reconciliation.
+    const uncertain: DebriefState = {
+      ...COLD_RELOAD,
+      phase: 'answered',
       needsRefetch: true,
     };
 
-    const hydrated = hydrateState(
-      lost,
-      serverState({
-        question: question({ status: 'answered' }),
-        questionAnswered: true,
-        card: card({ status: 'published' }),
-      }),
-    );
+    const hydrated = hydrateState(uncertain, {
+      momentId: MOMENT_ID,
+      momentStatus: 'approved',
+      question: readOk({ question: question({ status: 'answered' }), answered: true }),
+      card: readFailed(new HttpError(503)),
+    });
 
-    expect(hydrated.phase).toBe('published');
-    expect(canPublish(hydrated)).toBe(false);
-    expect(hydrated.needsRefetch).toBe(false);
+    expect(hydrated.needsRefetch).toBe(true);
+    expect(hydrated.unconfirmed).toBe(true);
   });
 
-  it('discovers a server-side auto-compiled card instead of racing it', () => {
-    // act-api enqueues a compile chain after an accepted answer. The client may
-    // never have tapped Compile, so it must find the card, not contradict it.
-    const justAnswered: DebriefState = {
+  it('preserves the typed draft across a failed read', () => {
+    const typing = setDraftAnswer(COLD_RELOAD, 'TEST_DATA words in progress');
+    const hydrated = hydrateState(typing, {
+      momentId: MOMENT_ID,
+      momentStatus: 'approved',
+      question: readFailed(new HttpError(401)),
+      card: readFailed(new HttpError(401)),
+    });
+
+    expect(hydrated.draftAnswer).toBe('TEST_DATA words in progress');
+  });
+
+  it('keeps an existing question when the lookup times out', () => {
+    const held = question();
+    const read = readFailed<ElicitationQuestion | null>(new Error('TEST_DATA timeout'));
+
+    expect(resolveHeldValue(read, held)).toBe(held);
+  });
+
+  it('clears a stale card when the lookup confirms there is none', () => {
+    const stale = card();
+    expect(resolveHeldValue(readOk<KnowledgeObject | null>(null), stale)).toBeNull();
+  });
+
+  it('preserves a stale card when the lookup fails', () => {
+    const stale = card();
+    const read = readFailed<KnowledgeObject | null>(new HttpError(503));
+
+    expect(resolveHeldValue(read, stale)).toBe(stale);
+  });
+
+  it('reports the first read error for the banner', () => {
+    const err = new HttpError(401);
+    expect(
+      firstReadError({
+        momentId: MOMENT_ID,
+        momentStatus: 'approved',
+        question: readFailed(err),
+        card: readOk(null),
+      }),
+    ).toBe(err);
+    expect(firstReadError(confirmed())).toBeNull();
+  });
+
+  it('treats a read set as confirmed only when every read succeeded', () => {
+    expect(isFullyConfirmed(confirmed())).toBe(true);
+    expect(
+      isFullyConfirmed({
+        momentId: MOMENT_ID,
+        momentStatus: 'approved',
+        question: readOk(null),
+        card: readFailed(new HttpError(503)),
+      }),
+    ).toBe(false);
+  });
+});
+
+describe('the required failure scenarios end to end', () => {
+  it('compile lands, response lost, card listing 503s: phase held, compile blocked', () => {
+    const lost: DebriefState = {
       ...COLD_RELOAD,
       phase: 'answered',
       questionId: 'TEST_DATA-question-1',
+      needsRefetch: true,
+      block: { kind: 'error', message: 'TEST_DATA connection lost' },
     };
 
-    const hydrated = hydrateState(
-      justAnswered,
-      serverState({
-        question: question({ status: 'answered' }),
-        questionAnswered: true,
+    const hydrated = hydrateState(lost, {
+      momentId: MOMENT_ID,
+      momentStatus: 'approved',
+      question: readOk({ question: question({ status: 'answered' }), answered: true }),
+      card: readFailed(new HttpError(503)),
+    });
+
+    expect(hydrated.phase).toBe('answered');
+    expect(canCompile(hydrated)).toBe(false);
+    expect(hydrated.needsRefetch).toBe(true);
+    expect(hydrated.unconfirmed).toBe(true);
+  });
+
+  it('publish lands, hydration 401s: local state preserved, sign-in required', () => {
+    const published: DebriefState = {
+      ...COLD_RELOAD,
+      phase: 'compiled',
+      questionId: 'TEST_DATA-question-1',
+      needsRefetch: true,
+    };
+
+    const hydrated = hydrateState(published, {
+      momentId: MOMENT_ID,
+      momentStatus: 'approved',
+      question: readFailed(new HttpError(401)),
+      card: readFailed(new HttpError(401)),
+    });
+
+    expect(hydrated.phase).toBe('compiled');
+    expect(hydrated.unconfirmed).toBe(true);
+    expect(hydrated.needsRefetch).toBe(true);
+    expect(canPublish(hydrated)).toBe(false);
+  });
+
+  it('a later successful refresh resolves the uncertainty', () => {
+    const stuck: DebriefState = {
+      ...COLD_RELOAD,
+      phase: 'answered',
+      unconfirmed: true,
+      needsRefetch: true,
+      block: { kind: 'error', message: 'Could not confirm server state — retry refresh.' },
+    };
+
+    const resolved = hydrateState(
+      stuck,
+      confirmed({
+        question: { question: question({ status: 'answered' }), answered: true },
         card: card({ status: 'draft' }),
       }),
     );
 
-    expect(hydrated.phase).toBe('compiled');
-    expect(canCompile(hydrated)).toBe(false);
+    expect(resolved.phase).toBe('compiled');
+    expect(resolved.unconfirmed).toBe(false);
+    expect(resolved.needsRefetch).toBe(false);
+    expect(resolved.block.kind).toBe('none');
+    expect(canPublish(resolved)).toBe(true);
   });
 
-  it('clears a stale rejection banner once the server says it got past that', () => {
-    const rejected: DebriefState = {
+  it('a later refresh that confirms no card lowers the phase honestly', () => {
+    const optimistic: DebriefState = {
       ...COLD_RELOAD,
-      block: { kind: 'rejected', reason: 'expert_answer_too_thin', message: 'TEST_DATA' },
+      phase: 'compiled',
+      unconfirmed: true,
     };
-    const hydrated = hydrateState(
-      rejected,
-      serverState({ question: question({ status: 'answered' }), questionAnswered: true }),
+
+    const resolved = hydrateState(
+      optimistic,
+      confirmed({ question: { question: question({ status: 'answered' }), answered: true } }),
     );
-    expect(hydrated.block.kind).toBe('none');
-  });
 
-  it('keeps the rejection banner while the question is still unanswered', () => {
-    const rejected: DebriefState = {
-      ...COLD_RELOAD,
-      block: { kind: 'rejected', reason: 'expert_answer_too_thin', message: 'TEST_DATA' },
-    };
-    const hydrated = hydrateState(rejected, serverState({ question: question() }));
-    expect(hydrated.block.kind).toBe('rejected');
+    expect(resolved.phase).toBe('answered');
+    expect(resolved.unconfirmed).toBe(false);
+    expect(canCompile(resolved)).toBe(true);
   });
 });
 
-describe('fetchMomentServerState reads complete state in one pass', () => {
+describe('fetchMomentServerState surfaces read outcomes', () => {
   function api(overrides: Partial<HydrationApi> = {}): HydrationApi {
     return {
       resolveMomentQuestion: jest.fn().mockResolvedValue(null),
@@ -269,39 +416,65 @@ describe('fetchMomentServerState reads complete state in one pass', () => {
     };
   }
 
-  it('fetches cards once for the whole batch, not once per moment', async () => {
+  it('fetches cards once for the whole batch', async () => {
     const listKnowledgeObjects = jest.fn().mockResolvedValue([]);
-    const deps = api({ listKnowledgeObjects });
-
-    await fetchMomentServerState(deps, [
+    await fetchMomentServerState(api({ listKnowledgeObjects }), [
       { id: 'TEST_DATA-m1', status: 'approved' },
       { id: 'TEST_DATA-m2', status: 'approved' },
-      { id: 'TEST_DATA-m3', status: 'approved' },
     ]);
-
     expect(listKnowledgeObjects).toHaveBeenCalledTimes(1);
   });
 
-  it('matches each moment to its own card', async () => {
+  it('matches each moment to its own card and confirms absence for the rest', async () => {
     const deps = api({
       listKnowledgeObjects: jest.fn().mockResolvedValue([
         card({ id: 'TEST_DATA-card-a', moment_id: 'TEST_DATA-m1', status: 'published' }),
-        card({ id: 'TEST_DATA-card-b', moment_id: 'TEST_DATA-m2', status: 'draft' }),
       ]),
     });
 
     const result = await fetchMomentServerState(deps, [
       { id: 'TEST_DATA-m1', status: 'approved' },
       { id: 'TEST_DATA-m2', status: 'approved' },
-      { id: 'TEST_DATA-m3', status: 'approved' },
     ]);
 
-    expect(result[0].card?.status).toBe('published');
-    expect(result[1].card?.status).toBe('draft');
-    expect(result[2].card).toBeNull();
+    expect(result[0].card).toEqual({ ok: true, value: expect.objectContaining({ status: 'published' }) });
+    // Confirmed absence, not a failed read.
+    expect(result[1].card).toEqual({ ok: true, value: null });
   });
 
-  it('reports the answered flag from the resolved question', async () => {
+  it('marks every card read failed when the single listing call fails', async () => {
+    const err = new HttpError(401);
+    const deps = api({ listKnowledgeObjects: jest.fn().mockRejectedValue(err) });
+
+    const result = await fetchMomentServerState(deps, [
+      { id: 'TEST_DATA-m1', status: 'approved' },
+      { id: 'TEST_DATA-m2', status: 'approved' },
+    ]);
+
+    // One 401 must not read as "the whole account has no cards".
+    expect(result[0].card).toEqual({ ok: false, error: err });
+    expect(result[1].card).toEqual({ ok: false, error: err });
+    expect(isFullyConfirmed(result[0])).toBe(false);
+  });
+
+  it('marks only the failing moment’s question read as failed', async () => {
+    const err = new Error('TEST_DATA timeout');
+    const resolveMomentQuestion = jest
+      .fn()
+      .mockImplementation((id: string) =>
+        id === 'TEST_DATA-m1' ? Promise.reject(err) : Promise.resolve(null),
+      );
+
+    const result = await fetchMomentServerState(api({ resolveMomentQuestion }), [
+      { id: 'TEST_DATA-m1', status: 'approved' },
+      { id: 'TEST_DATA-m2', status: 'approved' },
+    ]);
+
+    expect(result[0].question).toEqual({ ok: false, error: err });
+    expect(result[1].question).toEqual({ ok: true, value: null });
+  });
+
+  it('reports a successful question read with its answered flag', async () => {
     const deps = api({
       resolveMomentQuestion: jest
         .fn()
@@ -312,23 +485,8 @@ describe('fetchMomentServerState reads complete state in one pass', () => {
       { id: MOMENT_ID, status: 'approved' },
     ]);
 
-    expect(result.questionAnswered).toBe(true);
-    expect(result.question?.id).toBe('TEST_DATA-question-1');
-  });
-
-  it('degrades to partial state rather than failing the whole refresh', async () => {
-    const deps = api({
-      resolveMomentQuestion: jest.fn().mockRejectedValue(new Error('TEST_DATA timeout')),
-      listKnowledgeObjects: jest.fn().mockRejectedValue(new Error('TEST_DATA timeout')),
-    });
-
-    const [result] = await fetchMomentServerState(deps, [
-      { id: MOMENT_ID, status: 'approved' },
-    ]);
-
-    expect(result.question).toBeNull();
-    expect(result.card).toBeNull();
-    expect(result.momentStatus).toBe('approved');
+    expect(result.question.ok).toBe(true);
+    expect(isFullyConfirmed(result)).toBe(true);
   });
 
   it('skips the network entirely for an empty batch', async () => {

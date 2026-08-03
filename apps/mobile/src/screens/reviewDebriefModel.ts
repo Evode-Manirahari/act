@@ -51,6 +51,17 @@ export type DebriefState = {
   block: DebriefBlock;
   /** Set when a write's outcome is unknown (network drop mid-flight). */
   needsRefetch: boolean;
+  /**
+   * True when the last hydration could not confirm server state — a read
+   * failed, timed out, or was rejected.
+   *
+   * This is deliberately distinct from "the server said there is nothing here".
+   * An unavailable read tells us nothing, and treating it as absence is how a
+   * compiled moment silently reverts to "waiting for debrief" and invites a
+   * second compile. While this is set the phase is frozen at whatever was last
+   * confirmed and the destructive actions stay locked.
+   */
+  unconfirmed: boolean;
 };
 
 export const INITIAL_DEBRIEF_STATE: DebriefState = {
@@ -60,6 +71,7 @@ export const INITIAL_DEBRIEF_STATE: DebriefState = {
   draftAnswer: '',
   block: { kind: 'none' },
   needsRefetch: false,
+  unconfirmed: false,
 };
 
 /** A moment already approved server-side starts at pending_debrief. */
@@ -118,13 +130,17 @@ export function canSubmitAudioAnswer(state: DebriefState): boolean {
   return !isBusy(state) && state.phase === 'pending_debrief' && state.questionId !== null;
 }
 
-/** Compile is unlocked by a stored answer — never by approval alone. */
+/**
+ * Compile is unlocked by a stored answer — never by approval alone, and never
+ * while server state is unconfirmed. Compile is not idempotent on the backend,
+ * so acting on a phase we could not verify risks a second card.
+ */
 export function canCompile(state: DebriefState): boolean {
-  return !isBusy(state) && state.phase === 'answered';
+  return !isBusy(state) && !state.unconfirmed && state.phase === 'answered';
 }
 
 export function canPublish(state: DebriefState): boolean {
-  return !isBusy(state) && state.phase === 'compiled';
+  return !isBusy(state) && !state.unconfirmed && state.phase === 'compiled';
 }
 
 // --- Transitions -----------------------------------------------------------
@@ -262,10 +278,34 @@ export function reconcile(
     phase,
     questionId: server.questionId,
     needsRefetch: false,
+    unconfirmed: false,
     // A rejection is about text the technician can still fix, so it survives a
     // refetch that confirms the question is still unanswered. Once the server
     // says the debrief got past that point, the hint is stale — drop it.
     block: phaseAtLeast(phase, 'answered') ? { kind: 'none' } : state.block,
+  };
+}
+
+/**
+ * Hydration could not confirm server state.
+ *
+ * Everything last known stays exactly as it was — phase, question, card and the
+ * technician's typed answer. `needsRefetch` is deliberately *not* cleared: if a
+ * write's outcome was already unknown, a failed read has not resolved it, and
+ * dropping the flag here would strand the moment in a state nobody ever
+ * reconciles.
+ */
+export function syncFailed(state: DebriefState, message?: string): DebriefState {
+  return {
+    ...state,
+    unconfirmed: true,
+    block:
+      state.block.kind === 'auth' || state.block.kind === 'rejected'
+        ? state.block
+        : {
+            kind: 'error',
+            message: message ?? 'Could not confirm server state — retry refresh.',
+          },
   };
 }
 
@@ -298,6 +338,7 @@ export function explainRejection(reason: string | null, detail: string | null): 
 /** One line describing where the moment stands. Never claims work that hasn't happened. */
 export function phaseLabel(state: DebriefState): string {
   if (state.block.kind === 'auth') return 'Sign in to continue';
+  if (state.unconfirmed) return 'Could not confirm server state';
   switch (state.phase) {
     case 'unreviewed':
       return 'Not reviewed yet';
@@ -315,6 +356,9 @@ export function phaseLabel(state: DebriefState): string {
 /** Supporting copy for the pending state, so "waiting" never reads as "done". */
 export function phaseHint(state: DebriefState): string | null {
   if (state.block.kind === 'auth') return state.block.message;
+  if (state.unconfirmed) {
+    return 'Could not confirm server state — retry refresh. Compiling and publishing stay locked until this moment can be verified.';
+  }
   if (state.block.kind === 'rejected') return state.block.message;
   if (state.phase === 'pending_debrief') {
     return state.questionId

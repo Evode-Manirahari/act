@@ -58,7 +58,12 @@ import {
   setDraftAnswer,
   type DebriefState,
 } from './reviewDebriefModel';
-import { fetchMomentServerState, hydrateState } from './debriefHydration';
+import {
+  fetchMomentServerState,
+  firstReadError,
+  hydrateState,
+  resolveHeldValue,
+} from './debriefHydration';
 import { createSingleFlight, flightKey } from './singleFlight';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import ActAppShell from '../components/ActAppShell';
@@ -191,12 +196,28 @@ export default function PilotReviewScreen() {
       const next = { ...prev };
       for (const entry of server) {
         const current = next[entry.momentId] ?? EMPTY_DEBRIEF;
+        let machine = hydrateState(current.machine, entry);
+
+        // An expired session is the one read failure worth naming specifically:
+        // it is actionable (sign in) rather than "try again later", and the
+        // typed answer must survive it.
+        const readError = firstReadError(entry);
+        if (readError instanceof AuthRequiredError) {
+          machine = sessionExpired(machine, readError.message);
+        }
+
         next[entry.momentId] = {
-          // draftAnswer rides along inside `machine` and is preserved by
-          // hydrateState; question/card come from the server.
-          machine: hydrateState(current.machine, entry),
-          question: entry.question ?? current.question,
-          draft: entry.card ?? current.draft,
+          machine,
+          // Only a successful read may replace or clear these. A failed read
+          // leaves the reviewer looking at what they had — flagged unconfirmed
+          // by the machine, and not actionable.
+          question: resolveHeldValue(
+            entry.question.ok
+              ? { ok: true as const, value: entry.question.value?.question ?? null }
+              : entry.question,
+            current.question,
+          ),
+          draft: resolveHeldValue(entry.card, current.draft),
         };
       }
       return next;

@@ -1,39 +1,77 @@
 /**
  * The one authoritative path that decides what phase a moment is in.
  *
- * Before this existed the screen seeded a moment from `moment.status` alone,
- * which only distinguishes "approved" from "not approved". Everything past that
- * point — answered, compiled, published — lived in client booleans set by the
- * actions the user happened to take in that session. Reload the screen and a
- * fully published moment came back as "waiting for debrief", which is the same
- * class of lie the fabricated cards were: UI state asserting something the
- * server had not confirmed.
+ * Two distinct failures live here, and conflating them is a bug:
  *
- * Hydration answers all four questions from the server:
- *   - is the moment approved?
- *   - which question is authoritative for it?
- *   - has that question been answered?
- *   - does a card exist, and is it draft or published?
+ *   - **The server says there is nothing.** No card exists, no question exists.
+ *     That is authoritative and may lower a moment's phase.
+ *   - **We could not ask.** A 401, a 503, a timeout. That tells us *nothing*.
  *
- * `reconcile` in reviewDebriefModel turns that into a phase. Nothing here reads
- * a local flag, and `draftAnswer` is carried through untouched so hydrating
- * never costs the technician text they are part-way through typing.
+ * An earlier version collapsed the second into the first by catching errors into
+ * `[]` and `null`. A card listing that 503s then looked exactly like "this
+ * moment has no card", so a compiled moment silently reverted to "waiting for
+ * debrief" — and since compile is not idempotent server-side, acting on that
+ * would have produced a second card. Same shape as the original fabricated-card
+ * bug: the client asserting something the server never said.
+ *
+ * So every read is now an explicit `ReadResult`. Only a *successful* read may
+ * clear state or lower a phase; a failed read freezes what was last confirmed,
+ * keeps `needsRefetch` set, and locks compile/publish until a later refresh
+ * resolves it.
  */
 import {
   indexCardsByMoment,
   type ElicitationQuestion,
   type KnowledgeObject,
 } from '../api/libraryApi';
-import { reconcile, type DebriefState } from './reviewDebriefModel';
+import { reconcile, syncFailed, type DebriefState } from './reviewDebriefModel';
 
-/** Everything the server knows about one moment's debrief. */
+/**
+ * The outcome of one read. `ok: true` with `value: null` means the server
+ * confirmed absence; `ok: false` means we never found out.
+ */
+export type ReadResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: unknown };
+
+export function readOk<T>(value: T): ReadResult<T> {
+  return { ok: true, value };
+}
+
+export function readFailed<T>(error: unknown): ReadResult<T> {
+  return { ok: false, error };
+}
+
+/** Run a read, capturing failure instead of letting it masquerade as absence. */
+async function attempt<T>(run: () => Promise<T>): Promise<ReadResult<T>> {
+  try {
+    return readOk(await run());
+  } catch (error) {
+    return readFailed<T>(error);
+  }
+}
+
+/** Everything the server told us — or didn't — about one moment's debrief. */
 export type MomentServerState = {
   momentId: string;
   momentStatus: string;
-  question: ElicitationQuestion | null;
-  questionAnswered: boolean;
-  card: KnowledgeObject | null;
+  /** Confirmed question (or confirmed absence), else a failed read. */
+  question: ReadResult<{ question: ElicitationQuestion; answered: boolean } | null>;
+  /** Confirmed card (or confirmed absence), else a failed read. */
+  card: ReadResult<KnowledgeObject | null>;
 };
+
+/** True only when every read for this moment succeeded. */
+export function isFullyConfirmed(server: MomentServerState): boolean {
+  return server.question.ok && server.card.ok;
+}
+
+/** The first error from an incomplete read, for the retry banner. */
+export function firstReadError(server: MomentServerState): unknown {
+  if (!server.question.ok) return server.question.error;
+  if (!server.card.ok) return server.card.error;
+  return null;
+}
 
 /** The subset of the API this module needs, so tests can supply fakes. */
 export type HydrationApi = {
@@ -48,12 +86,12 @@ export type HydrationApi = {
 };
 
 /**
- * Read complete server state for a set of moments.
+ * Read server state for a set of moments.
  *
  * Cards are fetched once and indexed by moment (act-api has no per-moment card
- * route), while questions are per-moment. A moment whose question lookup fails
- * is reported with what we do know rather than failing the whole batch — a
- * partial refresh is better than a screen that silently keeps stale phases.
+ * route). If that one call fails, every moment's card read is marked failed —
+ * not empty — because a single 401 must not look like "the whole account has no
+ * cards".
  */
 export async function fetchMomentServerState(
   api: HydrationApi,
@@ -61,20 +99,21 @@ export async function fetchMomentServerState(
 ): Promise<MomentServerState[]> {
   if (moments.length === 0) return [];
 
-  const cards = await api
-    .listKnowledgeObjects({ limit: 200 })
-    .catch(() => [] as KnowledgeObject[]);
-  const cardsByMoment = indexCardsByMoment(cards);
+  const cardsRead = await attempt(() => api.listKnowledgeObjects({ limit: 200 }));
+  const cardsByMoment = cardsRead.ok ? indexCardsByMoment(cardsRead.value) : null;
 
   return Promise.all(
     moments.map(async (moment) => {
-      const resolved = await api.resolveMomentQuestion(moment.id).catch(() => null);
+      const question = await attempt(() => api.resolveMomentQuestion(moment.id));
       return {
         momentId: moment.id,
         momentStatus: moment.status,
-        question: resolved?.question ?? null,
-        questionAnswered: resolved?.answered ?? false,
-        card: cardsByMoment[moment.id] ?? null,
+        question,
+        card: cardsByMoment
+          ? readOk(cardsByMoment[moment.id] ?? null)
+          : readFailed<KnowledgeObject | null>(
+              (cardsRead as { ok: false; error: unknown }).error,
+            ),
       };
     }),
   );
@@ -83,18 +122,38 @@ export async function fetchMomentServerState(
 /**
  * Fold one moment's server state into its machine.
  *
- * A card outranks the question: if a published card exists the moment is
- * published even if the question row somehow looks open, because the card is
- * the outcome the reviewer and the apprentice both see.
+ * Only a complete set of successful reads may move the phase. Anything less and
+ * the moment keeps whatever was last confirmed, stays flagged as unconfirmed,
+ * and keeps any outstanding `needsRefetch`.
  */
 export function hydrateState(
   state: DebriefState,
   server: MomentServerState,
 ): DebriefState {
+  if (!isFullyConfirmed(server)) return syncFailed(state);
+
+  const question = (server.question as { ok: true; value: { question: ElicitationQuestion; answered: boolean } | null }).value;
+  const card = (server.card as { ok: true; value: KnowledgeObject | null }).value;
+
   return reconcile(state, {
     momentStatus: server.momentStatus,
-    questionId: server.question?.id ?? null,
-    questionAnswered: server.questionAnswered,
-    cardStatus: server.card?.status ?? null,
+    questionId: question?.question.id ?? null,
+    questionAnswered: question?.answered ?? false,
+    cardStatus: card?.status ?? null,
   });
+}
+
+/**
+ * What the screen should hold for question/card after hydrating.
+ *
+ * A successful read is authoritative in both directions: a returned row
+ * replaces what we had, and a confirmed absence clears it. A failed read leaves
+ * the previous value in place so the reviewer keeps seeing the card they were
+ * working on — flagged unconfirmed, and not actionable.
+ */
+export function resolveHeldValue<T>(
+  read: ReadResult<T | null>,
+  current: T | null,
+): T | null {
+  return read.ok ? read.value : current;
 }
