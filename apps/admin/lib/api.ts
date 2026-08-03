@@ -193,7 +193,8 @@ export const api = {
     }),
   submitAnswer: (
     questionId: string,
-    body: { transcript: string; approved_by_expert?: boolean; expert_user_id?: string },
+    // No expert_user_id — the answer's author comes from the bearer token.
+    body: { transcript: string; approved_by_expert?: boolean },
   ) =>
     json<{ id: string; transcript: string }>(
       `/questions/${questionId}/answers`,

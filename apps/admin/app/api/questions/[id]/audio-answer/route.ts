@@ -18,8 +18,9 @@ export async function POST(
   forward.append('audio', audio, (audio as File).name || 'answer.webm');
   const approved = incoming.get('approved_by_expert');
   if (approved) forward.append('approved_by_expert', String(approved));
-  const expertUserId = incoming.get('expert_user_id');
-  if (expertUserId) forward.append('expert_user_id', String(expertUserId));
+  // expert_user_id is deliberately NOT forwarded: act-api attributes the answer
+  // to the authenticated admin token and rejects (403) a client-supplied id
+  // naming anyone else. Passing one through would only ever cause that error.
 
   try {
     const answer = await forwardMultipart<ExpertAnswerOut>(

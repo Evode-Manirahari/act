@@ -3,7 +3,7 @@
  * Used by the Learn tab to browse published knowledge objects and log
  * training events when an apprentice attempts a quiz.
  */
-import { getAuthHeaders } from '../lib/authToken';
+import { getAuthHeaders, requireAuthHeaders } from '../lib/authToken';
 import { API_BASE } from '../lib/config';
 
 
@@ -135,21 +135,64 @@ export type TrainingEventType =
   | 'flagged';
 
 
-async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
+/** Pull FastAPI's `{"detail": ...}` out of an error body, if it is there. */
+export function parseApiDetail(body: string): string | null {
+  try {
+    const parsed = JSON.parse(body) as { detail?: unknown };
+    const detail = parsed?.detail;
+    if (typeof detail === 'string' && detail.trim()) return detail.trim();
+    // 422s from FastAPI's own validation arrive as a list of error objects.
+    if (Array.isArray(detail)) {
+      const messages = detail
+        .map((entry) =>
+          entry && typeof entry === 'object' && typeof (entry as { msg?: unknown }).msg === 'string'
+            ? (entry as { msg: string }).msg
+            : null,
+        )
+        .filter((msg): msg is string => Boolean(msg));
+      if (messages.length) return messages.join('; ');
+    }
+  } catch {
+    // Not JSON — the raw body is the best detail we have.
+  }
+  const trimmed = body.trim();
+  return trimmed ? trimmed : null;
+}
+
+/**
+ * The machine-readable reason act-api attaches when it refuses an answer, e.g.
+ * `answer rejected (expert_answer_echoes_prompt): …`. Lets the UI branch on the
+ * cause instead of pattern-matching prose.
+ */
+export function parseRejectionReason(detail: string | null): string | null {
+  if (!detail) return null;
+  const match = /answer rejected \(([a-z_]+)\)/i.exec(detail);
+  return match ? match[1] : null;
+}
+
+async function jsonFetch<T>(
+  path: string,
+  init?: RequestInit,
+  opts: { requireAuth?: boolean } = {},
+): Promise<T> {
+  const authHeaders = opts.requireAuth
+    ? await requireAuthHeaders()
+    : await getAuthHeaders();
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...(init?.headers ?? {}),
-      ...(await getAuthHeaders()),
+      ...authHeaders,
     },
   });
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    throw new LibraryApiError(
-      `${init?.method ?? 'GET'} ${path} -> ${response.status}: ${body.slice(0, 200)}`,
+    throw LibraryApiError.fromResponse(
+      `${init?.method ?? 'GET'} ${path}`,
       response.status,
+      body,
     );
   }
   return (await response.json()) as T;
@@ -157,9 +200,31 @@ async function jsonFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 
 export class LibraryApiError extends Error {
-  constructor(message: string, readonly status: number) {
+  /** The backend's own explanation, unwrapped from `{"detail": …}`. */
+  readonly detail: string | null;
+  /** Reason code when the backend refused the text as non-human-authored. */
+  readonly reason: string | null;
+
+  constructor(
+    message: string,
+    readonly status: number,
+    detail: string | null = null,
+    reason: string | null = null,
+  ) {
     super(message);
     this.name = 'LibraryApiError';
+    this.detail = detail;
+    this.reason = reason;
+  }
+
+  static fromResponse(where: string, status: number, body: string): LibraryApiError {
+    const detail = parseApiDetail(body);
+    return new LibraryApiError(
+      `${where} -> ${status}: ${body.slice(0, 200)}`,
+      status,
+      detail,
+      parseRejectionReason(detail),
+    );
   }
 }
 
@@ -199,13 +264,40 @@ export async function getPendingDebrief(): Promise<PendingDebrief> {
   return jsonFetch<PendingDebrief>('/debrief/pending');
 }
 
+/** Questions already drafted for this moment, newest first. */
+export async function listMomentQuestions(
+  momentId: string,
+): Promise<ElicitationQuestion[]> {
+  return jsonFetch<ElicitationQuestion[]>(`/moments/${momentId}/questions`);
+}
+
 export async function generateMomentQuestion(
   momentId: string,
 ): Promise<ElicitationQuestion> {
-  return jsonFetch<ElicitationQuestion>(`/moments/${momentId}/questions`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  });
+  return jsonFetch<ElicitationQuestion>(
+    `/moments/${momentId}/questions`,
+    { method: 'POST', body: JSON.stringify({}) },
+    { requireAuth: true },
+  );
+}
+
+/**
+ * Load this moment's open debrief question, drafting one only if none exists.
+ *
+ * POST is not idempotent — it drafts a fresh question (and burns a model call)
+ * on every tap. A technician on a slow connection tapping twice would otherwise
+ * end up with two questions competing for one answer, so a duplicate tap
+ * resolves to the question already waiting.
+ */
+export async function loadOrCreateMomentQuestion(
+  momentId: string,
+): Promise<ElicitationQuestion> {
+  const existing = await listMomentQuestions(momentId);
+  const open = existing.find(
+    (question) => question.status === 'proposed' || question.status === 'asked',
+  );
+  if (open) return open;
+  return generateMomentQuestion(momentId);
 }
 
 export async function editMomentQuestion(input: {
@@ -214,37 +306,51 @@ export async function editMomentQuestion(input: {
   reason?: string | null;
   status?: 'proposed' | 'asked' | 'answered' | 'dismissed';
 }): Promise<ElicitationQuestion> {
-  return jsonFetch<ElicitationQuestion>(`/questions/${input.questionId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      question: input.question,
-      reason: input.reason,
-      status: input.status,
-    }),
-  });
+  return jsonFetch<ElicitationQuestion>(
+    `/questions/${input.questionId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        question: input.question,
+        reason: input.reason,
+        status: input.status,
+      }),
+    },
+    { requireAuth: true },
+  );
 }
 
+/**
+ * Record the technician's typed answer.
+ *
+ * No author id is sent. act-api derives the answer's author from the bearer
+ * token and rejects a client-supplied `expert_user_id` that names anyone else
+ * (403) — an id the client asserts is not proof of authorship. The session is
+ * required rather than optional for the same reason.
+ */
 export async function submitExpertAnswer(input: {
   questionId: string;
   transcript: string;
   approvedByExpert?: boolean;
-  expertUserId?: string | null;
 }): Promise<ExpertAnswer> {
-  return jsonFetch<ExpertAnswer>(`/questions/${input.questionId}/answers`, {
-    method: 'POST',
-    body: JSON.stringify({
-      transcript: input.transcript,
-      approved_by_expert: input.approvedByExpert ?? true,
-      expert_user_id: input.expertUserId ?? null,
-    }),
-  });
+  return jsonFetch<ExpertAnswer>(
+    `/questions/${input.questionId}/answers`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        transcript: input.transcript,
+        approved_by_expert: input.approvedByExpert ?? true,
+      }),
+    },
+    { requireAuth: true },
+  );
 }
 
+/** Same authorship rule as the typed route — the token names the author. */
 export async function submitExpertAudioAnswer(input: {
   questionId: string;
   uri: string;
   approvedByExpert?: boolean;
-  expertUserId?: string | null;
   contentType?: string;
   fileName?: string;
 }): Promise<ExpertAnswer> {
@@ -255,20 +361,18 @@ export async function submitExpertAudioAnswer(input: {
     type: input.contentType ?? 'audio/m4a',
   } as unknown as Blob);
   form.append('approved_by_expert', String(input.approvedByExpert ?? true));
-  if (input.expertUserId) {
-    form.append('expert_user_id', input.expertUserId);
-  }
 
   const response = await fetch(`${API_BASE}/questions/${input.questionId}/answers/audio`, {
     method: 'POST',
-    headers: { Accept: 'application/json', ...(await getAuthHeaders()) },
+    headers: { Accept: 'application/json', ...(await requireAuthHeaders()) },
     body: form,
   });
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    throw new LibraryApiError(
-      `POST /questions/${input.questionId}/answers/audio -> ${response.status}: ${body.slice(0, 200)}`,
+    throw LibraryApiError.fromResponse(
+      `POST /questions/${input.questionId}/answers/audio`,
       response.status,
+      body,
     );
   }
   return (await response.json()) as ExpertAnswer;
@@ -306,10 +410,11 @@ export async function compileMoment(input: {
   momentId: string;
   trade?: string;
 }): Promise<KnowledgeObject> {
-  return jsonFetch<KnowledgeObject>(`/moments/${input.momentId}/compile`, {
-    method: 'POST',
-    body: JSON.stringify({ trade: input.trade ?? 'hvac' }),
-  });
+  return jsonFetch<KnowledgeObject>(
+    `/moments/${input.momentId}/compile`,
+    { method: 'POST', body: JSON.stringify({ trade: input.trade ?? 'hvac' }) },
+    { requireAuth: true },
+  );
 }
 
 export async function publishKnowledgeObject(
@@ -318,6 +423,7 @@ export async function publishKnowledgeObject(
   return jsonFetch<KnowledgeObject>(
     `/knowledge-objects/${knowledgeObjectId}/publish`,
     { method: 'POST' },
+    { requireAuth: true },
   );
 }
 
@@ -327,6 +433,7 @@ export async function safetyCheckKnowledgeObject(
   return jsonFetch<KnowledgeObject>(
     `/knowledge-objects/${knowledgeObjectId}/safety-check`,
     { method: 'POST' },
+    { requireAuth: true },
   );
 }
 
@@ -354,6 +461,7 @@ export async function upsertReviewChecklist(input: {
         notes: input.notes ?? null,
       }),
     },
+    { requireAuth: true },
   );
 }
 

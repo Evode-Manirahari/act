@@ -5,11 +5,16 @@
  * is a real-time instruction to the tech. The reviewer (a lead tech) walks the
  * moment through:
  *
- *   1. Generate question  -> generateMomentQuestion(momentId)
+ *   1. Load the question   -> loadOrCreateMomentQuestion(momentId)
  *   2. Review/edit the question text
- *   3. Expert answer text -> submitExpertAnswer({ questionId, transcript })
+ *   3. Expert answer       -> submitExpertAnswer / submitExpertAudioAnswer
  *   4. Compile draft       -> compileMoment({ momentId })
  *   5. Publish after review -> publishKnowledgeObject(knowledgeObjectId)
+ *
+ * Steps 4 and 5 are gated on `reviewDebriefModel`, which only advances past
+ * step 3 when act-api has actually stored an answer. There is no path in this
+ * panel that fills the answer box for the technician: an unanswered moment
+ * renders as "waiting for debrief" for as long as that remains true.
  *
  * Every API client call goes through the screen's handlers so error states stay
  * visible and centralized; this component only owns local UI/text state.
@@ -32,31 +37,31 @@ import type {
   ElicitationQuestion,
   KnowledgeObject,
 } from '../api/libraryApi';
-
-export type DebriefStep =
-  | 'idle'
-  | 'questioning'
-  | 'answering'
-  | 'drafting'
-  | 'publishing';
+import {
+  actionLabel,
+  canCompile,
+  canPublish,
+  canRequestQuestion,
+  canSubmitAudioAnswer,
+  canSubmitTypedAnswer,
+  isBusy,
+  phaseAtLeast,
+  type DebriefState,
+} from '../screens/reviewDebriefModel';
 
 export type ReviewDebriefPanelProps = {
   /** Mono id label for the moment under debrief. */
   momentId: string;
-  /** Server-generated question once step 1 runs (null before that). */
+  /** The phase machine for this moment — owns every gate below. */
+  state: DebriefState;
+  /** Server question once one has been loaded or drafted (null before that). */
   question: ElicitationQuestion | null;
   /** Compiled draft card once step 4 runs (null before that). */
   draft: KnowledgeObject | null;
-  /** Whichever async step is currently in flight for this moment. */
-  busyStep: DebriefStep;
-  /** True once the draft's knowledge object is published. */
-  published: boolean;
-  /** True once a text/audio answer has been saved for this debrief question. */
-  answered: boolean;
-  /** True once the turn-based voice agent has captured enough expert context. */
-  voiceComplete: boolean;
-  /** Step 1: ask the server for a debrief question. */
-  onGenerateQuestion: () => void;
+  /** Lift the technician's typed answer so it survives a session expiry. */
+  onDraftAnswerChange: (text: string) => void;
+  /** Step 1: load this moment's question, drafting one only if none exists. */
+  onLoadQuestion: () => void;
   /** Step 3: submit the expert's answer text for the current question. */
   onSubmitAnswer: (questionText: string, answerText: string) => void;
   /** Optional Step 3 voice path: submit recorded expert audio, then use transcript. */
@@ -71,13 +76,11 @@ export type ReviewDebriefPanelProps = {
 
 export default function ReviewDebriefPanel({
   momentId,
+  state,
   question,
   draft,
-  busyStep,
-  published,
-  answered,
-  voiceComplete,
-  onGenerateQuestion,
+  onDraftAnswerChange,
+  onLoadQuestion,
   onSubmitAnswer,
   onSubmitAudioAnswer,
   onCompileDraft,
@@ -87,7 +90,6 @@ export default function ReviewDebriefPanel({
   // We keep the edited prompt locally until save; the screen persists any edits
   // before submitting the expert answer.
   const [questionText, setQuestionText] = useState<string | null>(null);
-  const [answerText, setAnswerText] = useState('');
   const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
   const [voiceBusy, setVoiceBusy] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
@@ -97,10 +99,13 @@ export default function ReviewDebriefPanel({
   const effectiveQuestion =
     questionText ?? question?.question ?? '';
 
-  const busy = busyStep !== 'idle';
+  // The answer text lives in the machine so a session expiry mid-submit doesn't
+  // discard what the technician wrote.
+  const answerText = state.draftAnswer;
+  const busy = isBusy(state);
+  const published = state.phase === 'published';
+  const answerReady = phaseAtLeast(state.phase, 'answered');
   const voiceDisabled = busy || published || !question || !onSubmitAudioAnswer || voiceBusy;
-  const answerReady = answered || voiceComplete;
-  const canShowCompile = answerReady && (!!question || voiceComplete);
 
   useEffect(() => {
     return () => {
@@ -144,10 +149,9 @@ export default function ReviewDebriefPanel({
       if (!uri) {
         throw new Error('Voice answer did not save.');
       }
-      const transcript = await onSubmitAudioAnswer(effectiveQuestion, uri);
-      if (transcript) {
-        setAnswerText(transcript);
-      }
+      // The transcript is the technician's own recorded words coming back from
+      // the server, not text the app composed.
+      await onSubmitAudioAnswer(effectiveQuestion, uri);
     } catch (err) {
       setVoiceError(err instanceof Error ? err.message : 'Could not save voice answer.');
     } finally {
@@ -170,35 +174,44 @@ export default function ReviewDebriefPanel({
         call — never in their ear on the job.
       </Text>
 
-      {/* Step 1 — generate the question */}
-      <StepHeader index={1} label="Generate question" done={!!question || voiceComplete} />
-      {!question && !voiceComplete ? (
+      {/* Session / rejection banners — the honest reason the loop is stuck. */}
+      {state.block.kind === 'auth' ? (
+        <View style={styles.blockBand}>
+          <Text style={styles.blockBandTitle}>Signed out</Text>
+          <Text style={styles.blockBandBody}>{state.block.message}</Text>
+          <Text style={styles.blockBandBody}>
+            Your answer is still here. Sign in again and submit it.
+          </Text>
+        </View>
+      ) : null}
+      {state.block.kind === 'rejected' ? (
+        <View style={styles.blockBand}>
+          <Text style={styles.blockBandTitle}>Answer not saved</Text>
+          <Text style={styles.blockBandBody}>{state.block.message}</Text>
+        </View>
+      ) : null}
+
+      {/* Step 1 — load (or draft) the question */}
+      <StepHeader index={1} label="Debrief question" done={!!question} />
+      {!question ? (
         <Pressable
           accessibilityRole="button"
-          disabled={busy}
-          onPress={onGenerateQuestion}
+          disabled={!canRequestQuestion(state)}
+          onPress={onLoadQuestion}
           style={({ pressed }) => [
             styles.primaryButton,
             pressed && styles.pressed,
-            busy && styles.disabled,
+            !canRequestQuestion(state) && styles.disabled,
           ]}
         >
-          {busyStep === 'questioning' ? (
+          {state.action === 'questioning' ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.primaryButtonText}>Generate debrief question</Text>
+            <Text style={styles.primaryButtonText}>
+              {actionLabel(state, 'questioning', 'Load debrief question')}
+            </Text>
           )}
         </Pressable>
-      ) : null}
-
-      {voiceComplete && !question ? (
-        <View style={styles.voiceCompleteBand}>
-          <Text style={styles.voiceCompleteTitle}>Voice debrief captured</Text>
-          <Text style={styles.voiceCompleteBody}>
-            The expert's answers were saved by the voice agent. Compile the draft
-            from those answers, then review before publishing.
-          </Text>
-        </View>
       ) : null}
 
       {question ? (
@@ -223,7 +236,7 @@ export default function ReviewDebriefPanel({
           <TextInput
             style={styles.answerInput}
             value={answerText}
-            onChangeText={setAnswerText}
+            onChangeText={onDraftAnswerChange}
             multiline
             editable={!busy && !published}
             placeholder="In the expert's own words: what told them to act here, and what would a newer tech get wrong?"
@@ -231,25 +244,29 @@ export default function ReviewDebriefPanel({
           />
           <Pressable
             accessibilityRole="button"
-            disabled={busy || published || answerText.trim().length === 0}
+            disabled={!canSubmitTypedAnswer(state)}
             onPress={() => onSubmitAnswer(effectiveQuestion, answerText.trim())}
             style={({ pressed }) => [
               styles.secondaryButton,
               pressed && styles.pressed,
-              (busy || published || answerText.trim().length === 0) && styles.disabled,
+              !canSubmitTypedAnswer(state) && styles.disabled,
             ]}
           >
-            {busyStep === 'answering' ? (
+            {state.action === 'answering' ? (
               <ActivityIndicator color={colors.primary} />
             ) : (
-              <Text style={styles.secondaryButtonText}>Save expert answer</Text>
+              <Text style={styles.secondaryButtonText}>
+                {actionLabel(state, 'answering', 'Save expert answer')}
+              </Text>
             )}
           </Pressable>
           {onSubmitAudioAnswer ? (
             <>
               <Pressable
                 accessibilityRole="button"
-                disabled={voiceDisabled && !voiceRecording}
+                disabled={
+                  voiceRecording ? voiceBusy : !canSubmitAudioAnswer(state) || voiceDisabled
+                }
                 onPress={() =>
                   voiceRecording
                     ? void stopAndSubmitVoiceAnswer()
@@ -283,30 +300,33 @@ export default function ReviewDebriefPanel({
         </>
       ) : null}
 
-      {/* Step 4 — compile draft */}
+      {/* Step 4 — compile draft. Only reachable once the server stored an answer. */}
       {question && !answerReady ? (
         <Text style={styles.compileHint}>
-          Save the expert answer before compiling a training draft.
+          This moment is waiting for the expert's answer. Nothing compiles or
+          publishes until they've answered in their own words.
         </Text>
       ) : null}
-      {canShowCompile ? (
+      {answerReady ? (
         <>
           <StepHeader index={4} label="Compile draft card" done={!!draft} />
           {!draft ? (
             <Pressable
               accessibilityRole="button"
-              disabled={busy || published || !answerReady}
+              disabled={!canCompile(state)}
               onPress={onCompileDraft}
               style={({ pressed }) => [
                 styles.secondaryButton,
                 pressed && styles.pressed,
-                (busy || published || !answerReady) && styles.disabled,
+                !canCompile(state) && styles.disabled,
               ]}
             >
-              {busyStep === 'drafting' ? (
+              {state.action === 'compiling' ? (
                 <ActivityIndicator color={colors.primary} />
               ) : (
-                <Text style={styles.secondaryButtonText}>Compile draft from answer</Text>
+                <Text style={styles.secondaryButtonText}>
+                  {actionLabel(state, 'compiling', 'Compile draft from answer')}
+                </Text>
               )}
             </Pressable>
           ) : (
@@ -336,18 +356,20 @@ export default function ReviewDebriefPanel({
           {!published ? (
             <Pressable
               accessibilityRole="button"
-              disabled={busy}
+              disabled={!canPublish(state)}
               onPress={onPublish}
               style={({ pressed }) => [
                 styles.primaryButton,
                 pressed && styles.pressed,
-                busy && styles.disabled,
+                !canPublish(state) && styles.disabled,
               ]}
             >
-              {busyStep === 'publishing' ? (
+              {state.action === 'publishing' ? (
                 <ActivityIndicator color="#FFFFFF" />
               ) : (
-                <Text style={styles.primaryButtonText}>Publish to apprentice library</Text>
+                <Text style={styles.primaryButtonText}>
+                  {actionLabel(state, 'publishing', 'Publish to apprentice library')}
+                </Text>
               )}
             </Pressable>
           ) : (
@@ -425,6 +447,25 @@ const styles = StyleSheet.create({
   },
   lede: {
     color: colors.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  blockBand: {
+    borderRadius: 8,
+    backgroundColor: colors.errorLight,
+    borderWidth: 1,
+    borderColor: colors.error,
+    padding: 12,
+    gap: 4,
+  },
+  blockBandTitle: {
+    color: colors.error,
+    fontFamily: fonts.bold,
+    fontSize: 14,
+  },
+  blockBandBody: {
+    color: colors.text,
     fontFamily: fonts.body,
     fontSize: 13,
     lineHeight: 18,

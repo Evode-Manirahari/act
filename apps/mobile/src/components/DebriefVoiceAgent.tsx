@@ -40,12 +40,13 @@ type QA = { question: string; answer: string };
 type Props = {
   momentId: string;
   /** Stamped onto the ExpertAnswer when known (the recording's tech). */
-  expertUserId?: string | null;
+  // No expert id: act-api attributes the answer to the authenticated token
+  // owner. An id supplied by the client is an assertion, not proof.
   /** Fired once the interview reports complete, so the screen can refresh. */
   onComplete?: () => void;
 };
 
-export default function DebriefVoiceAgent({ momentId, expertUserId, onComplete }: Props) {
+export default function DebriefVoiceAgent({ momentId, onComplete }: Props) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [turn, setTurn] = useState<DebriefTurn | null>(null);
   const [log, setLog] = useState<QA[]>([]);
@@ -129,7 +130,6 @@ export default function DebriefVoiceAgent({ momentId, expertUserId, onComplete }
       const answer = await submitExpertAudioAnswer({
         questionId: current.question_id,
         uri,
-        expertUserId: expertUserId ?? null,
       });
       setLog((prev) => [
         ...prev,

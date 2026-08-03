@@ -24,21 +24,23 @@ import type {
   ElicitationQuestion,
   KnowledgeObject,
 } from '../api/libraryApi';
-import ReviewDebriefPanel, { type DebriefStep } from './ReviewDebriefPanel';
+import ReviewDebriefPanel from './ReviewDebriefPanel';
 import DebriefVoiceAgent from './DebriefVoiceAgent';
+import {
+  phaseHint,
+  phaseLabel,
+  type DebriefState,
+} from '../screens/reviewDebriefModel';
 import { selectEvidenceMedia } from './reviewEvidence';
 
 export type ReviewMomentCardProps = {
   moment: MomentOut;
   /** True when a review action is in flight. */
   busy: boolean;
-  /** Debrief loop state for this moment (owned by the screen). */
+  /** Phase machine for this moment (owned by the screen). */
+  debriefState: DebriefState;
   debriefQuestion: ElicitationQuestion | null;
   debriefDraft: KnowledgeObject | null;
-  debriefBusyStep: DebriefStep;
-  debriefPublished: boolean;
-  debriefAnswered: boolean;
-  debriefVoiceComplete: boolean;
   /** Existing review actions — preserved from the original screen. */
   onApprove: () => void;
   onReject: () => void;
@@ -46,11 +48,11 @@ export type ReviewMomentCardProps = {
   onOpenCard: (card: KnowledgeObject) => void;
   /** Guided voice debrief mode, owned by the screen so only one agent is open. */
   voiceDebriefOpen: boolean;
-  expertUserId?: string | null;
   onToggleVoiceDebrief: () => void;
   onVoiceDebriefComplete: () => void;
   /** Debrief loop actions (wired to the API clients in the screen). */
-  onGenerateQuestion: () => void;
+  onDraftAnswerChange: (text: string) => void;
+  onLoadQuestion: () => void;
   onSubmitAnswer: (questionText: string, answerText: string) => void;
   onSubmitAudioAnswer?: (questionText: string, audioUri: string) => Promise<string | null>;
   onCompileDraft: () => void;
@@ -60,21 +62,18 @@ export type ReviewMomentCardProps = {
 export default function ReviewMomentCard({
   moment,
   busy,
+  debriefState,
   debriefQuestion,
   debriefDraft,
-  debriefBusyStep,
-  debriefPublished,
-  debriefAnswered,
-  debriefVoiceComplete,
   onApprove,
   onReject,
   onNeedsInfo,
   onOpenCard,
   voiceDebriefOpen,
-  expertUserId,
   onToggleVoiceDebrief,
   onVoiceDebriefComplete,
-  onGenerateQuestion,
+  onDraftAnswerChange,
+  onLoadQuestion,
   onSubmitAnswer,
   onSubmitAudioAnswer,
   onCompileDraft,
@@ -87,6 +86,10 @@ export default function ReviewMomentCard({
   const contextItems = useMemo(() => reviewContextItems(moment), [moment]);
 
   const approved = moment.status === 'approved';
+  const published = debriefState.phase === 'published';
+  // The honest headline for this moment: an approved-but-unanswered moment says
+  // it is waiting for a debrief rather than showing a finished-looking card.
+  const pendingDebrief = approved && debriefState.phase === 'pending_debrief';
 
   // The safety checklist gates the debrief publish path. Non-safety moments
   // have nothing to confirm, so they're considered cleared by default.
@@ -234,9 +237,14 @@ export default function ReviewMomentCard({
             <Text style={[styles.metaText, styles.warnText]}>post-job only</Text>
           </View>
         ) : null}
-        {debriefPublished ? (
+        {published ? (
           <View style={[styles.metaPill, styles.publishedPill]}>
             <Text style={[styles.metaText, styles.publishedText]}>published</Text>
+          </View>
+        ) : null}
+        {pendingDebrief ? (
+          <View style={[styles.metaPill, styles.warnPill]}>
+            <Text style={[styles.metaText, styles.warnText]}>debrief pending</Text>
           </View>
         ) : null}
       </View>
@@ -312,7 +320,32 @@ export default function ReviewMomentCard({
       {/* Debrief loop — visible after approve */}
       {approved ? (
         <>
-          {!debriefPublished ? (
+          {/* Status band. Says "waiting for debrief" for as long as that is
+              true, so an approved moment is never mistaken for a finished one. */}
+          <View
+            style={[
+              styles.phaseBand,
+              pendingDebrief && styles.phaseBandPending,
+              published && styles.phaseBandDone,
+              debriefState.block.kind === 'auth' && styles.phaseBandBlocked,
+            ]}
+          >
+            <Text
+              style={[
+                styles.phaseBandLabel,
+                pendingDebrief && styles.phaseBandLabelPending,
+                published && styles.phaseBandLabelDone,
+                debriefState.block.kind === 'auth' && styles.phaseBandLabelBlocked,
+              ]}
+            >
+              {phaseLabel(debriefState)}
+            </Text>
+            {phaseHint(debriefState) ? (
+              <Text style={styles.phaseBandHint}>{phaseHint(debriefState)}</Text>
+            ) : null}
+          </View>
+
+          {!published ? (
             <View style={styles.debriefMode}>
               <Pressable
                 accessibilityRole="button"
@@ -358,22 +391,19 @@ export default function ReviewMomentCard({
               </Pressable>
             </View>
           ) : null}
-          {voiceDebriefOpen && !debriefPublished ? (
+          {voiceDebriefOpen && !published ? (
             <DebriefVoiceAgent
               momentId={moment.id}
-              expertUserId={expertUserId ?? null}
               onComplete={onVoiceDebriefComplete}
             />
           ) : (
             <ReviewDebriefPanel
               momentId={moment.id}
+              state={debriefState}
               question={debriefQuestion}
               draft={debriefDraft}
-              busyStep={debriefBusyStep}
-              published={debriefPublished}
-              answered={debriefAnswered}
-              voiceComplete={debriefVoiceComplete}
-              onGenerateQuestion={onGenerateQuestion}
+              onDraftAnswerChange={onDraftAnswerChange}
+              onLoadQuestion={onLoadQuestion}
               onSubmitAnswer={onSubmitAnswer}
               onSubmitAudioAnswer={onSubmitAudioAnswer}
               onCompileDraft={onCompileDraft}
@@ -863,6 +893,41 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontFamily: fonts.bold,
     fontSize: 12,
+  },
+  phaseBand: {
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 3,
+  },
+  phaseBandPending: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  phaseBandDone: {
+    borderColor: colors.success,
+    backgroundColor: colors.successLight,
+  },
+  phaseBandBlocked: {
+    borderColor: colors.error,
+    backgroundColor: colors.errorLight,
+  },
+  phaseBandLabel: {
+    ...labelStyle,
+    color: colors.steel700,
+    fontSize: 11,
+  },
+  phaseBandLabelPending: { color: colors.primary },
+  phaseBandLabelDone: { color: '#065F46' },
+  phaseBandLabelBlocked: { color: colors.error },
+  phaseBandHint: {
+    color: colors.textMuted,
+    fontFamily: fonts.body,
+    fontSize: 12,
+    lineHeight: 17,
   },
   debriefCta: {
     minHeight: 48,
