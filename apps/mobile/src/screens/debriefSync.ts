@@ -71,25 +71,33 @@ export function createHydrator(deps: {
       latestSequence.set(moment.id, mySequence);
     }
 
-    // (2) Collapse concurrent hydrations of the identical batch.
-    await deps.flight.run(hydrationKey(moments), async () => {
-      const server = await fetchMomentServerState(deps.api, moments);
+    // (2) Collapse concurrent hydrations of the identical batch — but only the
+    // *network call*. Filtering and applying must stay outside the flight:
+    // `run` hands a second identical-batch caller the first caller's promise
+    // and never invokes its callback, so if the filter lived inside, the only
+    // callback that runs would be the older one — which then discards every
+    // entry, because the moments now carry the newer caller's sequence. The
+    // response would be fetched and thrown away by both.
+    const server = await deps.flight.run(hydrationKey(moments), () =>
+      fetchMomentServerState(deps.api, moments),
+    );
 
-      // Drop any moment a newer hydration has since taken over. Applying it
-      // would overwrite fresher authoritative state with a stale response.
-      const current = server.filter(
-        (entry) => latestSequence.get(entry.momentId) === mySequence,
-      );
-      if (current.length === 0) return;
+    // (3) Drop any moment a newer hydration has since taken over. Applying it
+    // would overwrite fresher authoritative state with a stale response. Both
+    // callers reach here with the same `server`, so the newest one applies it
+    // and the older one steps aside.
+    const current = server.filter(
+      (entry) => latestSequence.get(entry.momentId) === mySequence,
+    );
+    if (current.length === 0) return;
 
-      deps.apply(current);
-      for (const entry of current) {
-        // Only a complete, authoritative read resolves the moment. A partial or
-        // failed read leaves the attempt consumed and the moment unresolved.
-        if (isFullyConfirmed(entry)) {
-          deps.controller.resolve(entry.momentId);
-        }
+    deps.apply(current);
+    for (const entry of current) {
+      // Only a complete, authoritative read resolves the moment. A partial or
+      // failed read leaves the attempt consumed and the moment unresolved.
+      if (isFullyConfirmed(entry)) {
+        deps.controller.resolve(entry.momentId);
       }
-    });
+    }
   };
 }

@@ -99,7 +99,9 @@ function screen(api: HydrationApi) {
   const flight = createSingleFlight();
   let state: DebriefState = initialStateForMoment('approved');
 
+  let applyCount = 0;
   const apply = (server: MomentServerState[]) => {
+    applyCount += 1;
     // This harness holds state for a single moment; a batch may legitimately
     // carry siblings, and those must not be folded into it.
     for (const entry of server.filter((item) => item.momentId === MOMENT_ID)) {
@@ -133,6 +135,7 @@ function screen(api: HydrationApi) {
       state = actionFailed(state, 'TEST_DATA write failed', { uncertain });
     },
     hydrate,
+    applyCount: () => applyCount,
     /** The automatic effect's body. Returns true if it issued a request. */
     runEffect(): boolean {
       const momentId = nextMomentToReconcile(controller, [[MOMENT_ID, { machine: state }]]);
@@ -605,5 +608,70 @@ describe('overlapping hydrations never apply stale results', () => {
 
     // It must not roll the moment back to the pre-approval view.
     expect(s.state.phase).toBe('pending_debrief');
+  });
+});
+
+describe('identical-batch hydrations share one result without losing it', () => {
+  it('applies the shared response exactly once, by the newest caller', async () => {
+    const g = gatedApi();
+    g.setBare();
+    g.setMomentStatus('approved');
+    const s = screen(g.api);
+    s.set({ ...s.state, phase: 'unreviewed' });
+
+    // Two hydrations of the *identical* batch. SingleFlight hands the second
+    // caller the first caller's promise and never runs its callback — so if
+    // filtering lived inside the flight, the only callback that ran would be
+    // the older one, which would then discard everything and nobody would
+    // apply the response at all.
+    const first = s.hydrate(TARGETS);
+    const second = s.hydrate(TARGETS);
+
+    g.release();
+    await Promise.all([first, second]);
+
+    // One request per endpoint...
+    expect(g.questionCalls()).toBe(1);
+    expect(g.cardCalls()).toBe(1);
+    // ...applied exactly once...
+    expect(s.applyCount()).toBe(1);
+    // ...and the authoritative state actually landed.
+    expect(s.state.phase).toBe('pending_debrief');
+  });
+
+  it('resolves the reconciliation generation on a fully confirmed shared result', async () => {
+    const g = gatedApi();
+    g.setBare();
+    g.setMomentStatus('approved');
+    const s = screen(g.api);
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
+
+    const first = s.hydrate(TARGETS);
+    const second = s.hydrate(TARGETS);
+    g.release();
+    await Promise.all([first, second]);
+
+    expect(s.state.needsRefetch).toBe(false);
+    expect(isUnconfirmed(s.state)).toBe(false);
+    // A later uncertain write gets a fresh generation and its own attempt.
+    s.failWrite(new LibraryApiError('TEST_DATA lost again', 503));
+    expect(s.runEffect()).toBe(true);
+  });
+
+  it('leaves the generation consumed when the shared result fails', async () => {
+    const g = gatedApi();
+    g.failWith(new LibraryApiError('TEST_DATA 503', 503));
+    const s = screen(g.api);
+    s.failWrite(new LibraryApiError('TEST_DATA lost', 503));
+
+    const first = s.hydrate(TARGETS).catch(() => undefined);
+    const second = s.hydrate(TARGETS).catch(() => undefined);
+    g.release();
+    await Promise.all([first, second]);
+
+    expect(s.state.needsRefetch).toBe(true);
+    // Both callers claimed; nothing fires again on its own.
+    expect(s.runEffect()).toBe(false);
+    expect(g.questionCalls()).toBe(1);
   });
 });

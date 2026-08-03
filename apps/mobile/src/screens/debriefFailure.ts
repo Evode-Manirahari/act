@@ -13,7 +13,15 @@
  * server after it may already have committed, leaves the outcome genuinely
  * unknown.
  */
+import { LibraryApiError } from '../api/libraryApi';
 import { AuthRequiredError } from '../lib/authToken';
+import { authErrorMessage, isAuthenticationError } from '../lib/authErrors';
+import {
+  actionFailed,
+  answerRejected,
+  sessionExpired,
+  type DebriefState,
+} from './reviewDebriefModel';
 
 /** Statuses that mean "the server considered this request and refused it". */
 function isDefiniteRejection(status: number): boolean {
@@ -47,4 +55,40 @@ function statusOf(error: unknown): number | null {
     if (typeof status === 'number') return status;
   }
   return null;
+}
+
+/** Prefer the backend's own explanation over the transport-level string. */
+export function errorMessage(error: unknown, fallback: string): string {
+  if (error instanceof AuthRequiredError) return error.message;
+  if (error instanceof LibraryApiError) return error.detail ?? error.message;
+  return error instanceof Error ? error.message : fallback;
+}
+
+/**
+ * Map a thrown error onto the machine without inventing a success.
+ *
+ * Uncertainty comes from `isUncertainOutcome` — the same call the screen uses
+ * to decide whether to open a new reconciliation generation. When these were
+ * computed separately they could disagree, and a moment could end up marked
+ * unresolved with nobody scheduled to resolve it (or scheduled after a failure
+ * that plainly wrote nothing).
+ */
+export function applyFailure(state: DebriefState, error: unknown): DebriefState {
+  // An expired or rejected session is actionable (sign in) rather than
+  // "try again", so it is named specifically. `sessionExpired` preserves
+  // `needsRefetch`: failing to authenticate says nothing about whether an
+  // earlier write landed.
+  if (isAuthenticationError(error)) {
+    return sessionExpired(state, authErrorMessage(error));
+  }
+
+  // The backend refused the text as not-human-authored. The question stays
+  // open and the typed answer stays editable.
+  if (error instanceof LibraryApiError && error.status === 422) {
+    return answerRejected(state, error.reason, error.detail);
+  }
+
+  return actionFailed(state, errorMessage(error, 'Action failed'), {
+    uncertain: isUncertainOutcome(error),
+  });
 }

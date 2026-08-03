@@ -15,7 +15,9 @@ import {
   answerAccepted,
   answerRejected,
   beginAction,
+  canApprove,
   canCompile,
+  canEditQuestion,
   canPublish,
   canRequestQuestion,
   canSubmitAudioAnswer,
@@ -384,5 +386,104 @@ describe('phase ordering', () => {
 
     state = cardPublished(state);
     expect(phaseLabel(state)).toBe('Published');
+  });
+});
+
+describe('an unresolved write blocks every mutation for that moment', () => {
+  /** A moment mid-loop, with a write whose outcome is unknown. */
+  function unresolved(overrides: Partial<DebriefState> = {}): DebriefState {
+    return {
+      ...INITIAL_DEBRIEF_STATE,
+      questionId: 'TEST_DATA-question-1',
+      draftAnswer: 'TEST_DATA real technician words',
+      needsRefetch: true,
+      ...overrides,
+    };
+  }
+
+  it('an uncertain approval cannot be repeated', () => {
+    const state = unresolved({ phase: 'unreviewed', questionId: null, draftAnswer: '' });
+    expect(canApprove(state)).toBe(false);
+    // Resolved, the same state would allow it.
+    expect(canApprove({ ...state, needsRefetch: false })).toBe(true);
+  });
+
+  it('an uncertain question creation cannot be repeated', () => {
+    const state = unresolved({ phase: 'pending_debrief', questionId: null });
+    expect(canRequestQuestion(state)).toBe(false);
+    expect(canRequestQuestion({ ...state, needsRefetch: false })).toBe(true);
+  });
+
+  it('an uncertain answer cannot be resubmitted', () => {
+    const state = unresolved({ phase: 'pending_debrief' });
+    expect(canSubmitTypedAnswer(state)).toBe(false);
+    expect(canSubmitAudioAnswer(state)).toBe(false);
+    expect(canEditQuestion(state)).toBe(false);
+
+    const resolved = { ...state, needsRefetch: false };
+    expect(canSubmitTypedAnswer(resolved)).toBe(true);
+    expect(canSubmitAudioAnswer(resolved)).toBe(true);
+  });
+
+  it('an uncertain compile cannot compile again', () => {
+    // Compile is not idempotent server-side: a second call is a second card.
+    const state = unresolved({ phase: 'answered' });
+    expect(canCompile(state)).toBe(false);
+    expect(canCompile({ ...state, needsRefetch: false })).toBe(true);
+  });
+
+  it('an uncertain publish cannot publish again', () => {
+    const state = unresolved({ phase: 'compiled' });
+    expect(canPublish(state)).toBe(false);
+    expect(canPublish({ ...state, needsRefetch: false })).toBe(true);
+  });
+
+  it('still lets the technician type while a write is unresolved', () => {
+    const state = unresolved({ phase: 'pending_debrief' });
+    const typed = setDraftAnswer(state, 'TEST_DATA more of what I saw');
+    expect(typed.draftAnswer).toBe('TEST_DATA more of what I saw');
+    expect(typed.needsRefetch).toBe(true);
+  });
+
+  it('successful hydration clears the block and restores the action', () => {
+    const state = unresolved({ phase: 'answered' });
+    expect(canCompile(state)).toBe(false);
+
+    const hydrated = reconcile(state, {
+      moment: { status: 'approved' },
+      question: { questionId: 'TEST_DATA-question-1', answered: true },
+      card: { status: null },
+    });
+
+    expect(hydrated.needsRefetch).toBe(false);
+    expect(canCompile(hydrated)).toBe(true);
+  });
+
+  it('failed hydration keeps mutations blocked', () => {
+    const state = unresolved({ phase: 'answered' });
+    // Card read failed: nothing authoritative came back.
+    const hydrated = reconcile(state, {
+      moment: { status: 'approved' },
+      question: { questionId: 'TEST_DATA-question-1', answered: true },
+    });
+
+    expect(hydrated.needsRefetch).toBe(true);
+    expect(canCompile(hydrated)).toBe(false);
+    expect(canPublish(hydrated)).toBe(false);
+  });
+
+  it('is independent of which read is stale', () => {
+    // A question-read failure with no outstanding write still allows publishing
+    // a card the card-read confirmed — the scoped-read behaviour is preserved.
+    const scoped: DebriefState = {
+      ...INITIAL_DEBRIEF_STATE,
+      phase: 'compiled',
+      needsRefetch: false,
+      questionUnconfirmed: true,
+      cardUnconfirmed: false,
+    };
+    expect(canPublish(scoped)).toBe(true);
+    // The same state with an outstanding write does not.
+    expect(canPublish({ ...scoped, needsRefetch: true })).toBe(false);
   });
 });

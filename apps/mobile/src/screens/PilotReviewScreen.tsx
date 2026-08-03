@@ -66,7 +66,7 @@ import {
   type MomentServerState,
 } from './debriefHydration';
 import { createHydrator, type Hydrator } from './debriefSync';
-import { isUncertainOutcome } from './debriefFailure';
+import { applyFailure, errorMessage, isUncertainOutcome } from './debriefFailure';
 import { createSingleFlight, flightKey } from './singleFlight';
 import {
   createReconciliationController,
@@ -104,41 +104,6 @@ const EMPTY_DEBRIEF: MomentDebrief = {
   question: null,
   draft: null,
 };
-
-/** Prefer the backend's own explanation over the transport-level string. */
-function errorMessage(err: unknown, fallback: string): string {
-  if (err instanceof AuthRequiredError) return err.message;
-  if (err instanceof LibraryApiError) return err.detail ?? err.message;
-  return err instanceof Error ? err.message : fallback;
-}
-
-/** Map a thrown error onto the machine without inventing a success. */
-function applyFailure(state: DebriefState, err: unknown): DebriefState {
-  if (err instanceof AuthRequiredError) {
-    return sessionExpired(state, err.message);
-  }
-  if (err instanceof LibraryApiError || err instanceof CaptureApiError) {
-    if (err.status === 401 || err.status === 403) {
-      return sessionExpired(
-        state,
-        err.status === 403
-          ? 'This action can only be taken by the signed-in technician.'
-          : undefined,
-      );
-    }
-    const detail = err instanceof LibraryApiError ? err.detail : null;
-    if (err.status === 422) {
-      const reason = err instanceof LibraryApiError ? err.reason : null;
-      return answerRejected(state, reason, detail);
-    }
-    // 5xx may have landed server-side before the response was lost.
-    return actionFailed(state, detail ?? err.message, { uncertain: err.status >= 500 });
-  }
-  // Network-shaped failure: we genuinely don't know whether the write landed.
-  return actionFailed(state, err instanceof Error ? err.message : 'Action failed', {
-    uncertain: true,
-  });
-}
 
 export default function PilotReviewScreen() {
   const navigation = useNavigation<NavProp>();
@@ -853,7 +818,9 @@ export default function PilotReviewScreen() {
                     // the server decide whether this moment is really answered —
                     // the same path a cold reload takes.
                     setVoiceMomentId(null);
-                    void hydrate([item]);
+                    // Hydration rejects on a failed read; the banner already
+                    // carries the reason, so don't surface an unhandled one.
+                    void hydrate([item]).catch(() => undefined);
                   }}
                   onDraftAnswerChange={(text) =>
                     updateMachine(item.id, (s) => setDraftAnswer(s, text))

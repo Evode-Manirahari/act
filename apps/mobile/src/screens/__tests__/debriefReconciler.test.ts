@@ -128,6 +128,14 @@ function harness(api: HydrationApi) {
       settle(server);
       return true;
     },
+    /** A routine hydration, with no outstanding write. */
+    async hydrateOnce(): Promise<void> {
+      const [server] = await fetchMomentServerState(api, [
+        { id: MOMENT_ID, status: 'approved', recordingId: RECORDING_ID },
+      ]);
+      state = hydrateState(state, server);
+      settle(server);
+    },
     /** Pull-to-refresh re-arms every moment, then hydrates. */
     async manualRefresh(): Promise<void> {
       controller.allowRetry();
@@ -359,11 +367,13 @@ describe('an unconfirmed read blocks only what depends on it', () => {
       listKnowledgeObjects: async () => Promise.reject(new HttpError(503)),
     };
 
+    // Routine hydration — no write is outstanding, so this isolates read
+    // scoping from the separate "unresolved write blocks everything" rule.
     const h = harness(api);
     h.set(setDraftAnswer(h.state, 'TEST_DATA a real answer'));
-    h.failWrite(new HttpError(503));
-    await h.runEffect();
+    await h.hydrateOnce();
 
+    expect(h.state.needsRefetch).toBe(false);
     expect(h.state.cardUnconfirmed).toBe(true);
     expect(h.state.questionUnconfirmed).toBe(false);
     // A valid technician answer is NOT blocked by an unrelated card outage.

@@ -117,8 +117,26 @@ export function isBusy(state: DebriefState): boolean {
   return state.action !== 'idle';
 }
 
+/**
+ * No mutation may run while a previous write's outcome is unknown.
+ *
+ * `needsRefetch` means a request may already have landed on the server. Sending
+ * another one is how a lost compile response becomes two cards, or a lost
+ * approval becomes a second PATCH — the client would be guessing that its last
+ * write failed, which is exactly what it does not know.
+ *
+ * This is deliberately independent of `questionUnconfirmed`/`cardUnconfirmed`.
+ * Those describe which *read* is stale and scope the blast radius accordingly;
+ * this describes an outstanding *write* and blocks every mutation for the
+ * moment until authoritative hydration resolves it. Typing and the explicit
+ * Retry / pull-to-refresh controls stay available throughout.
+ */
+export function hasUnresolvedWrite(state: DebriefState): boolean {
+  return state.needsRefetch;
+}
+
 export function canApprove(state: DebriefState): boolean {
-  return !isBusy(state) && state.phase === 'unreviewed';
+  return !isBusy(state) && !hasUnresolvedWrite(state) && state.phase === 'unreviewed';
 }
 
 /**
@@ -129,6 +147,7 @@ export function canApprove(state: DebriefState): boolean {
 export function canRequestQuestion(state: DebriefState): boolean {
   return (
     !isBusy(state) &&
+    !hasUnresolvedWrite(state) &&
     !state.questionUnconfirmed &&
     state.phase === 'pending_debrief' &&
     state.questionId === null
@@ -140,7 +159,12 @@ export function canRequestQuestion(state: DebriefState): boolean {
  * could not confirm which row is current, that edit could land on a stale one.
  */
 export function canEditQuestion(state: DebriefState): boolean {
-  return !isBusy(state) && !state.questionUnconfirmed && state.phase === 'pending_debrief';
+  return (
+    !isBusy(state) &&
+    !hasUnresolvedWrite(state) &&
+    !state.questionUnconfirmed &&
+    state.phase === 'pending_debrief'
+  );
 }
 
 /**
@@ -151,6 +175,7 @@ export function canEditQuestion(state: DebriefState): boolean {
 export function canSubmitTypedAnswer(state: DebriefState): boolean {
   return (
     !isBusy(state) &&
+    !hasUnresolvedWrite(state) &&
     // An answer is POSTed against a question id. If the question read failed,
     // the id we hold may be stale, so the answer could land on the wrong row.
     !state.questionUnconfirmed &&
@@ -164,6 +189,7 @@ export function canSubmitTypedAnswer(state: DebriefState): boolean {
 export function canSubmitAudioAnswer(state: DebriefState): boolean {
   return (
     !isBusy(state) &&
+    !hasUnresolvedWrite(state) &&
     !state.questionUnconfirmed &&
     state.phase === 'pending_debrief' &&
     state.questionId !== null
@@ -179,11 +205,21 @@ export function canCompile(state: DebriefState): boolean {
   // Only the *card* read matters here: compiling against an unconfirmed card
   // read risks a second KnowledgeObject. A failed question read does not make
   // an already-confirmed `answered` phase wrong.
-  return !isBusy(state) && !state.cardUnconfirmed && state.phase === 'answered';
+  return (
+    !isBusy(state) &&
+    !hasUnresolvedWrite(state) &&
+    !state.cardUnconfirmed &&
+    state.phase === 'answered'
+  );
 }
 
 export function canPublish(state: DebriefState): boolean {
-  return !isBusy(state) && !state.cardUnconfirmed && state.phase === 'compiled';
+  return (
+    !isBusy(state) &&
+    !hasUnresolvedWrite(state) &&
+    !state.cardUnconfirmed &&
+    state.phase === 'compiled'
+  );
 }
 
 // --- Transitions -----------------------------------------------------------
