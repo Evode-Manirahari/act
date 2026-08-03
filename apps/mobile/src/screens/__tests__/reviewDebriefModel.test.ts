@@ -244,6 +244,37 @@ describe('an expired session blocks the flow instead of going anonymous', () => 
   });
 });
 
+describe('an auth failure never resolves an unrelated write', () => {
+  it('leaves an unresolved write unresolved', () => {
+    // A publish went out and the response was lost, then hydration came back
+    // 401. Failing to authenticate says nothing about whether the publish
+    // landed, so the moment stays queued for reconciliation after sign-in.
+    const uncertain = actionFailed(
+      { ...INITIAL_DEBRIEF_STATE, phase: 'compiled' },
+      'TEST_DATA connection lost',
+      { uncertain: true },
+    );
+    expect(uncertain.needsRefetch).toBe(true);
+
+    const expired = sessionExpired(uncertain);
+    expect(expired.needsRefetch).toBe(true);
+    expect(expired.block.kind).toBe('auth');
+  });
+
+  it('leaves a write that was rejected up front resolved', () => {
+    // A direct answer POST refused with 401 never left the client in doubt —
+    // nothing was written, so there is nothing to reconcile.
+    const rejected = sessionExpired(pendingWithQuestion('TEST_DATA real words'));
+    expect(rejected.needsRefetch).toBe(false);
+    expect(rejected.draftAnswer).toBe('TEST_DATA real words');
+  });
+
+  it('preserves the typed draft either way', () => {
+    const typing = setDraftAnswer(INITIAL_DEBRIEF_STATE, 'TEST_DATA half-typed');
+    expect(sessionExpired(typing).draftAnswer).toBe('TEST_DATA half-typed');
+  });
+});
+
 describe('double taps do not fan out the workflow', () => {
   it('ignores a second approve while the first is in flight', () => {
     const inFlight = beginAction(INITIAL_DEBRIEF_STATE, 'approving');

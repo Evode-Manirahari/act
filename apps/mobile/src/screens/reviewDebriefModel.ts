@@ -267,7 +267,15 @@ export function sessionExpired(state: DebriefState, message?: string): DebriefSt
       kind: 'auth',
       message: message ?? 'Your session expired. Sign in again to submit this answer.',
     },
-    needsRefetch: false,
+    // `needsRefetch` is deliberately preserved, not cleared. Failing to
+    // authenticate tells us nothing about whether an earlier write landed, and
+    // clearing it here would silently mark a compile or publish resolved
+    // because a *later, unrelated* request was rejected.
+    //
+    // This is correct in both directions: a write rejected with 401 up front
+    // never set the flag, so it stays false; an uncertain write followed by a
+    // 401 hydration stays unresolved and gets reconciled after sign-in.
+    needsRefetch: state.needsRefetch,
   };
 }
 

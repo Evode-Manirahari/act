@@ -36,6 +36,7 @@ import {
 } from '../api/libraryApi';
 import type { ElicitationQuestion, KnowledgeObject } from '../api/libraryApi';
 import { AuthRequiredError } from '../lib/authToken';
+import { authErrorMessage, isAuthenticationError } from '../lib/authErrors';
 import {
   actionFailed,
   answerAccepted,
@@ -59,12 +60,12 @@ import {
   type DebriefState,
 } from './reviewDebriefModel';
 import {
-  fetchMomentServerState,
   firstReadError,
-  isFullyConfirmed,
   hydrateState,
   resolveHeldValue,
+  type MomentServerState,
 } from './debriefHydration';
+import { createHydrator, type Hydrator } from './debriefSync';
 import { createSingleFlight, flightKey } from './singleFlight';
 import {
   createReconciliationController,
@@ -194,34 +195,20 @@ export default function PilotReviewScreen() {
    * Runs on first load, pull-to-refresh, voice-agent completion, and after any
    * uncertain write. Nothing else is allowed to decide those phases.
    */
-  const hydrate = useCallback(async (nextMoments: MomentOut[]) => {
-    if (nextMoments.length === 0) return;
-    const server = await fetchMomentServerState(
-      { resolveMomentQuestion, listKnowledgeObjects },
-      nextMoments.map((moment) => ({ id: moment.id, status: moment.status })),
-    );
+  const applyServerState = useCallback((server: MomentServerState[]) => {
     setDebriefs((prev) => {
       const next = { ...prev };
       for (const entry of server) {
         const current = next[entry.momentId] ?? EMPTY_DEBRIEF;
         let machine = hydrateState(current.machine, entry);
 
-        // An expired session is the one read failure worth naming specifically:
-        // it is actionable (sign in) rather than "try again later", and the
-        // typed answer must survive it.
+        // An expired or rejected session is the one read failure worth naming
+        // specifically: it is actionable (sign in) rather than "try again
+        // later", and retrying cannot fix it. Covers a locally-missing token
+        // (AuthRequiredError) and a token the backend rejected (401/403).
         const readError = firstReadError(entry);
-        if (readError instanceof AuthRequiredError) {
-          machine = sessionExpired(machine, readError.message);
-        }
-
-        // Hydration *is* the attempt, wherever it was triggered from. A fully
-        // confirmed read resolves the uncertainty and re-arms the moment for a
-        // future write; anything less consumes the attempt, so a failed manual
-        // refresh doesn't hand the automatic effect a fresh one to burn.
-        if (isFullyConfirmed(entry)) {
-          reconciler.current.resolve(entry.momentId);
-        } else if (machine.needsRefetch) {
-          reconciler.current.claim(entry.momentId);
+        if (isAuthenticationError(readError)) {
+          machine = sessionExpired(machine, authErrorMessage(readError));
         }
 
         next[entry.momentId] = {
@@ -242,11 +229,34 @@ export default function PilotReviewScreen() {
     });
   }, []);
 
+  // The hydrator is built once, so it reads `apply` through a ref to avoid
+  // capturing a stale closure over screen state.
+  const applyServerStateRef = useRef(applyServerState);
+  applyServerStateRef.current = applyServerState;
+
+  /**
+   * Every hydration goes through the shared hydrator, which claims each moment
+   * synchronously before awaiting and collapses concurrent batches. See
+   * debriefSync for why both are required.
+   */
+  const hydrator = useRef<Hydrator | null>(null);
+  if (hydrator.current === null) {
+    hydrator.current = createHydrator({
+      api: { resolveMomentQuestion, listKnowledgeObjects },
+      controller: reconciler.current,
+      flight: flight.current,
+      apply: (server) => applyServerStateRef.current(server),
+    });
+  }
+
+  const hydrate = useCallback(async (nextMoments: MomentOut[]) => {
+    await hydrator.current?.(
+      nextMoments.map((moment) => ({ id: moment.id, status: moment.status })),
+    );
+  }, []);
+
   const refresh = useCallback(async () => {
     setError(null);
-    // An explicit refresh is the user asking again — re-arm every moment's
-    // automatic attempt, including ones whose last attempt failed.
-    reconciler.current.allowRetry();
     try {
       let nextMoments: MomentOut[];
       if (recordingId) {
@@ -336,10 +346,13 @@ export default function PilotReviewScreen() {
     void reconcileMoment(momentId, moment?.status ?? 'approved');
   }, [debriefs, moments, reconcileMoment]);
 
-  /** Explicit user retry for one moment — re-arms a single automatic attempt. */
+  /**
+   * Explicit user retry for one moment. No `allowRetry` here: the hydrator
+   * claims the moment synchronously, so this manual attempt is itself the
+   * attempt and the automatic effect stays out of its way.
+   */
   const retryMoment = useCallback(
     (momentId: string) => {
-      reconciler.current.allowRetry(momentId);
       const moment = moments.find((item) => item.id === momentId);
       void reconcileMoment(momentId, moment?.status ?? 'approved');
     },
