@@ -309,9 +309,8 @@ describe('double taps do not fan out the workflow', () => {
     // The write had in fact landed.
     const reconciled = reconcile(uncertain, {
       momentStatus: 'approved',
-      questionId: 'TEST_DATA-question-1',
-      questionAnswered: true,
-      cardStatus: null,
+      question: { questionId: 'TEST_DATA-question-1', answered: true },
+      card: { status: null },
     });
     expect(reconciled.phase).toBe('answered');
     expect(reconciled.needsRefetch).toBe(false);
@@ -326,9 +325,8 @@ describe('double taps do not fan out the workflow', () => {
     );
     const reconciled = reconcile(uncertain, {
       momentStatus: 'approved',
-      questionId: 'TEST_DATA-question-1',
-      questionAnswered: false,
-      cardStatus: null,
+      question: { questionId: 'TEST_DATA-question-1', answered: false },
+      card: { status: null },
     });
     expect(reconciled.phase).toBe('pending_debrief');
     expect(canCompile(reconciled)).toBe(false);

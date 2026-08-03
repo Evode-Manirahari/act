@@ -61,10 +61,15 @@ import {
 import {
   fetchMomentServerState,
   firstReadError,
+  isFullyConfirmed,
   hydrateState,
   resolveHeldValue,
 } from './debriefHydration';
 import { createSingleFlight, flightKey } from './singleFlight';
+import {
+  createReconciliationController,
+  nextMomentToReconcile,
+} from './debriefReconciler';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import ActAppShell from '../components/ActAppShell';
 import ReviewMomentCard from '../components/ReviewMomentCard';
@@ -155,6 +160,9 @@ export default function PilotReviewScreen() {
    */
   const flight = useRef(createSingleFlight());
 
+  /** Owns *when* an automatic reconciliation may run. See debriefReconciler. */
+  const reconciler = useRef(createReconciliationController());
+
   /**
    * Seed a machine for every moment we haven't seen yet, from its server
    * status. Moments already in the map keep their state — a refresh must not
@@ -206,6 +214,16 @@ export default function PilotReviewScreen() {
           machine = sessionExpired(machine, readError.message);
         }
 
+        // Hydration *is* the attempt, wherever it was triggered from. A fully
+        // confirmed read resolves the uncertainty and re-arms the moment for a
+        // future write; anything less consumes the attempt, so a failed manual
+        // refresh doesn't hand the automatic effect a fresh one to burn.
+        if (isFullyConfirmed(entry)) {
+          reconciler.current.resolve(entry.momentId);
+        } else if (machine.needsRefetch) {
+          reconciler.current.claim(entry.momentId);
+        }
+
         next[entry.momentId] = {
           machine,
           // Only a successful read may replace or clear these. A failed read
@@ -226,6 +244,9 @@ export default function PilotReviewScreen() {
 
   const refresh = useCallback(async () => {
     setError(null);
+    // An explicit refresh is the user asking again — re-arm every moment's
+    // automatic attempt, including ones whose last attempt failed.
+    reconciler.current.allowRetry();
     try {
       let nextMoments: MomentOut[];
       if (recordingId) {
@@ -293,14 +314,37 @@ export default function PilotReviewScreen() {
     [hydrate],
   );
 
-  // Drive the refetch whenever a machine reports an uncertain write.
+  /**
+   * One automatic reconciliation per uncertain write — not one per render.
+   *
+   * `needsRefetch` means "unresolved", and a failed hydration keeps it set. If
+   * that flag also drove scheduling, the failure would write state, the state
+   * write would re-run this effect, and it would fail again forever. The
+   * controller owns scheduling separately: it hands out one attempt, and only a
+   * confirmed result or an explicit user action re-arms it.
+   */
   useEffect(() => {
-    const stale = Object.entries(debriefs).find(([, value]) => value.machine.needsRefetch);
-    if (!stale) return;
-    const [momentId] = stale;
+    const momentId = nextMomentToReconcile(
+      reconciler.current,
+      Object.entries(debriefs),
+    );
+    if (!momentId) return;
+    // Claim synchronously, before any await, so a second render in the same
+    // tick cannot also claim it.
+    reconciler.current.claim(momentId);
     const moment = moments.find((item) => item.id === momentId);
     void reconcileMoment(momentId, moment?.status ?? 'approved');
   }, [debriefs, moments, reconcileMoment]);
+
+  /** Explicit user retry for one moment — re-arms a single automatic attempt. */
+  const retryMoment = useCallback(
+    (momentId: string) => {
+      reconciler.current.allowRetry(momentId);
+      const moment = moments.find((item) => item.id === momentId);
+      void reconcileMoment(momentId, moment?.status ?? 'approved');
+    },
+    [moments, reconcileMoment],
+  );
 
   function emitReviewEvent(
     eventType: string,
@@ -773,6 +817,7 @@ export default function PilotReviewScreen() {
                   onDraftAnswerChange={(text) =>
                     updateMachine(item.id, (s) => setDraftAnswer(s, text))
                   }
+                  onRetrySync={() => retryMoment(item.id)}
                   onLoadQuestion={() => void loadQuestion(item.id)}
                   onSubmitAnswer={(question, answer) => void submitAnswer(item.id, question, answer)}
                   onSubmitAudioAnswer={(question, audioUri) =>

@@ -24,7 +24,7 @@ import {
   type ElicitationQuestion,
   type KnowledgeObject,
 } from '../api/libraryApi';
-import { reconcile, syncFailed, type DebriefState } from './reviewDebriefModel';
+import { reconcile, type DebriefState } from './reviewDebriefModel';
 
 /**
  * The outcome of one read. `ok: true` with `value: null` means the server
@@ -130,16 +130,19 @@ export function hydrateState(
   state: DebriefState,
   server: MomentServerState,
 ): DebriefState {
-  if (!isFullyConfirmed(server)) return syncFailed(state);
-
-  const question = (server.question as { ok: true; value: { question: ElicitationQuestion; answered: boolean } | null }).value;
-  const card = (server.card as { ok: true; value: KnowledgeObject | null }).value;
-
+  // Each read is passed through only if it succeeded. `reconcile` applies what
+  // it is given and leaves the rest alone, so a card-listing outage blocks
+  // compile/publish without also blocking a technician from answering a
+  // question we did confirm.
   return reconcile(state, {
     momentStatus: server.momentStatus,
-    questionId: question?.question.id ?? null,
-    questionAnswered: question?.answered ?? false,
-    cardStatus: card?.status ?? null,
+    question: server.question.ok
+      ? {
+          questionId: server.question.value?.question.id ?? null,
+          answered: server.question.value?.answered ?? false,
+        }
+      : undefined,
+    card: server.card.ok ? { status: server.card.value?.status ?? null } : undefined,
   });
 }
 

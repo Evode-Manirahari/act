@@ -52,6 +52,8 @@ export type ReviewMomentCardProps = {
   onVoiceDebriefComplete: () => void;
   /** Debrief loop actions (wired to the API clients in the screen). */
   onDraftAnswerChange: (text: string) => void;
+  /** Explicit retry after a failed hydration; nothing retries automatically. */
+  onRetrySync: () => void;
   onLoadQuestion: () => void;
   onSubmitAnswer: (questionText: string, answerText: string) => void;
   onSubmitAudioAnswer?: (questionText: string, audioUri: string) => Promise<string | null>;
@@ -73,6 +75,7 @@ export default function ReviewMomentCard({
   onToggleVoiceDebrief,
   onVoiceDebriefComplete,
   onDraftAnswerChange,
+  onRetrySync,
   onLoadQuestion,
   onSubmitAnswer,
   onSubmitAudioAnswer,
@@ -403,6 +406,7 @@ export default function ReviewMomentCard({
               question={debriefQuestion}
               draft={debriefDraft}
               onDraftAnswerChange={onDraftAnswerChange}
+              onRetrySync={onRetrySync}
               onLoadQuestion={onLoadQuestion}
               onSubmitAnswer={onSubmitAnswer}
               onSubmitAudioAnswer={onSubmitAudioAnswer}

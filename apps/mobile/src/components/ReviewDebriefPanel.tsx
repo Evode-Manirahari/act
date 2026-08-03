@@ -40,12 +40,15 @@ import type {
 import {
   actionLabel,
   canCompile,
+  canEditQuestion,
   canPublish,
   canRequestQuestion,
   canSubmitAudioAnswer,
   canSubmitTypedAnswer,
   isBusy,
+  isUnconfirmed,
   phaseAtLeast,
+  phaseHint,
   type DebriefState,
 } from '../screens/reviewDebriefModel';
 
@@ -60,6 +63,8 @@ export type ReviewDebriefPanelProps = {
   draft: KnowledgeObject | null;
   /** Lift the technician's typed answer so it survives a session expiry. */
   onDraftAnswerChange: (text: string) => void;
+  /** Explicit retry after a failed hydration. Nothing retries automatically. */
+  onRetrySync: () => void;
   /** Step 1: load this moment's question, drafting one only if none exists. */
   onLoadQuestion: () => void;
   /** Step 3: submit the expert's answer text for the current question. */
@@ -80,6 +85,7 @@ export default function ReviewDebriefPanel({
   question,
   draft,
   onDraftAnswerChange,
+  onRetrySync,
   onLoadQuestion,
   onSubmitAnswer,
   onSubmitAudioAnswer,
@@ -191,6 +197,27 @@ export default function ReviewDebriefPanel({
         </View>
       ) : null}
 
+      {/* Unconfirmed server state. Nothing retries on its own — an automatic
+          loop against an unhealthy backend is worse than waiting for a human. */}
+      {isUnconfirmed(state) && state.block.kind !== 'auth' ? (
+        <View style={styles.blockBand}>
+          <Text style={styles.blockBandTitle}>Could not confirm server state</Text>
+          <Text style={styles.blockBandBody}>{phaseHint(state)}</Text>
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy}
+            onPress={onRetrySync}
+            style={({ pressed }) => [
+              styles.secondaryButton,
+              pressed && styles.pressed,
+              busy && styles.disabled,
+            ]}
+          >
+            <Text style={styles.secondaryButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {/* Step 1 — load (or draft) the question */}
       <StepHeader index={1} label="Debrief question" done={!!question} />
       {!question ? (
@@ -226,7 +253,7 @@ export default function ReviewDebriefPanel({
             value={effectiveQuestion}
             onChangeText={setQuestionText}
             multiline
-            editable={!busy && !published}
+            editable={canEditQuestion(state)}
             placeholder="Edit the debrief question"
             placeholderTextColor={colors.textLight}
           />

@@ -28,6 +28,7 @@ import {
   canRequestQuestion,
   INITIAL_DEBRIEF_STATE,
   initialStateForMoment,
+  isUnconfirmed,
   phaseHint,
   phaseLabel,
   setDraftAnswer,
@@ -106,7 +107,7 @@ describe('reload restores state the client never saw happen', () => {
     );
 
     expect(hydrated.phase).toBe('answered');
-    expect(hydrated.unconfirmed).toBe(false);
+    expect(isUnconfirmed(hydrated)).toBe(false);
     expect(canCompile(hydrated)).toBe(true);
     expect(canRequestQuestion(hydrated)).toBe(false);
   });
@@ -203,7 +204,7 @@ describe('a failed read is never authoritative absence', () => {
     });
 
     expect(hydrated.phase).toBe('compiled');
-    expect(hydrated.unconfirmed).toBe(true);
+    expect(isUnconfirmed(hydrated)).toBe(true);
   });
 
   it('blocks compile and publish while state is unconfirmed', () => {
@@ -218,8 +219,14 @@ describe('a failed read is never authoritative absence', () => {
     // The phase still says "answered", but we could not confirm no card exists.
     // Compile is not idempotent, so it stays locked.
     expect(hydrated.phase).toBe('answered');
+    expect(hydrated.cardUnconfirmed).toBe(true);
     expect(canCompile(hydrated)).toBe(false);
+  });
 
+  it('a failed QUESTION read does not block publishing a confirmed card', () => {
+    // Only the card read gates compile/publish. Blocking publish because an
+    // unrelated question lookup timed out would be the "one flag blocks
+    // everything" failure this split exists to avoid.
     const compiled = hydrateState(
       { ...COLD_RELOAD, phase: 'compiled' },
       {
@@ -229,7 +236,10 @@ describe('a failed read is never authoritative absence', () => {
         card: readOk(card()),
       },
     );
-    expect(canPublish(compiled)).toBe(false);
+
+    expect(compiled.questionUnconfirmed).toBe(true);
+    expect(compiled.cardUnconfirmed).toBe(false);
+    expect(canPublish(compiled)).toBe(true);
   });
 
   it('shows the retry state', () => {
@@ -241,7 +251,7 @@ describe('a failed read is never authoritative absence', () => {
     });
 
     expect(phaseLabel(hydrated)).toBe('Could not confirm server state');
-    expect(phaseHint(hydrated)).toMatch(/retry refresh/i);
+    expect(phaseHint(hydrated)).toMatch(/refresh to retry/i);
   });
 
   it('does not clear needsRefetch after an uncertain write', () => {
@@ -261,7 +271,7 @@ describe('a failed read is never authoritative absence', () => {
     });
 
     expect(hydrated.needsRefetch).toBe(true);
-    expect(hydrated.unconfirmed).toBe(true);
+    expect(isUnconfirmed(hydrated)).toBe(true);
   });
 
   it('preserves the typed draft across a failed read', () => {
@@ -341,7 +351,7 @@ describe('the required failure scenarios end to end', () => {
     expect(hydrated.phase).toBe('answered');
     expect(canCompile(hydrated)).toBe(false);
     expect(hydrated.needsRefetch).toBe(true);
-    expect(hydrated.unconfirmed).toBe(true);
+    expect(isUnconfirmed(hydrated)).toBe(true);
   });
 
   it('publish lands, hydration 401s: local state preserved, sign-in required', () => {
@@ -360,7 +370,7 @@ describe('the required failure scenarios end to end', () => {
     });
 
     expect(hydrated.phase).toBe('compiled');
-    expect(hydrated.unconfirmed).toBe(true);
+    expect(isUnconfirmed(hydrated)).toBe(true);
     expect(hydrated.needsRefetch).toBe(true);
     expect(canPublish(hydrated)).toBe(false);
   });
@@ -369,7 +379,8 @@ describe('the required failure scenarios end to end', () => {
     const stuck: DebriefState = {
       ...COLD_RELOAD,
       phase: 'answered',
-      unconfirmed: true,
+      questionUnconfirmed: true,
+      cardUnconfirmed: true,
       needsRefetch: true,
       block: { kind: 'error', message: 'Could not confirm server state — retry refresh.' },
     };
@@ -383,7 +394,7 @@ describe('the required failure scenarios end to end', () => {
     );
 
     expect(resolved.phase).toBe('compiled');
-    expect(resolved.unconfirmed).toBe(false);
+    expect(isUnconfirmed(resolved)).toBe(false);
     expect(resolved.needsRefetch).toBe(false);
     expect(resolved.block.kind).toBe('none');
     expect(canPublish(resolved)).toBe(true);
@@ -393,7 +404,8 @@ describe('the required failure scenarios end to end', () => {
     const optimistic: DebriefState = {
       ...COLD_RELOAD,
       phase: 'compiled',
-      unconfirmed: true,
+      questionUnconfirmed: true,
+      cardUnconfirmed: true,
     };
 
     const resolved = hydrateState(
@@ -402,7 +414,7 @@ describe('the required failure scenarios end to end', () => {
     );
 
     expect(resolved.phase).toBe('answered');
-    expect(resolved.unconfirmed).toBe(false);
+    expect(isUnconfirmed(resolved)).toBe(false);
     expect(canCompile(resolved)).toBe(true);
   });
 });

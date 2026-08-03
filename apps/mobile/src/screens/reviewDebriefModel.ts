@@ -49,19 +49,28 @@ export type DebriefState = {
   /** The technician's in-progress typed answer. Never generated. */
   draftAnswer: string;
   block: DebriefBlock;
-  /** Set when a write's outcome is unknown (network drop mid-flight). */
+  /**
+   * The outcome of a write is still unknown (network drop mid-flight).
+   *
+   * This means only "unresolved" — it is deliberately NOT a request to retry.
+   * Scheduling is tracked separately (see debriefReconciler), because a flag
+   * that both survives a failed reconciliation *and* triggers one is an
+   * unbounded request loop: the failure writes state, the state write triggers
+   * the effect, the effect fails again.
+   */
   needsRefetch: boolean;
   /**
-   * True when the last hydration could not confirm server state — a read
-   * failed, timed out, or was rejected.
-   *
-   * This is deliberately distinct from "the server said there is nothing here".
-   * An unavailable read tells us nothing, and treating it as absence is how a
-   * compiled moment silently reverts to "waiting for debrief" and invites a
-   * second compile. While this is set the phase is frozen at whatever was last
-   * confirmed and the destructive actions stay locked.
+   * The question read failed, so what we hold about this moment's question may
+   * be stale. Blocks anything that would act on it — loading another question,
+   * editing it, or answering it — while leaving card-side work alone.
    */
-  unconfirmed: boolean;
+  questionUnconfirmed: boolean;
+  /**
+   * The card read failed, so we do not know whether a card exists. Blocks
+   * compile and publish, which are the non-idempotent operations, while leaving
+   * a technician free to answer a question we *did* confirm.
+   */
+  cardUnconfirmed: boolean;
 };
 
 export const INITIAL_DEBRIEF_STATE: DebriefState = {
@@ -71,8 +80,14 @@ export const INITIAL_DEBRIEF_STATE: DebriefState = {
   draftAnswer: '',
   block: { kind: 'none' },
   needsRefetch: false,
-  unconfirmed: false,
+  questionUnconfirmed: false,
+  cardUnconfirmed: false,
 };
+
+/** True when any read behind this moment's state could not be confirmed. */
+export function isUnconfirmed(state: DebriefState): boolean {
+  return state.questionUnconfirmed || state.cardUnconfirmed;
+}
 
 /** A moment already approved server-side starts at pending_debrief. */
 export function initialStateForMoment(momentStatus: string): DebriefState {
@@ -106,9 +121,26 @@ export function canApprove(state: DebriefState): boolean {
   return !isBusy(state) && state.phase === 'unreviewed';
 }
 
-/** Drafting or loading the question requires an approved moment. */
+/**
+ * Drafting or loading the question requires an approved moment and a question
+ * read we trust. Acting on an unconfirmed question read could create a second
+ * question for a moment that already has one.
+ */
 export function canRequestQuestion(state: DebriefState): boolean {
-  return !isBusy(state) && state.phase === 'pending_debrief' && state.questionId === null;
+  return (
+    !isBusy(state) &&
+    !state.questionUnconfirmed &&
+    state.phase === 'pending_debrief' &&
+    state.questionId === null
+  );
+}
+
+/**
+ * Editing the question text is a write against a specific question row. If we
+ * could not confirm which row is current, that edit could land on a stale one.
+ */
+export function canEditQuestion(state: DebriefState): boolean {
+  return !isBusy(state) && !state.questionUnconfirmed && state.phase === 'pending_debrief';
 }
 
 /**
@@ -119,6 +151,9 @@ export function canRequestQuestion(state: DebriefState): boolean {
 export function canSubmitTypedAnswer(state: DebriefState): boolean {
   return (
     !isBusy(state) &&
+    // An answer is POSTed against a question id. If the question read failed,
+    // the id we hold may be stale, so the answer could land on the wrong row.
+    !state.questionUnconfirmed &&
     state.phase === 'pending_debrief' &&
     state.questionId !== null &&
     state.draftAnswer.trim().length > 0
@@ -127,7 +162,12 @@ export function canSubmitTypedAnswer(state: DebriefState): boolean {
 
 /** Audio needs a question and a finished recording, not a typed draft. */
 export function canSubmitAudioAnswer(state: DebriefState): boolean {
-  return !isBusy(state) && state.phase === 'pending_debrief' && state.questionId !== null;
+  return (
+    !isBusy(state) &&
+    !state.questionUnconfirmed &&
+    state.phase === 'pending_debrief' &&
+    state.questionId !== null
+  );
 }
 
 /**
@@ -136,11 +176,14 @@ export function canSubmitAudioAnswer(state: DebriefState): boolean {
  * so acting on a phase we could not verify risks a second card.
  */
 export function canCompile(state: DebriefState): boolean {
-  return !isBusy(state) && !state.unconfirmed && state.phase === 'answered';
+  // Only the *card* read matters here: compiling against an unconfirmed card
+  // read risks a second KnowledgeObject. A failed question read does not make
+  // an already-confirmed `answered` phase wrong.
+  return !isBusy(state) && !state.cardUnconfirmed && state.phase === 'answered';
 }
 
 export function canPublish(state: DebriefState): boolean {
-  return !isBusy(state) && !state.unconfirmed && state.phase === 'compiled';
+  return !isBusy(state) && !state.cardUnconfirmed && state.phase === 'compiled';
 }
 
 // --- Transitions -----------------------------------------------------------
@@ -264,49 +307,91 @@ export function reconcile(
   state: DebriefState,
   server: {
     momentStatus: string;
-    questionId: string | null;
-    questionAnswered: boolean;
-    cardStatus: string | null;
+    /** Omitted when the question read failed — then nothing question-derived applies. */
+    question?: { questionId: string | null; answered: boolean };
+    /** Omitted when the card read failed — then nothing card-derived applies. */
+    card?: { status: string | null };
   },
 ): DebriefState {
-  let phase: DebriefPhase = 'unreviewed';
-  if (server.momentStatus === 'approved') phase = 'pending_debrief';
-  if (server.questionAnswered) phase = 'answered';
-  if (server.cardStatus) phase = server.cardStatus === 'published' ? 'published' : 'compiled';
+  const questionConfirmed = server.question !== undefined;
+  const cardConfirmed = server.card !== undefined;
+
+  // Where each confirmed read says this moment sits, on its own.
+  const fromQuestion: DebriefPhase | null = server.question
+    ? server.question.answered
+      ? 'answered'
+      : server.momentStatus === 'approved'
+        ? 'pending_debrief'
+        : 'unreviewed'
+    : null;
+  const fromCard: DebriefPhase | null = server.card
+    ? server.card.status
+      ? server.card.status === 'published'
+        ? 'published'
+        : 'compiled'
+      : null // confirmed: no card exists
+    : null;
+
+  let phase = state.phase;
+  if (questionConfirmed && cardConfirmed) {
+    // Both reads landed — this is the fully authoritative case, and the only
+    // one allowed to move the phase anywhere at all.
+    phase = fromCard ?? (fromQuestion as DebriefPhase);
+  } else if (cardConfirmed) {
+    // We know the card truth but not the question truth.
+    if (fromCard) {
+      phase = fromCard;
+    } else if (phaseAtLeast(state.phase, 'compiled')) {
+      // Confirmed absence of a card disproves compiled/published. It says
+      // nothing about answered, which the failed question read owns, so fall
+      // back only as far as that.
+      phase = 'answered';
+    }
+  } else if (questionConfirmed) {
+    // We know the question truth but not the card truth. A card we may still
+    // have outranks it, so never lower a compiled/published moment here.
+    if (!phaseAtLeast(state.phase, 'compiled')) {
+      phase = fromQuestion as DebriefPhase;
+    }
+  }
+
+  const questionUnconfirmed = !questionConfirmed;
+  const cardUnconfirmed = !cardConfirmed;
+  const fullyConfirmed = questionConfirmed && cardConfirmed;
+
   return {
     ...state,
     phase,
-    questionId: server.questionId,
-    needsRefetch: false,
-    unconfirmed: false,
-    // A rejection is about text the technician can still fix, so it survives a
-    // refetch that confirms the question is still unanswered. Once the server
-    // says the debrief got past that point, the hint is stale — drop it.
-    block: phaseAtLeast(phase, 'answered') ? { kind: 'none' } : state.block,
+    // Only a successful question read may change which question we hold.
+    questionId: server.question ? server.question.questionId : state.questionId,
+    // Resolved only when the whole picture was confirmed. A partial read leaves
+    // the write outcome open — but see debriefReconciler: unresolved does not
+    // mean "retry now".
+    needsRefetch: fullyConfirmed ? false : state.needsRefetch,
+    questionUnconfirmed,
+    cardUnconfirmed,
+    block: nextBlock(state, phase, fullyConfirmed),
   };
 }
 
-/**
- * Hydration could not confirm server state.
- *
- * Everything last known stays exactly as it was — phase, question, card and the
- * technician's typed answer. `needsRefetch` is deliberately *not* cleared: if a
- * write's outcome was already unknown, a failed read has not resolved it, and
- * dropping the flag here would strand the moment in a state nobody ever
- * reconciles.
- */
-export function syncFailed(state: DebriefState, message?: string): DebriefState {
-  return {
-    ...state,
-    unconfirmed: true,
-    block:
-      state.block.kind === 'auth' || state.block.kind === 'rejected'
-        ? state.block
-        : {
-            kind: 'error',
-            message: message ?? 'Could not confirm server state — retry refresh.',
-          },
-  };
+/** Which banner survives a hydration. */
+function nextBlock(
+  state: DebriefState,
+  phase: DebriefPhase,
+  fullyConfirmed: boolean,
+): DebriefBlock {
+  if (!fullyConfirmed) {
+    // An auth failure is more actionable than "couldn't confirm", so it wins.
+    if (state.block.kind === 'auth') return state.block;
+    return {
+      kind: 'error',
+      message: 'Could not confirm server state — refresh to retry.',
+    };
+  }
+  // A rejection is about text the technician can still fix, so it survives a
+  // refetch that confirms the question is still unanswered. Once the server
+  // says the debrief got past that point, the hint is stale — drop it.
+  return phaseAtLeast(phase, 'answered') ? { kind: 'none' } : state.block;
 }
 
 // --- Copy ------------------------------------------------------------------
@@ -338,7 +423,7 @@ export function explainRejection(reason: string | null, detail: string | null): 
 /** One line describing where the moment stands. Never claims work that hasn't happened. */
 export function phaseLabel(state: DebriefState): string {
   if (state.block.kind === 'auth') return 'Sign in to continue';
-  if (state.unconfirmed) return 'Could not confirm server state';
+  if (isUnconfirmed(state)) return 'Could not confirm server state';
   switch (state.phase) {
     case 'unreviewed':
       return 'Not reviewed yet';
@@ -356,8 +441,16 @@ export function phaseLabel(state: DebriefState): string {
 /** Supporting copy for the pending state, so "waiting" never reads as "done". */
 export function phaseHint(state: DebriefState): string | null {
   if (state.block.kind === 'auth') return state.block.message;
-  if (state.unconfirmed) {
-    return 'Could not confirm server state — retry refresh. Compiling and publishing stay locked until this moment can be verified.';
+  if (isUnconfirmed(state)) {
+    // Name the part that failed, so the reviewer knows what is still safe to
+    // do rather than assuming the whole moment is frozen.
+    if (state.questionUnconfirmed && state.cardUnconfirmed) {
+      return 'Could not confirm server state — refresh to retry. Nothing here can be acted on until this moment is verified.';
+    }
+    if (state.questionUnconfirmed) {
+      return 'Could not confirm this moment’s debrief question — refresh to retry. Your typed answer is saved.';
+    }
+    return 'Could not confirm whether a card exists for this moment — refresh to retry. Compiling and publishing stay locked.';
   }
   if (state.block.kind === 'rejected') return state.block.message;
   if (state.phase === 'pending_debrief') {
