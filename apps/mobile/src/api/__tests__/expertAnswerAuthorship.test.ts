@@ -19,6 +19,7 @@ import {
   loadOrCreateMomentQuestion,
   parseApiDetail,
   parseRejectionReason,
+  selectAuthoritativeQuestion,
   submitExpertAnswer,
   submitExpertAudioAnswer,
 } from '../libraryApi';
@@ -212,7 +213,7 @@ describe('duplicate taps do not create duplicate questions', () => {
 
     const question = await loadOrCreateMomentQuestion('TEST_DATA-moment-1');
 
-    expect(question.id).toBe('TEST_DATA-question-1');
+    expect(question.question.id).toBe('TEST_DATA-question-1');
     // One GET, and crucially no POST.
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect((fetchMock.mock.calls[0][1] as RequestInit | undefined)?.method).toBeUndefined();
@@ -231,17 +232,63 @@ describe('duplicate taps do not create duplicate questions', () => {
     expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe('POST');
   });
 
-  it('ignores already-answered questions when looking for an open one', async () => {
+  it('does NOT create a second question when an answered one exists', async () => {
+    // The debrief already happened. Drafting a fresh question here would show
+    // an empty answer box for a finished moment and invite a duplicate answer.
     const answered = { ...OPEN_QUESTION, id: 'TEST_DATA-question-old', status: 'answered' };
+    const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse([answered]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const resolved = await loadOrCreateMomentQuestion('TEST_DATA-moment-1');
+
+    expect(resolved.question.id).toBe('TEST_DATA-question-old');
+    expect(resolved.answered).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect((fetchMock.mock.calls[0][1] as RequestInit | undefined)?.method).toBeUndefined();
+  });
+
+  it('prefers the answered question over a stray open one', async () => {
+    const answered = { ...OPEN_QUESTION, id: 'TEST_DATA-answered', status: 'answered' };
+    const open = { ...OPEN_QUESTION, id: 'TEST_DATA-open', status: 'asked' };
+    const fetchMock = jest.fn().mockResolvedValueOnce(jsonResponse([answered, open]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const resolved = await loadOrCreateMomentQuestion('TEST_DATA-moment-1');
+    expect(resolved.question.id).toBe('TEST_DATA-answered');
+    expect(resolved.answered).toBe(true);
+  });
+
+  it('never treats a dismissed question as authoritative', async () => {
+    const dismissed = { ...OPEN_QUESTION, id: 'TEST_DATA-dismissed', status: 'dismissed' };
     const fetchMock = jest
       .fn()
-      .mockResolvedValueOnce(jsonResponse([answered]))
+      .mockResolvedValueOnce(jsonResponse([dismissed]))
       .mockResolvedValueOnce(jsonResponse(OPEN_QUESTION));
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const question = await loadOrCreateMomentQuestion('TEST_DATA-moment-1');
-    expect(question.id).toBe('TEST_DATA-question-1');
+    const resolved = await loadOrCreateMomentQuestion('TEST_DATA-moment-1');
+
+    // A dismissed question was retired on purpose — draft a real one.
+    expect(resolved.question.id).toBe('TEST_DATA-question-1');
+    expect(resolved.answered).toBe(false);
     expect((fetchMock.mock.calls[1][1] as RequestInit).method).toBe('POST');
+  });
+
+  it('selects deterministically without a network call', () => {
+    const answered = { ...OPEN_QUESTION, id: 'a', status: 'answered' };
+    const open = { ...OPEN_QUESTION, id: 'o', status: 'proposed' };
+    const dismissed = { ...OPEN_QUESTION, id: 'd', status: 'dismissed' };
+
+    expect(selectAuthoritativeQuestion([dismissed, open, answered])).toEqual({
+      question: answered,
+      answered: true,
+    });
+    expect(selectAuthoritativeQuestion([dismissed, open])).toEqual({
+      question: open,
+      answered: false,
+    });
+    expect(selectAuthoritativeQuestion([dismissed])).toBeNull();
+    expect(selectAuthoritativeQuestion([])).toBeNull();
   });
 
   it('lists questions with a plain GET', async () => {

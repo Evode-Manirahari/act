@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -25,8 +25,9 @@ import {
   compileMoment,
   editMomentQuestion,
   LibraryApiError,
-  listMomentQuestions,
+  listKnowledgeObjects,
   loadOrCreateMomentQuestion,
+  resolveMomentQuestion,
   publishKnowledgeObject,
   safetyCheckKnowledgeObject,
   submitExpertAudioAnswer,
@@ -52,11 +53,13 @@ import {
   isBusy,
   momentApproved,
   questionReady,
-  reconcile,
+  type DebriefAction,
   sessionExpired,
   setDraftAnswer,
   type DebriefState,
 } from './reviewDebriefModel';
+import { fetchMomentServerState, hydrateState } from './debriefHydration';
+import { createSingleFlight, flightKey } from './singleFlight';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import ActAppShell from '../components/ActAppShell';
 import ReviewMomentCard from '../components/ReviewMomentCard';
@@ -141,9 +144,17 @@ export default function PilotReviewScreen() {
   const [voiceMomentId, setVoiceMomentId] = useState<string | null>(null);
 
   /**
+   * The synchronous mutex for every debrief write. React state can't do this
+   * job: two presses in one frame both read `action: 'idle'` and both fire.
+   * Claiming the key here happens before any await, so the second press loses.
+   */
+  const flight = useRef(createSingleFlight());
+
+  /**
    * Seed a machine for every moment we haven't seen yet, from its server
    * status. Moments already in the map keep their state — a refresh must not
-   * wipe an answer the technician is part-way through typing.
+   * wipe an answer the technician is part-way through typing. Hydration
+   * immediately corrects these seeds with complete server state.
    */
   const seedDebriefs = useCallback((nextMoments: MomentOut[]) => {
     setDebriefs((prev) => {
@@ -162,28 +173,58 @@ export default function PilotReviewScreen() {
     });
   }, []);
 
+  /**
+   * The single authoritative hydration path. Reads moment status, the
+   * authoritative question, whether it is answered, and the card (draft or
+   * published) — then folds all of it into each machine.
+   *
+   * Runs on first load, pull-to-refresh, voice-agent completion, and after any
+   * uncertain write. Nothing else is allowed to decide those phases.
+   */
+  const hydrate = useCallback(async (nextMoments: MomentOut[]) => {
+    if (nextMoments.length === 0) return;
+    const server = await fetchMomentServerState(
+      { resolveMomentQuestion, listKnowledgeObjects },
+      nextMoments.map((moment) => ({ id: moment.id, status: moment.status })),
+    );
+    setDebriefs((prev) => {
+      const next = { ...prev };
+      for (const entry of server) {
+        const current = next[entry.momentId] ?? EMPTY_DEBRIEF;
+        next[entry.momentId] = {
+          // draftAnswer rides along inside `machine` and is preserved by
+          // hydrateState; question/card come from the server.
+          machine: hydrateState(current.machine, entry),
+          question: entry.question ?? current.question,
+          draft: entry.card ?? current.draft,
+        };
+      }
+      return next;
+    });
+  }, []);
+
   const refresh = useCallback(async () => {
     setError(null);
     try {
+      let nextMoments: MomentOut[];
       if (recordingId) {
         const detail = await getRecording(recordingId);
         setRecording(detail.recording);
-        const nextMoments = await listRecordingMoments({ recordingId });
-        setMoments(nextMoments);
-        seedDebriefs(nextMoments);
+        nextMoments = await listRecordingMoments({ recordingId });
       } else {
         setRecording(null);
-        const nextMoments = await listReviewQueue({ status: 'proposed', trade: 'hvac', limit: 50 });
-        setMoments(nextMoments);
-        seedDebriefs(nextMoments);
+        nextMoments = await listReviewQueue({ status: 'proposed', trade: 'hvac', limit: 50 });
       }
+      setMoments(nextMoments);
+      seedDebriefs(nextMoments);
+      await hydrate(nextMoments);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'review load failed');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [recordingId, seedDebriefs]);
+  }, [recordingId, seedDebriefs, hydrate]);
 
   useEffect(() => {
     void refresh();
@@ -216,34 +257,20 @@ export default function PilotReviewScreen() {
 
   /**
    * Ask the server what actually happened, after a write whose outcome we
-   * couldn't observe. Guessing here is what turns one dropped response into a
-   * duplicate question or a moment that looks answered when it isn't.
+   * couldn't observe. This is the same hydration used on load — a lost compile
+   * response and a fresh screen are the same question ("what does the server
+   * say?"), so they get the same answer path. Guessing here is what turns one
+   * dropped response into a duplicate question or a second card.
    */
-  const reconcileMoment = useCallback(async (momentId: string, momentStatus: string) => {
-    try {
-      const questions = await listMomentQuestions(momentId);
-      const answered = questions.find((question) => question.status === 'answered');
-      const open = questions.find(
-        (question) => question.status === 'proposed' || question.status === 'asked',
-      );
-      const authoritative = answered ?? open ?? null;
-      if (authoritative) {
-        patchDebrief(momentId, { question: authoritative });
-      }
-      updateMachine(momentId, (s) =>
-        reconcile(s, {
-          momentStatus,
-          questionId: authoritative?.id ?? null,
-          questionAnswered: Boolean(answered),
-          // Compile state is re-derived from the draft we already hold.
-          cardStatus: null,
-        }),
-      );
-    } catch {
-      // Leave the machine as-is; the banner already says the last action failed
-      // and the reviewer can pull-to-refresh.
-    }
-  }, []);
+  const reconcileMoment = useCallback(
+    async (momentId: string, momentStatus: string) => {
+      await hydrate([{ id: momentId, status: momentStatus } as MomentOut]).catch(() => {
+        // Leave the machine as-is; the banner already says the last action
+        // failed and the reviewer can pull-to-refresh.
+      });
+    },
+    [hydrate],
+  );
 
   // Drive the refetch whenever a machine reports an uncertain write.
   useEffect(() => {
@@ -304,43 +331,70 @@ export default function PilotReviewScreen() {
   // supplies content on the technician's behalf; if they haven't answered, the
   // moment stays in pending_debrief and says so.
 
+  /**
+   * Run one debrief write under the moment+action lock.
+   *
+   * The `isBusy` check inside the lock is not redundant with the UI gate: the
+   * gate can be stale by a frame, this cannot. If the key is already claimed the
+   * second caller returns without touching state or the network.
+   */
+  function guarded<T>(
+    momentId: string,
+    action: Exclude<DebriefAction, 'idle'>,
+    fn: () => Promise<T>,
+  ): Promise<T | undefined> {
+    const key = flightKey(momentId, action);
+    if (flight.current.isBusy(key)) return Promise.resolve(undefined);
+    return flight.current.run(key, fn);
+  }
+
   async function approveForDebrief(moment: MomentOut) {
     const state = machineFor(moment);
     if (isBusy(state)) return;
-    updateMachine(moment.id, (s) => beginAction(s, 'approving'));
-    setActingId(moment.id);
-    setError(null);
-    try {
-      const updated = moment.status === 'approved'
-        ? moment
-        : await reviewMoment({ momentId: moment.id, status: 'approved' });
-      setMoments((prev) =>
-        prev.map((current) => (current.id === moment.id ? updated : current)),
-      );
-      updateMachine(moment.id, momentApproved);
-      emitReviewEvent('review_decision', updated, { status: 'approved' });
-    } catch (err) {
-      updateMachine(moment.id, (s) => applyFailure(s, err));
-      setError(errorMessage(err, 'approve failed'));
-    } finally {
-      setActingId(null);
-    }
+    await guarded(moment.id, 'approving', async () => {
+      updateMachine(moment.id, (s) => beginAction(s, 'approving'));
+      setActingId(moment.id);
+      setError(null);
+      try {
+        const updated = moment.status === 'approved'
+          ? moment
+          : await reviewMoment({ momentId: moment.id, status: 'approved' });
+        setMoments((prev) =>
+          prev.map((current) => (current.id === moment.id ? updated : current)),
+        );
+        updateMachine(moment.id, momentApproved);
+        emitReviewEvent('review_decision', updated, { status: 'approved' });
+      } catch (err) {
+        updateMachine(moment.id, (s) => applyFailure(s, err));
+        setError(errorMessage(err, 'approve failed'));
+      } finally {
+        setActingId(null);
+      }
+    });
   }
 
-  /** Load this moment's open question, drafting one only if none exists. */
+  /**
+   * Load this moment's authoritative question, drafting one only if nothing
+   * relevant exists. An already-answered question reconciles the machine to
+   * `answered` instead of presenting an empty answer box for a finished debrief.
+   */
   async function loadQuestion(momentId: string) {
     const { machine } = getDebrief(momentId);
     if (!canRequestQuestion(machine)) return;
-    updateMachine(momentId, (s) => beginAction(s, 'questioning'));
-    setError(null);
-    try {
-      const question = await loadOrCreateMomentQuestion(momentId);
-      patchDebrief(momentId, { question });
-      updateMachine(momentId, (s) => questionReady(s, question.id));
-    } catch (err) {
-      updateMachine(momentId, (s) => applyFailure(s, err));
-      setError(errorMessage(err, 'could not load the debrief question'));
-    }
+    await guarded(momentId, 'questioning', async () => {
+      updateMachine(momentId, (s) => beginAction(s, 'questioning'));
+      setError(null);
+      try {
+        const { question, answered } = await loadOrCreateMomentQuestion(momentId);
+        patchDebrief(momentId, { question });
+        updateMachine(momentId, (s) =>
+          answered ? answerAccepted(questionReady(s, question.id)) : questionReady(s, question.id),
+        );
+      } catch (err) {
+        updateMachine(momentId, (s) => applyFailure(s, err));
+        setError(errorMessage(err, 'could not load the debrief question'));
+      }
+    });
   }
 
   /** Persist a reviewer's edit to the question text before the answer lands. */
@@ -364,21 +418,23 @@ export default function PilotReviewScreen() {
     // The gate needs the text the panel currently holds.
     const staged = setDraftAnswer(machine, answerText);
     if (!question || !canSubmitTypedAnswer(staged)) return;
-    updateMachine(momentId, (s) => beginAction(setDraftAnswer(s, answerText), 'answering'));
-    setError(null);
-    try {
-      const current = await persistQuestionEdit(momentId, question, questionText);
-      await submitExpertAnswer({
-        questionId: current.id,
-        transcript: answerText,
-        approvedByExpert: true,
-      });
-      // Only now is the moment debriefed — the server stored a real answer.
-      updateMachine(momentId, answerAccepted);
-    } catch (err) {
-      updateMachine(momentId, (s) => applyFailure(s, err));
-      setError(errorMessage(err, 'could not save answer'));
-    }
+    await guarded(momentId, 'answering', async () => {
+      updateMachine(momentId, (s) => beginAction(setDraftAnswer(s, answerText), 'answering'));
+      setError(null);
+      try {
+        const current = await persistQuestionEdit(momentId, question, questionText);
+        await submitExpertAnswer({
+          questionId: current.id,
+          transcript: answerText,
+          approvedByExpert: true,
+        });
+        // Only now is the moment debriefed — the server stored a real answer.
+        updateMachine(momentId, answerAccepted);
+      } catch (err) {
+        updateMachine(momentId, (s) => applyFailure(s, err));
+        setError(errorMessage(err, 'could not save answer'));
+      }
+    });
   }
 
   async function submitAudioAnswer(
@@ -388,78 +444,87 @@ export default function PilotReviewScreen() {
   ): Promise<string | null> {
     const { machine, question } = getDebrief(momentId);
     if (!question || !canSubmitAudioAnswer(machine)) return null;
-    updateMachine(momentId, (s) => beginAction(s, 'answering'));
-    setError(null);
-    try {
-      const current = await persistQuestionEdit(momentId, question, questionText);
-      const answer = await submitExpertAudioAnswer({
-        questionId: current.id,
-        uri: audioUri,
-        approvedByExpert: true,
-      });
-      updateMachine(momentId, answerAccepted);
-      return answer.transcript;
-    } catch (err) {
-      updateMachine(momentId, (s) => applyFailure(s, err));
-      setError(errorMessage(err, 'could not save voice answer'));
-      throw err;
-    }
+    const result = await guarded(momentId, 'answering', async () => {
+      updateMachine(momentId, (s) => beginAction(s, 'answering'));
+      setError(null);
+      try {
+        const current = await persistQuestionEdit(momentId, question, questionText);
+        const answer = await submitExpertAudioAnswer({
+          questionId: current.id,
+          uri: audioUri,
+          approvedByExpert: true,
+        });
+        updateMachine(momentId, answerAccepted);
+        return answer.transcript;
+      } catch (err) {
+        updateMachine(momentId, (s) => applyFailure(s, err));
+        setError(errorMessage(err, 'could not save voice answer'));
+        throw err;
+      }
+    });
+    return result ?? null;
   }
 
   async function compileDraft(momentId: string) {
     const { machine } = getDebrief(momentId);
     // Unlocked by a stored answer only.
     if (!canCompile(machine)) return;
-    updateMachine(momentId, (s) => beginAction(s, 'compiling'));
-    setError(null);
-    try {
-      const moment = moments.find((item) => item.id === momentId);
-      const trade = moment ? tradeForMoment(moment, recording) : recording?.trade ?? 'hvac';
-      const draft = await compileMoment({ momentId, trade });
-      patchDebrief(momentId, { draft });
-      updateMachine(momentId, (s) =>
-        draft.status === 'published' ? cardPublished(s) : draftCompiled(s),
-      );
-    } catch (err) {
-      updateMachine(momentId, (s) => applyFailure(s, err));
-      setError(errorMessage(err, 'could not compile draft'));
-    }
+    await guarded(momentId, 'compiling', async () => {
+      updateMachine(momentId, (s) => beginAction(s, 'compiling'));
+      setError(null);
+      try {
+        const moment = moments.find((item) => item.id === momentId);
+        const trade = moment ? tradeForMoment(moment, recording) : recording?.trade ?? 'hvac';
+        const draft = await compileMoment({ momentId, trade });
+        patchDebrief(momentId, { draft });
+        updateMachine(momentId, (s) =>
+          draft.status === 'published' ? cardPublished(s) : draftCompiled(s),
+        );
+      } catch (err) {
+        // Compile is not idempotent server-side, so a lost response must be
+        // resolved by asking which card exists — never by compiling again.
+        updateMachine(momentId, (s) => applyFailure(s, err));
+        setError(errorMessage(err, 'could not compile draft'));
+      }
+    });
   }
 
   async function publishDraft(momentId: string) {
     const { machine, draft } = getDebrief(momentId);
     if (!draft || !canPublish(machine)) return;
-    updateMachine(momentId, (s) => beginAction(s, 'publishing'));
-    setError(null);
-    try {
-      const checkedDraft = await requireSafetyReady(draft);
-      patchDebrief(momentId, { draft: checkedDraft });
-      await saveReviewChecklistForPublish({
-        knowledgeObjectId: checkedDraft.id,
-        reviewerId: recording?.user_id ?? null,
-        evidenceChecked: true,
-        safetyReviewed: true,
-        noviceTrapClear: true,
-        quizAnswerCorrect: true,
-        approvedBy: recording?.user_id ?? null,
-        notes: 'Mobile debrief publish path.',
-      });
-      const published = checkedDraft.status === 'published'
-        ? checkedDraft
-        : await publishKnowledgeObject(checkedDraft.id);
-      patchDebrief(momentId, { draft: published });
-      updateMachine(momentId, cardPublished);
-      const moment = moments.find((item) => item.id === momentId);
-      if (moment) {
-        emitReviewEvent('card_published', moment, {
-          knowledge_object_id: published.id,
-          path: 'debrief',
+    await guarded(momentId, 'publishing', async () => {
+      updateMachine(momentId, (s) => beginAction(s, 'publishing'));
+      setError(null);
+      try {
+        const checkedDraft = await requireSafetyReady(draft);
+        patchDebrief(momentId, { draft: checkedDraft });
+        await saveReviewChecklistForPublish({
+          knowledgeObjectId: checkedDraft.id,
+          reviewerId: recording?.user_id ?? null,
+          evidenceChecked: true,
+          safetyReviewed: true,
+          noviceTrapClear: true,
+          quizAnswerCorrect: true,
+          approvedBy: recording?.user_id ?? null,
+          notes: 'Mobile debrief publish path.',
         });
+        const published = checkedDraft.status === 'published'
+          ? checkedDraft
+          : await publishKnowledgeObject(checkedDraft.id);
+        patchDebrief(momentId, { draft: published });
+        updateMachine(momentId, cardPublished);
+        const moment = moments.find((item) => item.id === momentId);
+        if (moment) {
+          emitReviewEvent('card_published', moment, {
+            knowledge_object_id: published.id,
+            path: 'debrief',
+          });
+        }
+      } catch (err) {
+        updateMachine(momentId, (s) => applyFailure(s, err));
+        setError(errorMessage(err, 'publish failed'));
       }
-    } catch (err) {
-      updateMachine(momentId, (s) => applyFailure(s, err));
-      setError(errorMessage(err, 'publish failed'));
-    }
+    });
   }
 
   async function requestSourceRedaction() {
@@ -678,11 +743,11 @@ export default function PilotReviewScreen() {
                   voiceDebriefOpen={voiceOpen}
                   onToggleVoiceDebrief={() => setVoiceMomentId(voiceOpen ? null : item.id)}
                   onVoiceDebriefComplete={() => {
-                    // The voice agent only reports completion after act-api
-                    // accepted its answers, so refetch and let the server say
-                    // what state the moment is really in.
+                    // The agent's "complete" is a local claim. Hydrate and let
+                    // the server decide whether this moment is really answered —
+                    // the same path a cold reload takes.
                     setVoiceMomentId(null);
-                    void refresh();
+                    void hydrate([item]);
                   }}
                   onDraftAnswerChange={(text) =>
                     updateMachine(item.id, (s) => setDraftAnswer(s, text))

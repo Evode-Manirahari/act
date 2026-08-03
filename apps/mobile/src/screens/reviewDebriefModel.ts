@@ -230,7 +230,20 @@ export function actionFailed(
   };
 }
 
-/** Fold authoritative server state back in after a refetch. */
+/**
+ * Fold authoritative server state back in.
+ *
+ * This is the only function that may move a moment forward without the user
+ * having just done something, and it does so strictly from what the server
+ * reported. A card outranks the question: once a card exists the moment is
+ * compiled or published regardless of how the question row looks, because the
+ * card is the artifact the reviewer and apprentice actually see.
+ *
+ * `draftAnswer` survives untouched — hydrating must never cost the technician
+ * text they are part-way through typing. The in-flight `action` also survives,
+ * because a refresh landing mid-write must not re-enable the buttons; the
+ * single-flight lock is the real mutex, and this keeps the UI agreeing with it.
+ */
 export function reconcile(
   state: DebriefState,
   server: {
@@ -248,11 +261,11 @@ export function reconcile(
     ...state,
     phase,
     questionId: server.questionId,
-    action: 'idle',
     needsRefetch: false,
-    // A rejection is about text the technician can still fix; a refetch that
-    // confirms the question is still unanswered shouldn't erase that hint.
-    block: phase === 'answered' ? { kind: 'none' } : state.block,
+    // A rejection is about text the technician can still fix, so it survives a
+    // refetch that confirms the question is still unanswered. Once the server
+    // says the debrief got past that point, the hint is stale — drop it.
+    block: phaseAtLeast(phase, 'answered') ? { kind: 'none' } : state.block,
   };
 }
 

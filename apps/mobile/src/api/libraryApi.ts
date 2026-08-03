@@ -281,23 +281,52 @@ export async function generateMomentQuestion(
   );
 }
 
+/** A question that is still waiting for the technician. */
+const OPEN_QUESTION_STATUSES = ['proposed', 'asked'];
+
 /**
- * Load this moment's open debrief question, drafting one only if none exists.
+ * Pick the question that authoritatively represents this moment's debrief.
+ *
+ * `listMomentQuestions` returns newest-first. An *answered* question outranks an
+ * open one: if the expert already answered, that is the debrief, and showing an
+ * empty answer box next to it would invite a second answer for a moment that is
+ * already done. `dismissed` questions are explicitly never authoritative — they
+ * were retired on purpose and must not resurrect a finished moment.
+ */
+export function selectAuthoritativeQuestion(
+  questions: ElicitationQuestion[],
+): { question: ElicitationQuestion; answered: boolean } | null {
+  const answered = questions.find((question) => question.status === 'answered');
+  if (answered) return { question: answered, answered: true };
+  const open = questions.find((question) =>
+    OPEN_QUESTION_STATUSES.includes(question.status),
+  );
+  if (open) return { question: open, answered: false };
+  return null;
+}
+
+/** Read-only resolution: what does the server say about this moment's debrief? */
+export async function resolveMomentQuestion(
+  momentId: string,
+): Promise<{ question: ElicitationQuestion; answered: boolean } | null> {
+  return selectAuthoritativeQuestion(await listMomentQuestions(momentId));
+}
+
+/**
+ * Load this moment's debrief question, drafting one only if nothing relevant
+ * exists yet.
  *
  * POST is not idempotent — it drafts a fresh question (and burns a model call)
- * on every tap. A technician on a slow connection tapping twice would otherwise
- * end up with two questions competing for one answer, so a duplicate tap
- * resolves to the question already waiting.
+ * on every tap. Two failure modes are avoided here: a duplicate tap creating a
+ * second competing question, and a reload after an answer creating a brand-new
+ * question as though the debrief never happened.
  */
 export async function loadOrCreateMomentQuestion(
   momentId: string,
-): Promise<ElicitationQuestion> {
-  const existing = await listMomentQuestions(momentId);
-  const open = existing.find(
-    (question) => question.status === 'proposed' || question.status === 'asked',
-  );
-  if (open) return open;
-  return generateMomentQuestion(momentId);
+): Promise<{ question: ElicitationQuestion; answered: boolean }> {
+  const existing = await resolveMomentQuestion(momentId);
+  if (existing) return existing;
+  return { question: await generateMomentQuestion(momentId), answered: false };
 }
 
 export async function editMomentQuestion(input: {
@@ -425,6 +454,55 @@ export async function publishKnowledgeObject(
     { method: 'POST' },
     { requireAuth: true },
   );
+}
+
+/**
+ * The account's knowledge objects, drafts included.
+ *
+ * act-api has no `moment_id` filter on this route, so hydration pulls the
+ * account's cards once per refresh and indexes them locally rather than issuing
+ * a request per moment.
+ */
+export async function listKnowledgeObjects(input: {
+  status?: string;
+  trade?: string;
+  limit?: number;
+} = {}): Promise<KnowledgeObject[]> {
+  const params = new URLSearchParams();
+  if (input.status) params.set('status', input.status);
+  if (input.trade) params.set('trade', input.trade);
+  params.set('limit', String(input.limit ?? 200));
+  return jsonFetch<KnowledgeObject[]>(`/knowledge-objects?${params}`);
+}
+
+/**
+ * Index cards by the moment they were compiled from.
+ *
+ * Compile is not idempotent server-side, so one moment can own more than one
+ * card (a double tap before this PR, or a lost response). A published card wins
+ * over a draft, and the newest wins among equals — that is the card the
+ * reviewer is actually looking at.
+ */
+export function indexCardsByMoment(
+  cards: KnowledgeObject[],
+): Record<string, KnowledgeObject> {
+  const byMoment: Record<string, KnowledgeObject> = {};
+  for (const card of cards) {
+    if (!card.moment_id) continue;
+    const existing = byMoment[card.moment_id];
+    if (!existing) {
+      byMoment[card.moment_id] = card;
+      continue;
+    }
+    const existingPublished = existing.status === 'published';
+    const candidatePublished = card.status === 'published';
+    if (candidatePublished && !existingPublished) {
+      byMoment[card.moment_id] = card;
+    } else if (candidatePublished === existingPublished && card.created_at > existing.created_at) {
+      byMoment[card.moment_id] = card;
+    }
+  }
+  return byMoment;
 }
 
 export async function safetyCheckKnowledgeObject(
