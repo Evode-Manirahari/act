@@ -37,9 +37,48 @@ export async function hasAuthSession(): Promise<boolean> {
   return (await currentAccessToken()) !== null;
 }
 
+/** True when this build runs behind the Supabase login gate. Unconfigured
+ * builds still use the seeded demo flow, where "session" has no meaning. */
+export function isAuthGateActive(): boolean {
+  return isConfigured;
+}
+
 /** Headers to merge into an API request: `{ Authorization: Bearer … }` with a
  * live session, `{}` otherwise. */
 export async function getAuthHeaders(): Promise<Record<string, string>> {
   const token = await currentAccessToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+/**
+ * Thrown instead of sending a debrief-loop request that would otherwise go out
+ * anonymously. Callers catch this to show a sign-in state and keep the
+ * technician's unsent answer, rather than letting the request through and
+ * recording an answer nobody can be held to.
+ */
+export class AuthRequiredError extends Error {
+  readonly kind = 'auth_required';
+
+  constructor(message = 'Your session expired. Sign in again to continue.') {
+    super(message);
+    this.name = 'AuthRequiredError';
+  }
+}
+
+/**
+ * Headers for a request that must be attributable to a real person.
+ *
+ * The lenient `getAuthHeaders` fails open so a broken storage read can't brick
+ * reads. That is the wrong trade for the debrief loop: an answer submitted
+ * anonymously is an answer with no author, which is exactly the provenance hole
+ * that let fabricated cards through. Under an active gate this fails closed.
+ *
+ * With the gate unconfigured there is no session to require and the pre-existing
+ * demo flow is unchanged.
+ */
+export async function requireAuthHeaders(): Promise<Record<string, string>> {
+  if (!isConfigured) return {};
+  const token = await currentAccessToken();
+  if (!token) throw new AuthRequiredError();
+  return { Authorization: `Bearer ${token}` };
 }

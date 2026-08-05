@@ -10,7 +10,7 @@
 // for presigned PUT + multipart in one call, so we use the legacy module.
 import * as FileSystem from 'expo-file-system/legacy';
 
-import { getAuthHeaders, hasAuthSession } from '../lib/authToken';
+import { getAuthHeaders, hasAuthSession, requireAuthHeaders } from '../lib/authToken';
 import { API_BASE } from '../lib/config';
 
 
@@ -250,14 +250,21 @@ export interface UpsertJobOutcomeInput {
 }
 
 
-async function jsonFetch<T>(path: string, init: RequestInit): Promise<T> {
+async function jsonFetch<T>(
+  path: string,
+  init: RequestInit,
+  opts: { requireAuth?: boolean } = {},
+): Promise<T> {
+  const authHeaders = opts.requireAuth
+    ? await requireAuthHeaders()
+    : await getAuthHeaders();
   const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...(init.headers ?? {}),
-      ...(await getAuthHeaders()),
+      ...authHeaders,
     },
   });
   if (!response.ok) {
@@ -294,6 +301,7 @@ export async function createRecording(
         device_meta: input.deviceMeta ? JSON.stringify(input.deviceMeta) : null,
       }),
     },
+    { requireAuth: true },
   );
 }
 
@@ -314,14 +322,18 @@ export async function postMark(input: CreateMarkInput): Promise<MarkOut> {
 export async function completeRecording(
   input: CompleteRecordingInput,
 ): Promise<RecordingOut> {
-  return jsonFetch<RecordingOut>(`/recordings/${input.recordingId}/complete`, {
-    method: 'POST',
-    body: JSON.stringify({
-      duration_s: input.durationSeconds ?? null,
-      bytes_uploaded: input.bytesUploaded ?? null,
-      ended_at: input.endedAt ?? null,
-    }),
-  });
+  return jsonFetch<RecordingOut>(
+    `/recordings/${input.recordingId}/complete`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        duration_s: input.durationSeconds ?? null,
+        bytes_uploaded: input.bytesUploaded ?? null,
+        ended_at: input.endedAt ?? null,
+      }),
+    },
+    { requireAuth: true },
+  );
 }
 
 export async function requestRecordingRedaction(input: {
@@ -353,9 +365,13 @@ export async function listRecordingMoments(input: {
   const params = new URLSearchParams();
   if (input.status) params.set('status', input.status);
   const suffix = params.toString() ? `?${params}` : '';
+  // Auth required: hydration reads moment status from here to decide whether a
+  // moment is approved, so an anonymous 401 must fail at the session boundary
+  // rather than arrive at the state machine as an ambiguous empty list.
   return jsonFetch<MomentOut[]>(
     `/recordings/${input.recordingId}/moments${suffix}`,
     { method: 'GET' },
+    { requireAuth: true },
   );
 }
 
@@ -382,14 +398,18 @@ export async function reviewMoment(input: {
   reviewerId?: string;
   reviewNote?: string;
 }): Promise<MomentOut> {
-  return jsonFetch<MomentOut>(`/moments/${input.momentId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      status: input.status,
-      reviewer_id: input.reviewerId ?? null,
-      review_note: input.reviewNote ?? null,
-    }),
-  });
+  return jsonFetch<MomentOut>(
+    `/moments/${input.momentId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        status: input.status,
+        reviewer_id: input.reviewerId ?? null,
+        review_note: input.reviewNote ?? null,
+      }),
+    },
+    { requireAuth: true },
+  );
 }
 
 export async function upsertJobOutcome(

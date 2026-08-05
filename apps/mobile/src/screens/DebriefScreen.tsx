@@ -182,7 +182,6 @@ export default function DebriefScreen() {
                 <View style={styles.answerBlock}>
                   <DebriefVoiceAgent
                     momentId={item.moment_id}
-                    expertUserId={item.recorded_by}
                     onComplete={() => {
                       setLastSubmitted({ question: item.question, momentId: item.moment_id });
                       setOpenId(null);

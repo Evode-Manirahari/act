@@ -60,7 +60,6 @@ describe('library publishing API', () => {
       questionId: 'q-1',
       transcript: 'Verified airflow before charging.',
       approvedByExpert: true,
-      expertUserId: 'u-1',
     });
     await compileMoment({ momentId: 'm-1', trade: 'hvac' });
     await publishKnowledgeObject('ko-1');
@@ -70,10 +69,10 @@ describe('library publishing API', () => {
       expect.stringContaining('/moments/m-1/questions'),
       expect.objectContaining({ method: 'POST', body: '{}' }),
     );
+    // No expert_user_id: act-api derives the author from the bearer token.
     expect(JSON.parse((fetchMock.mock.calls[1][1] as RequestInit).body as string)).toEqual({
       transcript: 'Verified airflow before charging.',
       approved_by_expert: true,
-      expert_user_id: 'u-1',
     });
     expect(JSON.parse((fetchMock.mock.calls[2][1] as RequestInit).body as string)).toEqual({
       trade: 'hvac',
@@ -143,7 +142,6 @@ describe('library publishing API', () => {
     await submitExpertAudioAnswer({
       questionId: 'q-1',
       uri: 'file:///tmp/answer.m4a',
-      expertUserId: 'u-1',
     });
 
     const init = fetchMock.mock.calls[0][1] as RequestInit;
