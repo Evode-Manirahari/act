@@ -20,6 +20,13 @@ Status vocabulary: `OBSERVED` · `DEPLOYED` · `IMPLEMENTED` · `PROPOSED` · `H
 `IMPLEMENTED` is **not** customer proof. A tested commit that is not deployed is
 a candidate capability, not a capability.
 
+**Re-verified 2026-08-06** against live production: still release `v19` (Jun 30
+image) at migration `0016`, `SUPABASE_URL` and `AUTH_REQUIRED` still unset, and
+**zero drift** in every row count from the 2026-08-03 snapshot — the last write
+of any kind was a recording on 2026-07-12. Row 2 therefore does not move: the
+deploy is staged, not run. One row changed on its own evidence (mobile #70,
+below); two rows in section 4 were corrected.
+
 ---
 
 ## 1. What was actually verified today
@@ -55,7 +62,7 @@ deployment, deployment lags reality.
 | Real field jobs have been captured | **NOT OBSERVED** | 0 eligible episodes; 22 recordings are app tests (`exclusion_log.md`); nothing new since 2026-07-30 | Daily during Capture Week | Reduce burden or change the capture moment |
 | Expert answers are human-authored | **FALSE for existing rows** | All 5 stored answers are echoed moment metadata (Finding 2) | At each new answer | Keep the question pending; never compile |
 | Backend main is production | **FALSE** | prod `0016` vs main `0025`; deployed image predates all incident fixes | Every deploy | Block any mobile release that assumes 0024+ |
-| Mobile honest-debrief loop is live | **PROPOSED** | act PR **#70** open, unmerged, not device-verified | Before Capture Week | Do not run Capture Week without it |
+| Mobile honest-debrief loop is live | **IMPLEMENTED — NOT VERIFIED** | act PR **#70** merged 2026-08-03 (`106039d`); 266 mobile tests pass; **still never run on a device against a real backend** (re-checked 2026-08-06) | Device walkthrough after the backend deploy | Do not run Capture Week without it |
 | Auth protects production writes | **FALSE** | `SUPABASE_URL` and `AUTH_REQUIRED` both unset on the machine | Before inviting any pilot user | No named pilot users until configured |
 | Company evidence beats generic model knowledge | **HYPOTHESIS** | Experiment 1 could not run — zero eligible episodes (`FINDINGS.md`) | After ≥10 eligible episodes | Favor verify-first, or narrow the wedge |
 | Close-out verification catches real misses | **HYPOTHESIS** | No close-out test has been run | Capture Week + 5-item checklist | Change job type or stop |
@@ -97,11 +104,23 @@ The binding constraint is unchanged and is *not* an intelligence problem:
 
 1. **Deploy main to production** (0016 → 0025) with staging rehearsal, backup,
    smoke, and a proven rollback — then re-verify this ledger's row 2.
-2. **Invalidate the 5 echoed answers and 4 approved moments** using
-   `invalidate_evidence.py` once `0021` is live, so the chain cannot be recompiled.
+   → **STAGED 2026-08-06**, awaiting the founder gate. Pre-flight clear, backup
+   at `~/act-backups/act-prod-0016-20260806T201930Z.sql`, image built and pushed
+   (`deployment-01KZCBYGR8RJ50MVEYMPE9MBXR`) but **not released**, and the full
+   migration rehearsed against the real production dump including rollback.
+   Remaining action: `flyctl deploy -a act-api-evode`. See the
+   [release runbook](deploy-runbook-0016-to-0025.md) section 7.
+2. ~~**Invalidate the 5 echoed answers and 4 approved moments** using
+   `invalidate_evidence.py`~~ — **not needed as a separate step.** Migration
+   `0021` inserts the invalidation rows itself; verified on the real dump to
+   create 10 rows (5 moment + 5 recording scope), after which all four approved
+   moments refuse compile with `409`. Verify those 10 rows after deploying
+   instead.
 3. **Configure auth** (`SUPABASE_URL`, `AUTH_REQUIRED=true`) before any named
-   pilot user exists.
-4. **Merge and device-verify act PR #70** against the deployed backend.
+   pilot user exists. Re-confirmed still unset 2026-08-06. A local Supabase
+   stack is already running for act-api, so the values exist to be wired.
+4. **Device-verify act PR #70** against the deployed backend (#70 merged
+   2026-08-03; the device walkthrough is what is still missing).
 5. Only then: **Capture Week** → Experiment 1 → the assist-vs-verify decision.
 
 Steps 1–4 are release gates and remain founder decisions. Nothing below step 5
