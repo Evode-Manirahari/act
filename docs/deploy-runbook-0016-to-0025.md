@@ -1,10 +1,9 @@
 # Release Runbook — production `0016` → `0025`
 
-*Prepared 2026-08-03. Rehearsed end-to-end against a production-shaped database.
-**Staged 2026-08-06** — pre-flight re-run clear, backup taken, image built and
-pushed, and the whole migration rehearsed against the real production dump
-(section 7). **Not executed.** Production deploy is a founder gate: one
-`flyctl deploy` away.*
+*Prepared 2026-08-03. Rehearsed against a production-shaped database, then
+against the real production dump. Staged 2026-08-06.
+**EXECUTED 2026-08-07** — production is `v20` at migration `0025`, health green.
+See section 7 for the filled ledger and the post-deploy verification.*
 
 This is the deploy that closes the fabricated-card incident in the field. Until
 it runs, [the truth ledger](truth-ledger.md) row 2 stays `IMPLEMENTED — NOT
@@ -175,14 +174,13 @@ anonymous writes).
 
 ## 7. Release ledger — fill at deploy time
 
-**Staged 2026-08-06.** Everything below except the last three rows is done and
-verified. The deploy itself has **not** run — production is still `v19` / `0016`.
+**Staged 2026-08-06, executed 2026-08-07.** Production is `v20` at `0025`.
 
 | Field | Value |
 |---|---|
 | Environment | production (`act-api-evode`) |
 | Backend commit | `07e89a3` ✅ verified — image-relevant paths (`app/`, `alembic/`, `alembic.ini`, `pyproject.toml`) are clean against `main` |
-| Image digest deployed | **built and pushed, not released:** `registry.fly.io/act-api-evode:deployment-01KZCBYGR8RJ50MVEYMPE9MBXR` → `sha256:35b0a001fca6d9f7facedbcc54ad9d999208fe4a49fd61e908006bac59b9e21d` (293 MB) |
+| Image digest deployed | `deployment-01KZEFTTVKNWAP8E6P18JK2E3K` → **`sha256:35b0a001fca6d9f7facedbcc54ad9d999208fe4a49fd61e908006bac59b9e21d`** (293 MB). **Byte-identical to the image staged on 2026-08-06** — the build was a full cache hit, so what shipped is exactly what was rehearsed. This also closes the unpinned-dependency concern for *this* release: `pip install .` never re-resolved |
 | Previous image digest (rollback point) | `v19` · `deployment-01KWCXVW9GFS2A7BGGVNABMJM4` → `sha256:37e47897b5975ce2bc1b70f7ef855f7b396e58afab9014aefde0c67c47236b9d` |
 | Migration head before / after | `0016` → `0025` |
 | Backup id / path | `pg_dump` 2026-08-06T20:19:30Z → `~/act-backups/act-prod-0016-20260806T201930Z.sql` (102 KB, mode 600). Verified: 18 tables, `alembic_version=0016`, counts match pre-flight. **Restore needs a psql ≥17** (dump carries `\restrict`): `docker run --rm -i postgres:17 psql "$URL" < file.sql`. A Neon branch is still the better backup and needs `neonctl auth` (interactive) |
@@ -190,10 +188,10 @@ verified. The deploy itself has **not** run — production is still `v19` / `001
 | Auth mode | `SUPABASE_URL` unset, `AUTH_REQUIRED` unset — re-confirmed 2026-08-06 via `fly secrets list` (**unchanged by this deploy**) |
 | Provider readiness | R2 ✅ · Deepgram ✅ · Anthropic key set, **credits still unverified** |
 | Tests at deploy commit | **452 passing** ✅ — 443 on SQLite + the 9 `test_concurrency_pg.py` tests, which *skip* unless a Postgres is reachable. Run them: `TEST_POSTGRES_URL=postgresql+asyncpg://…  pytest tests/test_concurrency_pg.py`. They cover the two races `0024`/`0025` exist to close, so a bare `pytest` (443 passed, 9 skipped) does **not** verify this deploy |
-| Smoke result | pre-deploy baseline: `/health` 200, `/health/capture` 200, `/library/search` `[]` |
+| Smoke result | **post-deploy: `/health` 200, `/health/capture` 200, `/library/search` `[]`** (identical to the pre-deploy baseline). Machine `d8930e0b051658` on version 20, `started`, 1/1 health check passing |
 | Known incompatibilities | Mobile main assumes pre-0020 API. #70 is merged, so the ordering is now: **deploy backend first, then device-verify #70 against it** — a mobile build shipped before this deploy hits a backend without 0020+ |
 | Rollback command | `alembic downgrade 0016` (local, first) → `flyctl releases rollback` |
-| Approved by / time | **pending — founder gate** |
+| Approved by / time | Evode, 2026-08-07 ~16:10 UTC (`v20`, "3m9s ago" at first verification) |
 
 ### Staging record, 2026-08-06
 
@@ -258,6 +256,40 @@ is the stronger and more accurate refusal.
    compile now refuses. Running `invalidate_evidence.py` for the Exp1 chains
    afterwards is therefore **not required**; the script stays the tool for
    *future* rulings. Verify the 10 rows post-deploy instead.
+
+### Post-deploy verification, 2026-08-07
+
+| Check | Result |
+|---|---|
+| Release | `v20` complete; machine `d8930e0b051658` version 20, `started`, 1/1 passing |
+| `alembic current` on the machine | **`0025 (head)`** |
+| Smoke | `/health` 200 · `/health/capture` 200 · `/library/search` `[]` |
+| Pre-flight re-run post-deploy | head `0025` (already deployed), both blockers clear, 6/6 orphan relations at zero |
+| Invalidation rows (corrected section 6) | **10 — 5 `moment` + 5 `recording`**, reason `exp1_corpus_autopsy_fabricated_evidence`, exactly as the rehearsal predicted |
+| `capture_class` backfill | `unknown` ×22 |
+| Cards | still **0** |
+| Totals | 114 jobs · 22 recordings · 5 moments · 5 expert answers — unchanged |
+
+**One status change, and it is the new code working.** The recording split moved
+from 11 `pending` / 8 `ready` / 3 `failed` to **0 / 8 / 14**. The 11 that had sat
+`pending` since the Exp1 autopsy were resolved by the stale-recording sweeper
+(`0023`) and now carry a terminal reason:
+
+```
+upload never completed: no object in storage after 1800s
+```
+
+Nothing was lost — the total is still 22, and the original 3 failures keep their
+null reason. This is the sweeper doing precisely what `0023` exists for: a dead
+capture is now *visible* rather than merely quiet, and it independently confirms
+the autopsy's finding that 11 of 22 recordings died at upload. Any future
+pre-flight run should expect `0 / 8 / 14`, not the 2026-08-03 numbers.
+
+**Not re-tested in production:** the live compile-refusal `409`. It was proven
+against this exact data and this exact image during the rehearsal, and the 10
+invalidation rows above are the state that produces it. Re-testing it in
+production means POSTing to the fabrication path against real rows — worth doing
+deliberately, not as a smoke test.
 
 ---
 
