@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { COOKIE_NAME } from '@/middleware';
+import { COOKIE_NAME } from '@/lib/adminAccess';
 
 
 export async function POST(request: Request) {
