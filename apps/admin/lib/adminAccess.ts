@@ -49,19 +49,32 @@ export function isApiPath(pathname: string): boolean {
 /**
  * Resolve the post-sign-in destination to a same-origin path.
  *
- * Accepts only a single leading slash followed by a non-slash, non-backslash
- * character. Rejected: absolute URLs, protocol-relative `//host` (a foreign
- * origin), and `/\host` (which several URL parsers, including WHATWG, treat as
- * protocol-relative). Anything rejected becomes '/', so a bad value is a
- * harmless trip home rather than an error page.
+ * Asks the same parser that will later resolve this value whether it stays on
+ * this origin, rather than hand-checking the characters that would move it.
+ * Character checks lose: WHATWG strips tab, LF and CR *before* parsing, so
+ * `/\t/evil.test` becomes `//evil.test` and reaches a foreign origin while
+ * looking like an ordinary path to `startsWith('/')` and to a `next[1]` check.
+ * `/\host` is the same trap by a different route.
+ *
+ * Resolving against a sentinel origin and comparing `url.origin` inherits every
+ * one of those quirks for free, and keeps inheriting them if the parser changes.
+ * Anything that does not land on the sentinel becomes '/', so a hostile value is
+ * a harmless trip home rather than an error page.
  */
+const SENTINEL_ORIGIN = 'https://same-origin.invalid';
+
 export function resolveNextPath(next: string | null | undefined): string {
   if (!next) return '/';
+  // Keep the leading-slash requirement so the accepted shape stays obvious;
+  // the origin check below is what actually enforces the boundary.
   if (!next.startsWith('/')) return '/';
-  // Second character decides: '//host' and '/\host' both leave this origin.
-  if (next.length > 1 && (next[1] === '/' || next[1] === '\\')) return '/';
-  if (next.includes('\\')) return '/';
-  return next;
+  try {
+    const url = new URL(next, SENTINEL_ORIGIN);
+    if (url.origin !== SENTINEL_ORIGIN) return '/';
+    return `${url.pathname}${url.search}${url.hash}`;
+  } catch {
+    return '/';
+  }
 }
 
 export interface AccessInput {

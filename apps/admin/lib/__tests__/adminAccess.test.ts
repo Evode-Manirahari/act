@@ -212,8 +212,25 @@ describe('resolveNextPath', () => {
     ['javascript:alert(1)', 'scheme injection'],
     ['evil.test', 'bare host'],
     ['', 'empty'],
+    // WHATWG strips these BEFORE parsing, so each of the three collapses to
+    // '//evil.test'. A leading-slash + second-character check passes them all.
+    ['/\t/evil.test', 'tab stripped by the URL parser'],
+    ['/\n/evil.test', 'newline stripped by the URL parser'],
+    ['/\r/evil.test', 'carriage return stripped by the URL parser'],
+    ['/\t\t//evil.test', 'repeated tabs'],
+    ['/\t\\evil.test', 'tab then backslash'],
   ])('sends %s home (%s)', (input) => {
     expect(resolveNextPath(input)).toBe('/');
+  });
+
+  it('preserves query and hash on an accepted path', () => {
+    expect(resolveNextPath('/moments/abc?tab=evidence#claim-2')).toBe(
+      '/moments/abc?tab=evidence#claim-2',
+    );
+  });
+
+  it('keeps a path containing an encoded slash on-origin', () => {
+    expect(resolveNextPath('/library%2Fitem')).toBe('/library%2Fitem');
   });
 
   it('handles null and undefined', () => {
@@ -222,11 +239,25 @@ describe('resolveNextPath', () => {
   });
 
   it('produces a value that cannot leave the origin once resolved', () => {
-    // The property that actually matters, asserted the way the route uses it.
+    // The property that actually matters, asserted the way the route uses it:
+    // whatever comes back is fed to `new URL(next, request.url)`.
     const base = 'https://admin.actober.com/api/sign-in';
-    for (const hostile of ['//evil.test', '/\\evil.test', '//evil.test/path']) {
-      const url = new URL(resolveNextPath(hostile), base);
-      expect(url.origin).toBe('https://admin.actober.com');
+    const hostile = [
+      '//evil.test',
+      '/\\evil.test',
+      '//evil.test/path',
+      '/\t/evil.test',
+      '/\n/evil.test',
+      '/\r/evil.test',
+      '/\t\t//evil.test',
+      'https://evil.test',
+      'javascript:alert(1)',
+    ];
+    for (const input of hostile) {
+      const url = new URL(resolveNextPath(input), base);
+      expect(url.origin, `input: ${JSON.stringify(input)}`).toBe(
+        'https://admin.actober.com',
+      );
     }
   });
 });
