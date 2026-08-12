@@ -7,7 +7,9 @@
     "build": "next build",
     "start": "next start --port 3210",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.0",
@@ -21,6 +23,7 @@
     "@types/react-dom": "^19.1.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^15.5.18",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "vitest": "^3.2.7"
   }
 }
