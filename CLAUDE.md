@@ -1,279 +1,149 @@
-# ACT — CLAUDE.md
+# ACT / Actober
 
-## Product Vision
-**Pitch (founder, 2026-07-16)**: "Actober AI is building the intelligence layer for physical work, starting with HVAC. Expert technicians film their jobs on a phone or wearable camera. Actober turns what they do, see, and reason through into verified knowledge that guides other techs in the field — with the original footage as proof. Over time, Actober becomes the operating layer coordinating human workers, AI agents, and robots."
+This file was deleted and rebuilt from scratch on 2026-08-13. The previous
+version was 279 lines and ~5.2k tokens, read on every session. Most of it told
+the model things it can read off the repo in one command, and four of its
+claims had gone stale and were actively wrong.
 
-Today's product: ACT Capture turns ride-alongs and senior service calls into reviewed training objects — short clips of a teachable moment, paired with the expert's reasoning, the novice traps to avoid, the safety boundaries, and a quick quiz to check transfer.
+**The rule for adding anything back:** a line earns its place only if it is
+(a) not derivable from the repo, or (b) a rule that a real incident produced.
+Do not add an instruction because it seems useful. Add it after watching the
+model get the same thing wrong twice. Anything you can check with `ls`,
+`git log`, or opening a file does not belong here.
 
-**Core invention**: detect teachable moments in the field → ask the expert the right question at a safe time *after* the job → compile a structured training object → review → publish → measure apprentice transfer.
+Recover the old version with `git show <sha>:CLAUDE.md` if you want something back.
 
-**Guidance boundary (product truth, not just framing)**: techs in the field get guidance from *verified* knowledge — published, footage-backed, lead-tech-approved cards (library + Ask ACT with citations). The AI never improvises live diagnosis outside that reviewed corpus; `/library/ask` refuses live-diagnosis-shaped queries by design. (History: an earlier "no real-time copilot at all" rule was reversed by the founder on 2026-07-12 in favor of this verified-guidance framing — the chat-shell IA and this pitch both follow from that reversal.)
+---
 
-**Product framing**:
-- **Say (vision)**: "Actober AI is building the intelligence layer for physical work, starting with HVAC." / "80% of the global workforce doesn't sit at a desk."
-- **Say (buyer value)**: "Cut callbacks and ramp new hires faster by capturing your senior techs' company-specific reasoning before they retire." Sold to multi-site operators; measured in callbacks / first-90-day turnover / time-to-billable.
-- **Say (user value)**: "Your senior techs pass on what they know without writing a word — captured from real jobs, in their own words."
-- **Do not say**: "AI improvises answers in the field." (Guidance is verified, footage-backed, lead-tech-approved.)
-- **Do not say**: "Employee-retention software." (Actober assumes people leave; the knowledge stays — Bill discovery interview, July 2026.)
-- **Do not say / do not position as (retired framing)**: "Train the next generation" / "generic apprentice training" sold to solo shops. That is the incumbent's (Interplay) position; ACT is the company-specific capture layer *on top of* generic training.
+## What Actober is
 
-**Users**: senior tech (capture), lead tech (review), apprentice (learn).
-**Buyer**: Owner-GM / service manager / operations director / regional service director / training leader at a 20-250 tech multi-site HVAC/resi-commercial operator, franchise group, or consolidator-owned branch (ARS, CoolSys, Service Champions, franchise networks). Not the AI, not the solo shop.
+Actober AI is building the intelligence layer for physical work, starting with
+HVAC. Expert technicians film real jobs. Actober turns what they do, see, and
+reason through into verified knowledge that guides other techs in the field,
+with the original footage as proof.
 
-**Where ACT sits**: on top of generic simulation training (e.g. Interplay Learning), not against it. Generic training teaches the textbook; ACT captures the company-specific tribal knowledge a generic catalog cannot hold. That non-genericness is the moat.
+Today's product is narrower than that sentence: capture a real job, detect the
+teachable moment, ask the expert the right question *after* the job, compile a
+structured card, review it, publish it, measure transfer.
 
-## Current Wedge: HVAC
+**Wedge: HVAC** residential/commercial troubleshooting. Chosen for tight
+feedback loops (no-cool/no-heat is a repeated, controlled event), measurable
+outcomes (callbacks, first-time fix, time-to-diagnosis), and rich tacit signals
+(sound, vibration, line temp, frost patterns).
 
-Residential/commercial troubleshooting — no-cool, no-heat, refrigerant, compressor, airflow, electrical faults.
+**Users:** senior tech captures, lead tech reviews, apprentice learns.
+**Buyer:** ops director / service manager / training lead at a 20-250 tech
+multi-site operator, franchise group, or consolidator branch. Not the solo shop.
 
-Why HVAC:
-- Tight feedback loops — no-cool / no-heat is a repeated controlled event
-- Measurable outcomes — first-time fix rate, callbacks, time-to-diagnosis
-- Rich tacit signals — sound, vibration, line temp, frost patterns, gauge readings
-- BLS: 425k jobs in 2024, ~8% growth through 2034, ~40k openings/year
+**Where it sits:** on top of generic simulation training (Interplay), not
+against it. Generic training teaches the textbook. Actober captures the
+company-specific tribal knowledge a generic catalog cannot hold. That
+non-genericness is the moat.
 
-The earlier electrician customer-discovery work is preserved as input but is not the first pilot target. Existing electrical prompts and KB entries stay in the codebase behind a `trade` flag during the migration — they are not being deleted.
+## Say / do not say
 
-## Trade Domains
-- **HVAC** ❄️🔥 — refrigeration, airflow, compressors, controls **← current focus**
-- ELECTRICAL ⚡ — retained for migration; not the first pilot
-- PLUMBING 🔧, CARPENTRY 🪵, PAINTING 🖌, TILING 🧱 — future
+The "do not say" list is the valuable half. Each line is a framing that was
+tried and retired, and none of it is recoverable from the code.
 
-## Repo Layout
-This repo (`act/`) contains the mobile client only. The backend lives in a sibling repo.
+- **Say:** "Cut callbacks and ramp new hires faster by capturing your senior
+  techs' company-specific reasoning before they retire."
+- **Say:** "Your senior techs pass on what they know without writing a word."
+- **Do not say** "AI improvises answers in the field." Guidance comes from
+  published, footage-backed, lead-tech-approved cards only.
+- **Do not say** "employee retention software." Actober assumes people leave;
+  the knowledge stays. (Bill discovery interview, July 2026.)
+- **Do not say** "train the next generation" or position as generic apprentice
+  training sold to solo shops. That is Interplay's hill and Actober loses there.
 
-- `apps/mobile` — React Native Expo app
-  - `App.tsx` — pilot shell for the Capture → Review → Training flow
-  - `src/screens/CaptureJobScreen.tsx` — heart of ACT Capture: record, mark teachable moments, upload with retry
-  - `src/screens/PilotReviewScreen.tsx` — mobile review handoff for proposed moments from a recording
-  - `src/screens/PilotHomeScreen.tsx` — pilot menu for recording senior-tech jobs and opening apprentice training
-  - `src/screens/LearnScreen.tsx` — apprentice-facing learning surface backed by live reviewed cards
-- `apps/admin` — Next.js pilot admin (review queue, debrief answers, publish gate) behind the shared-password middleware; server-side client in `lib/api.ts`
-- `packages/act-kb` — field knowledge stubs (electrical entries retained pending HVAC migration)
-- `../act-api/` — Python FastAPI backend (sibling repo, not a workspace member)
+## The invariants an incident paid for
 
-**Active branch**: `main` — capture flow work has been folded into the mainline mobile pilot flow.
+On 2026-07-31 an autopsy found the system had published five HVAC cards
+compiled from a bare timestamp with no transcript and no human answer. The
+"expert answers" were the moment's own metadata echoed back. They were deleted.
+Nothing below is a style preference:
 
-Removed 2026-04-23: `apps/api` (Node/Express/Prisma), `apps/web` (React/Vite), `apps/flutter` (untracked, archived to `~/Downloads/act-apps-flutter-backup-2026-04-23.zip`), `railway.toml`.
+- **The client never asserts identity or provenance.** Not the expert's user
+  id, not the account, not `source_type`, not whether something is field
+  capture. The server derives all of it from a verified token and the actual
+  evidence chain.
+- **A mark is a hint, not evidence.** Captured evidence means a transcript or
+  frame inside the moment's window.
+- **A failed read is not an absence.** Never lower state or conclude "no card
+  exists" from an error. Unconfirmed is its own state.
+- **Compile and publish are fail-closed.** Missing or unreadable evidence means
+  refuse, with reason codes, never a plausible guess.
+- **Metrics and retrieval use the same eligibility rule as publication.** The
+  dashboard that counted app tests as traction is how the fabrication went
+  unnoticed for a month.
 
-Removed 2026-06-02: the orphaned pre-pivot consumer-DIY surface — `RootNavigator` + 8 screens (Boot / Onboarding / Paywall / Home / Project / ProjectDetail / History / Profile), `hooks/usePaywall`, `store/act`, `api/act`, the `CompletionModal` / `ResumeBanner` / `SuggestionCard` components, and the now-dead `packages/shared-types` package (~3.7k lines). None were reachable from `App.tsx → PilotNavigator`.
+## Truth hierarchy
 
-Removed 2026-06-09: the legacy copilot surface — `AskActScreen.tsx` (photo → question → Claude diagnosis), its `AskAct` route and PilotHome entry link, `api/actApi.ts` (SSE `streamJobTurn` client; `createDemoSession` moved to `captureApi.ts`), and the unused `packages/act-prompts` package. The matching backend surface (`turns.py`, `/demo/turn`, `claude.py`, `tts.py`, `verified.py`, `Turn`/`Frame` models + tables) was removed from `../act-api/` in the same sweep.
+When sources disagree, do not average them. Use the higher one and open a task
+to fix the lower:
 
-## Stack
-- **Mobile**: React Native (Expo SDK 51), TypeScript, Zustand
-- **Backend** (in `../act-api/`): Python 3.13 + FastAPI + async SQLAlchemy 2.0 + Alembic
-- **Database**: PostgreSQL (async via `asyncpg`)
-- **Pipeline queue**: Postgres-backed durable job table (`processing_jobs`, SKIP LOCKED + heartbeat reclaim + backoff) worked in-process — no Redis
-- **Object storage**: Cloudflare R2 (video uploads, extracted frames)
-- **AI**: Claude `claude-sonnet-4-6` via `anthropic` Python SDK — vision + streaming, prompt caching on system prompts
-- **Speech-to-text**: Deepgram (`nova-3`)
-- **TTS**: stub (ElevenLabs wiring pending)
-- **Monorepo (mobile only)**: pnpm workspaces
+```
+physical work > production observation > deployed version and config
+              > repo main and open PRs > documents and diagrams > prompts
+```
 
-## Backend Data Model (act-api)
+A tested commit that is not deployed is a candidate capability, not a
+capability. Never cite app-testing activity, seeded rows, or founder-operated
+runs as customer usage.
 
-Capture surface (the new core):
-- `accounts` — contractor (the buyer)
-- `users` — tech, belongs to an account
-- `jobs` — one field visit
-- `recordings` — a video captured during a job
-- `recording_marks` — "mark this" timestamps dropped by the tech mid-recording (the teachable moments)
-- `moments` — moment objects compiled from a recording after processing; the unit a lead tech reviews
-- `extracted_frames` — frames pulled from a recording at and around marks
-- `transcript_segments` — diarized transcript chunks from the recording's audio
-- `elicitation_questions` — questions ACT asks the expert during debrief about a moment
-- `expert_answers` — the expert's voice/text answer; corrected and edited inline
-- `knowledge_objects` — the published training object (clip + expert-why + novice traps + safety + quiz)
-- `training_events` — apprentice interactions with a knowledge object (viewed, quizzed, applied)
-- `job_outcomes` — first-time-fix, callbacks, time-to-diagnosis per job (the measurement loop)
+**Current deployed state lives in `docs/truth-ledger.md`, not here.** Link to
+the living source instead of copying it; a copy in this file is stale the day
+after it is written. Verify against production before asserting anything about
+what is running.
 
-The legacy copilot tables (`turns`, `frames`) were dropped 2026-06-09 along with the rest of that surface.
+## Voice
 
-## Mobile State
+Two voices, and picking the wrong one is obvious to a tradesperson.
 
-The mobile app has been progressively rewiring from the pre-pivot consumer-DIY product to the Capture flow. As of the current mainline work:
-- `CaptureJobScreen` records, drops marks, queues uploads with retry/resume
-- `App.tsx` now launches into the HVAC training-capture shell
-- `CaptureJobScreen` includes a consent selector before recording; `do_not_share` blocks capture
-- `PilotReviewScreen` lets the pilot reviewer approve/reject proposed moments for the latest recording
-- `LearnScreen` is the apprentice-facing surface and includes live reviewed cards, quiz-event logging, completion logging, and an honest empty state when no card exists
-- `PilotOutcomeScreen` logs final diagnosis, fix, first-time-fix/callback signal, diagnosis-time note, and apprentice progress against `/jobs/{job_id}/outcomes`; it must be launched with a real captured job id
-- Status polling + auto-process closes the loop after upload
-- `PilotNavigator` gates the pilot stack behind Supabase Auth (`LoginScreen`, invite-only, email+password) whenever `EXPO_PUBLIC_SUPABASE_URL`/`EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are set (see `src/lib/supabase.ts`, `src/hooks/useAuthSession.ts`); unset, it falls back to the pre-existing demo-session flow untouched. The backend does not yet verify Supabase tokens — see the Auth section below.
+**Debrief** (asking the expert, after the job): curious, specific, never
+patronizing. The question a sharp apprentice would ask a master if they weren't
+afraid to. "At the 4:12 mark you stopped and looked at the line set. What told
+you to check there first?"
 
-The mobile API clients (`apps/mobile/src/api/captureApi.ts`, `libraryApi.ts`) talk to the deployed FastAPI service at `https://act-api-evode.fly.dev` (`apps/mobile/src/lib/config.ts`, overridable via `EXPO_PUBLIC_API_BASE_URL`). `actApi.ts` (the old SSE copilot client) was removed 2026-06-09 — this reference predated that cleanup.
+**Apprentice** (explaining a published card): direct, trade-calibrated, short
+sentences, names the novice trap explicitly. "Frost on the suction line at this
+temp means low charge or restricted airflow, not 'it's working hard'." "Don't
+measure superheat on a TXV system to diagnose charge. Use subcooling."
 
-## The Capture Flow (product concept)
+There is no real-time-in-your-ear voice. That was the old product.
 
-1. **Record** — senior tech starts a job recording from their phone
-2. **Mark** — taps "mark this" at teachable moments (one-handed, glove-friendly)
-3. **Upload** — recording uploads with retry/resume; processing extracts frames and transcript at marks
-4. **Debrief** — ACT generates `elicitation_questions` for each moment; expert answers via voice or inline edit
-5. **Compile** — clip + expert-why + novice-traps + safety + quiz → one `knowledge_object`
-6. **Review & publish** — a lead tech approves before it goes into the apprentice library
-7. **Measure** — `training_events` and `job_outcomes` close the loop
+## Working rules
 
-Phase state, if needed, lives in the mobile app. The backend tracks objects, not phases.
+- **Extend, don't rebuild.** Read a file before touching it.
+- **Always open a PR.** Never push to main without explicit approval.
+- **Design:** read `DESIGN.md` before visual work. The system is "Field
+  Instrument" — industrial, light-first, one hi-vis action color. Tokens live in
+  `apps/mobile/src/theme/` and `apps/mobile/src/design/tokens/`; a static test
+  in `src/design/__tests__` fails the build on drift, so the tokens are the
+  source of truth, not a list of hex values in this file.
+- **gstack** is the default helper workflow: `/review` before a PR, `/qa` on
+  changed user flows, `/plan-eng-review` before major implementation.
+- **gbrain** is indexed for this worktree. Prefer `gbrain search` / `code-def` /
+  `code-refs` for semantic or symbol questions; `rg` for exact strings.
 
-## THE RULE
-**DO NOT rebuild anything already working. Extend only.**
-Read a file before touching it. Understand before changing.
+## Backend
 
-*(Exceptions taken: 2026-04-23 backend rewritten from Node to Python because the vision/audio pipeline is materially easier in Python. 2026-05-19 product pivot from live copilot to ACT Capture — superseded vision/persona but did not require a code rewrite; the retained copilot surface was finally removed 2026-06-09.)*
+The API lives in the sibling repo `../act-api` (Python, FastAPI, Postgres). It
+is not a workspace member, so workspace commands do not reach it.
 
-## Colors
-See DESIGN.md for the full "Field Instrument" system (steel scale, semantic
-colors, motion, spacing). Quick reference, matching `apps/mobile/src/theme/colors.ts`:
-- Primary: #EA580C (safety orange)
-- Background: #F5F6F7 (cool steel neutral)
-- Surface: #FFFFFF
-- Text (ink): #14181F
-- TextMuted: #586170
-- Border: #E4E7EB
-- Success: #15803D (green)
+Everything else about it — routes, models, migrations, stack versions — read
+from the repo. `app/routes/` and `app/models/` are the answer, and unlike this
+file they cannot go stale.
 
-## ACT Persona
+---
 
-ACT Capture has two voices — pick the one that matches the surface.
+## Observed stumbles
 
-**Debrief voice** (asking the expert about a moment, *after* the job):
-Curious, specific, never patronizing. The questions a sharp apprentice would ask a master if they weren't afraid to.
-- "At the 4:12 mark you stopped and looked at the line set. What told you to check there first?"
-- "You bypassed the standard sequence here — what would have happened if a newer tech ran it by the book?"
-- "Safety-wise, what would you not want an apprentice to do alone at this step?"
+Boris Cherny's ablation method: delete the prompt, run it, and add a line back
+only after watching the model repeatedly trip on the same thing. This file is
+the "delete" half. This section is where the second half gets recorded.
 
-**Apprentice voice** (training surface, explaining a published knowledge object):
-Direct. Trade-calibrated. Short sentences. Names the novice trap explicitly.
-- "Frost on the suction line at this temp = low charge or restricted airflow, not 'it's working hard'."
-- "Don't measure superheat on a TXV system to diagnose charge. Use subcooling."
-- "Federal Pacific Stab-Lok panel. Treat as high risk and verify the disconnect."
+Append a line here when you watch a model get the same thing wrong **twice**.
+Include the date and what it actually did. When a line here has earned it,
+promote it into the sections above.
 
-There is no real-time-in-your-ear voice anymore. That was the old product.
-
-## API Routes (act-api, Python FastAPI)
-
-Health:
-- `GET  /health` — health check
-- `GET  /health/capture` — capture-pipeline-specific health
-
-Jobs:
-- `POST /jobs` — create a job
-- `GET  /jobs` — list recent jobs
-- `GET  /jobs/{job_id}` — fetch one job
-
-Recordings (the Capture core):
-- `POST /jobs/{job_id}/recordings` — create a recording for a job
-- `GET  /jobs/{job_id}/recordings` — list recordings for a job
-- `GET  /recordings/{recording_id}` — recording detail
-- `POST /recordings/{recording_id}/marks` — drop a mark at a timestamp
-- `POST /recordings/{recording_id}/complete` — mark recording complete
-- `POST /recordings/{recording_id}/upload` — finalize uploaded video
-- `POST /recordings/{recording_id}/process` — kick processing (frames + transcript + moment detection)
-- Additional `GET` endpoints under `/recordings/{recording_id}/...` expose processing status and artifacts
-
-Moments:
-- `GET   /moments/review` — review queue for lead techs
-- `PATCH /moments/{moment_id}` — edit / approve / reject a moment
-
-Knowledge (debrief + compilation):
-- `POST  /questions/...` — elicitation questions, expert answers, compiled knowledge objects, and inline edits
-- `PATCH /questions/...` — edit questions, answers, transcripts, and compiled cards
-- (See `app/routes/knowledge.py` for the full set — admin voice recorder, inline transcript correction, etc.)
-
-Library + outcomes:
-- `GET  /library/search` — search published knowledge objects
-- `POST /library/...` — publishing endpoints
-- `POST /jobs/{job_id}/outcomes` — log first-time-fix / callback / time-to-diagnosis
-- `GET  /jobs/{job_id}/outcomes` — fetch outcomes
-- `GET  /dashboard/summary` — pilot-readiness metrics
-
-Session bootstrap:
-- `POST /demo/session` — returns the seeded pilot account/user/job the capture flow records against until real auth lands
-
-All endpoints are request/response — the SSE streaming surface went with the legacy copilot.
-
-## Auth (Pilot)
-
-End-to-end wiring is in place across both repos; activation is config-only (no Supabase project exists yet):
-- `apps/mobile/src/lib/supabase.ts` creates a Supabase client gated on `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (`supabaseConfigStatus` from `lib/supabaseConfig.ts`). Both unset — the state today — `PilotNavigator` renders the pilot stack as before (`/demo/session`). Partial or unparseable config **fails closed** to a config-error screen, as does a build with `EXPO_PUBLIC_REQUIRE_AUTH` set but no Supabase config (set that flag in the same EAS profile change that adds the Supabase vars). The gate decision is the pure `resolveAuthGate` in `src/navigation/authGateModel.ts` (tested).
-- Once configured, `PilotNavigator` requires a session and shows `LoginScreen` (email + password, invite-only, no sign-up) until one exists. PilotHome shows a "Signed in as … · Sign out" row when a session exists.
-- **Backend (Phase 3, act-api#38)**: `app/services/supabase_auth.py` verifies Supabase Bearer tokens (JWKS ES256/RS256 + legacy HS256), maps the token's email to the invite-only `users` row, and overrides client-provided actor ids. Env-gated: `SUPABASE_URL`/`SUPABASE_JWT_SECRET` unset = auth off; `AUTH_REQUIRED=true` = anonymous rejected, `/demo/*` disabled.
-- **Phase 4 (act-api#39 + this repo)**: backend `GET /me` + account-scoped jobs/review-queue/library/dashboards; mobile attaches the session token to every API call (`src/lib/authToken.ts` → both `jsonFetch` helpers, the audio-answer upload, the dev-fallback recording upload; the presigned R2 PUT deliberately stays headerless) and bootstraps identity via `getPilotContext`/`createCaptureSession` (`/me` + real jobs when logged in, demo flow untouched otherwise).
-- **Admin (Phase 4)**: `apps/admin/lib/actAuth.ts` — server-side service login (SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY / ADMIN_SUPABASE_EMAIL / ADMIN_SUPABASE_PASSWORD, all four together); every act-api call carries the admin user's token, and the topbar shows "acting as …" from `GET /me`. Any var unset (today) = anonymous, unchanged.
-- **Per-object account scoping — complete** (act-api `app/services/scoping.py`, finished in act-api#42): cross-tenant recording/moment/job/question/answer/card ids 404 across the entire API; list routes can't enumerate another tenant's ids.
-- **Hardening (from the 2026-07-01 review, all done)**: session persisted encrypted (`src/lib/secureSessionStorage.ts` — AES key in the OS keychain via expo-secure-store, ciphertext in AsyncStorage); a session lost mid-run overlays `LoginScreen` on the still-mounted `PilotStack` (`login-overlay` gate state) so an in-progress capture is never destroyed; raw Supabase errors map to pilot-friendly copy (`friendlyAuthError` in `loginScreenModel.ts`).
-
-## Admin / Pilot Safety
-
-Recent work added a shared-password gate, in-browser voice recorder for expert answers, inline editing for questions and compiled cards, and inline transcript correction in the voice recorder. The pilot admin surface is meant to keep a lead tech in the loop on every published object.
-
-## gstack
-Use [garrytan/gstack](https://github.com/garrytan/gstack) as the default helper workflow throughout this product.
-
-### Required usage pattern
-- Use `/office-hours` and `/plan-ceo-review` when defining new features or pivots.
-- Use `/plan-eng-review` before major implementation work to lock architecture and edge cases.
-- Use `/review` before opening or updating a PR.
-- Use `/qa` on changed user flows before merge (mobile/web/api-visible behavior).
-- Use `/ship` to finalize release-ready branches.
-- Use `/retro` after significant milestones to improve team process.
-
-### Browsing/tooling rule
-Use the `/browse` skill from gstack for all web browsing tasks.
-
-## GBrain Configuration (configured by /setup-gbrain)
-- Mode: local-stdio
-- Engine: pglite
-- Config file: `~/.gbrain/config.json` (mode 0600)
-- Setup date: 2026-05-29
-- MCP registered: yes, via Codex global config at `~/.codex/config.toml`
-- Codex MCP command: `/Users/evodemanirahari/.bun/bin/gbrain serve`
-- Current repo policy: read-write
-- Current repo source: `gstack-code-act-9d8865ff`
-- Worktree pin: `.gbrain-source` (ignored by git)
-- Artifacts sync: off
-
-## GBrain Search Guidance (configured by /setup-gbrain)
-<!-- gstack-gbrain-search-guidance:start -->
-
-GBrain is installed and synced for this ACT worktree. Prefer gbrain over Grep when the question is semantic, architectural, or symbol-based and you do not already know the exact string to search.
-
-Indexed ACT code source:
-- `gstack-code-act-9d8865ff` for `/Users/evodemanirahari/act-1`
-
-Prefer gbrain when:
-- "Where is X handled?" or intent-based lookup:
-  `gbrain search "<terms>"` or `gbrain query "<question>"`
-- "Where is symbol Y defined?":
-  `gbrain code-def <symbol>`
-- "Where is symbol Y used?":
-  `gbrain code-refs <symbol>`
-- "What calls Y?" or "What does Y call?":
-  `gbrain code-callers <symbol>` / `gbrain code-callees <symbol>`
-- "What did we decide last time?":
-  `gbrain search "<terms>" --source gstack-code-act-9d8865ff` for ACT-specific indexed content, then fall back to local project docs if needed.
-
-Grep is still right for exact strings, regex, file globs, and very small local checks. Run `/sync-gbrain` or:
-`bun ~/.codex/skills/gstack/bin/gstack-gbrain-sync.ts --code-only --full`
-after large code moves so the ACT source stays fresh.
-
-<!-- gstack-gbrain-search-guidance:end -->
-
-### Core gstack skills used in ACT
-- `/office-hours` — product discovery and reframing
-- `/plan-ceo-review` — first-principles founder/product review
-- `/plan-eng-review` — architecture, data-flow, and test planning
-- `/review` — production-focused code review
-- `/qa` — diff-aware QA of affected journeys
-- `/ship` — release engineer flow for push + PR
-- `/browse` — browser automation + screenshots
-- `/retro` — post-release process improvement
-
-## Design System
-Read **DESIGN.md** before any visual/UI work. ACT's system is "Field Instrument"
-(industrial/utilitarian, light-first): one hi-vis action color (safety orange
-`#EA580C`), cool steel neutrals, ink text, mono-accented numbers/labels, and a
-lockout-style safety panel. Tokens live in `apps/mobile/src/theme/colors.ts` and
-`typography.ts`. Don't deviate without updating DESIGN.md. In QA, flag UI that
-doesn't match it.
+_(empty — nothing observed yet since the 2026-08-13 rebuild)_

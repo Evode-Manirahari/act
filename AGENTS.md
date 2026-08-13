@@ -4,21 +4,10 @@ Read `CLAUDE.md` first. It is the canonical project context for ACT.
 
 ## GBrain
 
-GBrain is installed for this ACT agent.
+Indexed for this worktree. Source id `gstack-code-act-9d8865ff`, repo policy
+`read-write`, worktree pin in `.gbrain-source` (gitignored). Codex MCP server
+is registered as `gbrain`.
 
-- Codex MCP server: `gbrain`
-- Command: `/Users/evodemanirahari/.bun/bin/gbrain serve`
-- ACT source id: `gstack-code-act-9d8865ff`
-- Repo policy: `read-write`
-- Worktree pin: `.gbrain-source` (ignored by git)
-
-Use gbrain before broad manual search when the request is semantic or symbol-based:
-
-- `gbrain search "<terms>"`
-- `gbrain query "<question>"`
-- `gbrain code-def <symbol>`
-- `gbrain code-refs <symbol>`
-- `gbrain code-callers <symbol>`
-- `gbrain code-callees <symbol>`
-
-Use `rg` for exact strings, regexes, and file globs.
+Prefer it over manual search when the question is semantic or symbol-based;
+`rg` stays right for exact strings, regexes, and globs. Run `gbrain --help` for
+the command list rather than keeping a copy of it here.
