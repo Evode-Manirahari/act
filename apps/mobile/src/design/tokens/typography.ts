@@ -4,7 +4,7 @@
 // every number, id, timestamp, count, mark type, and section label.
 import { TextStyle } from 'react-native';
 
-export { fonts, labelStyle } from '../../theme/typography';
+export { fonts, labelStyle, labelSmallStyle } from '../../theme/typography';
 import { fonts } from '../../theme/typography';
 
 // Named scale used by ActText + screens. Display uses tight tracking; body 15/22.

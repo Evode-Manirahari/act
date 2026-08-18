@@ -4,9 +4,6 @@ import { TextStyle } from 'react-native';
 // via expo-font + @expo-google-fonts. Each weight is its own named family in RN
 // (custom fonts don't synthesize weight from fontWeight), so reference the
 // specific weight you need. Geist Mono is the instrument accent on numbers/labels.
-//
-// NOTE: General Sans was the original display pick; standardized on Geist for
-// clean bundling (one family, no manual font files). Swap later if desired.
 export const fonts = {
   body: 'Geist_400Regular',
   medium: 'Geist_500Medium',
@@ -23,4 +20,14 @@ export const labelStyle: TextStyle = {
   fontSize: 11,
   letterSpacing: 1,
   textTransform: 'uppercase',
+};
+
+// The ONE smaller label, for dense rows (pill interiors, card meta, badges).
+// Nothing in the app goes below this: 8-9px mono is unreadable on a bright
+// roof, which is the whole premise of the Field Instrument system. If a label
+// doesn't fit at 10px, the layout is too dense — fix the layout, not the size.
+export const labelSmallStyle: TextStyle = {
+  ...labelStyle,
+  fontSize: 10,
+  letterSpacing: 0.8,
 };

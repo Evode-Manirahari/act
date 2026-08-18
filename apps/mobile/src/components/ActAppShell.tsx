@@ -8,10 +8,9 @@ import { fonts, labelStyle } from '../theme/typography';
 /**
  * Shared chrome for every ACT screen — the "calm workspace" shell.
  *
- * Top row: left menu/history button · center mode pill · right primary
- * shortcut. The screen owns the main area (scroll, state, workflow), so the
- * shell never imposes a ScrollView. An optional bottom bar (ActBottomBar)
- * docks above the safe-area inset.
+ * Top row: left menu button · center mode pill · right shortcut. The screen
+ * owns the main area (scroll, state, workflow), so the shell never imposes a
+ * ScrollView.
  *
  * This is a field instrument, not a chat app: square-ish corners, steel
  * neutrals, one orange action color, mono instrument labels. During capture,
@@ -28,10 +27,8 @@ export type ActAppShellProps = {
   onRightPress?: () => void;
   /** Dim the shortcut to steel when it's a low-emphasis jump (not the CTA). */
   rightMuted?: boolean;
-  /** Menu / history affordance (placeholder until the drawer lands). */
+  /** Opens the nav drawer (ActSidebar), or goes back on secondary screens. */
   onMenuPress?: () => void;
-  /** Docked bottom bar (e.g. <ActBottomBar />). */
-  bottomBar?: React.ReactNode;
   children: React.ReactNode;
 };
 
@@ -42,7 +39,6 @@ export default function ActAppShell({
   onRightPress,
   rightMuted = false,
   onMenuPress,
-  bottomBar,
   children,
 }: ActAppShellProps) {
   return (
@@ -69,8 +65,6 @@ export default function ActAppShell({
       </View>
 
       <View style={styles.main}>{children}</View>
-
-      {bottomBar ? <View style={styles.bottom}>{bottomBar}</View> : null}
     </SafeAreaView>
   );
 }
@@ -173,9 +167,4 @@ const styles = StyleSheet.create({
   shortcutMuted: { color: colors.textLight },
   pressed: { opacity: 0.6 },
   main: { flex: 1 },
-  bottom: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    backgroundColor: colors.surface,
-  },
 });

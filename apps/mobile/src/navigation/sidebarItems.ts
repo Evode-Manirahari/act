@@ -6,19 +6,24 @@ import type { PilotStackParamList } from './PilotNavigator';
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 
 /**
- * The sidebar's "Workspace" list — the same real destinations every screen's
- * ActAppShell hamburger opens into. Badges are optional so screens that
+ * The drawer's destination list, in the order the pilot actually runs:
+ * record → debrief → review → train. Badges are optional so screens that
  * haven't fetched the counts (everything but PilotHome) can omit them.
+ *
+ * Ask ACT is a destination here, not the headline action — it only answers
+ * from published cards, so it is worth nothing until capture and review have
+ * produced some.
  */
 export function buildDefaultSidebarItems(
   navigation: NavProp,
   onNavigate: () => void,
   badges?: { review?: string; debrief?: string },
+  onAsk?: () => void,
 ): SidebarNavItem[] {
-  return [
+  const items: SidebarNavItem[] = [
     {
       key: 'record',
-      label: 'Record senior tech',
+      label: 'Record a job',
       detail: 'Capture the call and mark what matters',
       onPress: () => {
         onNavigate();
@@ -26,12 +31,13 @@ export function buildDefaultSidebarItems(
       },
     },
     {
-      key: 'learn',
-      label: 'Apprentice training',
-      detail: 'Open reviewed cards and quick checks',
+      key: 'debrief',
+      label: 'Answer debrief',
+      detail: '30 seconds in your own words builds the card',
+      badge: badges?.debrief,
       onPress: () => {
         onNavigate();
-        navigation.navigate('Learn');
+        navigation.navigate('Debrief');
       },
     },
     {
@@ -45,14 +51,27 @@ export function buildDefaultSidebarItems(
       },
     },
     {
-      key: 'debrief',
-      label: 'Answer debrief',
-      detail: '30 seconds in your own words builds the card',
-      badge: badges?.debrief,
+      key: 'learn',
+      label: 'Apprentice training',
+      detail: 'Open reviewed cards and quick checks',
       onPress: () => {
         onNavigate();
-        navigation.navigate('Debrief');
+        navigation.navigate('Learn');
       },
     },
   ];
+
+  if (onAsk) {
+    items.push({
+      key: 'ask',
+      label: 'Ask ACT',
+      detail: 'Answers from published cards only, with citations',
+      onPress: () => {
+        onNavigate();
+        onAsk();
+      },
+    });
+  }
+
+  return items;
 }

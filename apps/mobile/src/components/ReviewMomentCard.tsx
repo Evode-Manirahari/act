@@ -17,7 +17,7 @@ import React, { useMemo, useState } from 'react';
 import { Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
-import { fonts, labelStyle } from '../theme/typography';
+import { fonts, labelStyle, labelSmallStyle } from '../theme/typography';
 import { radii } from '../design/tokens';
 import type { MomentOut, ReviewQueueItem } from '../api/captureApi';
 import type {
@@ -638,9 +638,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   scoreLabel: {
-    ...labelStyle,
+    ...labelSmallStyle,
     color: colors.primary,
-    fontSize: 8,
+    
   },
   scoreText: {
     color: colors.primary,
@@ -656,9 +656,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   contextBandLabel: {
-    ...labelStyle,
+    ...labelSmallStyle,
     color: colors.steel500,
-    fontSize: 10,
+    
   },
   contextRows: { gap: 6 },
   contextRow: {
@@ -692,16 +692,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   safetyBannerBody: {
-    color: '#7A1212',
+    color: colors.errorInk,
     fontFamily: fonts.medium,
     fontSize: 12,
     lineHeight: 17,
   },
   evidenceBlock: { gap: 5 },
   evidenceLabel: {
-    ...labelStyle,
+    ...labelSmallStyle,
     color: colors.steel500,
-    fontSize: 10,
+    
   },
   evidenceBody: {
     color: colors.text,
@@ -771,9 +771,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   clipPlaceholderLabel: {
-    ...labelStyle,
+    ...labelSmallStyle,
     color: colors.steel500,
-    fontSize: 10,
+    
   },
   clipPlaceholderBody: {
     color: colors.textMuted,
@@ -812,14 +812,14 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   metaText: {
-    ...labelStyle,
+    ...labelSmallStyle,
     color: colors.textMuted,
-    fontSize: 10,
+    
   },
   warnPill: { backgroundColor: colors.cautionLight },
   warnText: { color: colors.caution },
   publishedPill: { backgroundColor: colors.successLight },
-  publishedText: { color: '#065F46' },
+  publishedText: { color: colors.successInk },
   checklist: {
     borderRadius: 8,
     borderWidth: 1,
@@ -853,13 +853,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.error,
   },
   checkMark: {
-    color: '#FFFFFF',
+    color: colors.onSolid,
     fontFamily: fonts.bold,
     fontSize: 14,
   },
   checkLabel: {
     flex: 1,
-    color: '#7A1212',
+    color: colors.errorInk,
     fontFamily: fonts.medium,
     fontSize: 13,
     lineHeight: 18,
@@ -925,7 +925,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   phaseBandLabelPending: { color: colors.primary },
-  phaseBandLabelDone: { color: '#065F46' },
+  phaseBandLabelDone: { color: colors.successInk },
   phaseBandLabelBlocked: { color: colors.error },
   phaseBandHint: {
     color: colors.textMuted,

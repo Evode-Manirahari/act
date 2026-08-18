@@ -5,8 +5,8 @@
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "prebuild": "expo prebuild --no-install",
     "build:dev-ios": "eas build --profile development --platform ios",
     "build:dev-android": "eas build --profile development --platform android",

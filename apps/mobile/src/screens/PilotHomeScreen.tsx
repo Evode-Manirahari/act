@@ -1,12 +1,11 @@
 import React, { useCallback, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
 
 import ActAppShell from '../components/ActAppShell';
 import ActAskPanel from '../components/ActAskPanel';
-import ActHomeHero from '../components/ActHomeHero';
 import ActSidebar from '../components/ActSidebar';
 import {
   getDashboardSummary,
@@ -20,7 +19,7 @@ import { getPilotContext } from '../api/captureApi';
 import { useAuthSession } from '../hooks/useAuthSession';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import { buildDefaultSidebarItems } from '../navigation/sidebarItems';
-import { ActCard, ActScreen, ActText, colors, spacing } from '../design';
+import { ActButton, ActCard, ActScreen, ActText, colors, spacing } from '../design';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
 type PilotHomeRoute = RouteProp<PilotStackParamList, 'PilotHome'>;
@@ -37,8 +36,8 @@ export default function PilotHomeScreen() {
   const [debriefCount, setDebriefCount] = useState(0);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
-  // Sidebar "+ New chat" navigates here with openAsk so Ask ACT has one
-  // consistent entry point regardless of which screen the drawer opened on.
+  // Other screens can deep-link straight into Ask ACT so it has one entry point
+  // regardless of where it was opened from.
   useFocusEffect(
     useCallback(() => {
       if (route.params?.openAsk) {
@@ -70,7 +69,7 @@ export default function PilotHomeScreen() {
     try {
       setSummary(await getDashboardSummary());
     } catch {
-      // Offline or API down: tiles stay at "—". Never show made-up counts.
+      // Offline or API down: counts stay null. Never show made-up numbers.
     }
 
     try {
@@ -98,10 +97,15 @@ export default function PilotHomeScreen() {
 
   const queueCount = summary?.moments_proposed ?? 0;
 
-  const sidebarItems = buildDefaultSidebarItems(navigation, () => setSidebarOpen(false), {
-    review: queueCount > 0 ? `${queueCount} ready` : undefined,
-    debrief: debriefBadge(debriefCount) ?? undefined,
-  });
+  const sidebarItems = buildDefaultSidebarItems(
+    navigation,
+    () => setSidebarOpen(false),
+    {
+      review: queueCount > 0 ? `${queueCount} ready` : undefined,
+      debrief: debriefBadge(debriefCount) ?? undefined,
+    },
+    () => setAskOpen(true),
+  );
 
   return (
     <ActAppShell mode="ACT" onMenuPress={() => setSidebarOpen(true)}>
@@ -109,15 +113,34 @@ export default function PilotHomeScreen() {
       <ActSidebar
         visible={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
-        onNewChat={() => {
-          setSidebarOpen(false);
-          setAskOpen(true);
-        }}
         items={sidebarItems}
+        account={{
+          email: session?.user.email ?? undefined,
+          onSignOut: () => void handleSignOut(),
+          onDeleteAccount: () => {
+            setSidebarOpen(false);
+            navigation.navigate('DeleteAccount');
+          },
+          error: signOutError,
+        }}
       />
 
       <ActScreen>
-        <ActHomeHero onAsk={() => setAskOpen(true)} items={sidebarItems} />
+        {/* The product is capture. The first thing on the home screen is the
+            thing the tech came to do, at field-CTA size. */}
+        <ActButton
+          label="Record a job"
+          detail="Capture the call, mark what matters"
+          size="lg"
+          onPress={() => navigation.navigate('CaptureJob')}
+        />
+
+        <PendingWork
+          debriefCount={debriefCount}
+          queueCount={queueCount}
+          onDebrief={() => navigation.navigate('Debrief')}
+          onReview={() => navigation.navigate('PilotReview', { queue: true })}
+        />
 
         {report ? (
           <ActCard>
@@ -127,7 +150,7 @@ export default function PilotHomeScreen() {
             <ActText variant="small" color="steel700" style={styles.reportLine}>
               {report.summary}
             </ActText>
-            <ActText variant="small" mono color="textMuted" style={styles.reportMetrics}>
+            <ActText variant="small" mono color="textMuted">
               {report.metrics.cards_published} cards · {report.metrics.callbacks}/
               {report.metrics.outcomes_logged} callbacks · {report.metrics.training_events} training events
             </ActText>
@@ -141,48 +164,68 @@ export default function PilotHomeScreen() {
             ))}
           </ActCard>
         ) : null}
-
-        {session ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Sign out"
-            onPress={() => void handleSignOut()}
-            style={({ pressed }) => [styles.signOutRow, pressed && styles.pressed]}
-          >
-            <ActText variant="label" color="textMuted">
-              {session.user.email ? `Signed in as ${session.user.email} · ` : ''}Sign out
-            </ActText>
-            {signOutError ? (
-              <ActText variant="small" color="caution">
-                {signOutError}
-              </ActText>
-            ) : null}
-          </Pressable>
-        ) : null}
-
-        {session ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Delete my account"
-            onPress={() => navigation.navigate('DeleteAccount')}
-            style={({ pressed }) => [styles.signOutRow, pressed && styles.pressed]}
-          >
-            <ActText variant="label" color="textMuted">
-              Delete my account
-            </ActText>
-          </Pressable>
-        ) : null}
       </ActScreen>
     </ActAppShell>
   );
 }
 
+/**
+ * The two things that can actually be waiting on this user, as tappable rows.
+ * Renders nothing when both are zero — an empty queue needs no tile, and a row
+ * reading "0" is noise a tech has to parse on a roof.
+ */
+function PendingWork({
+  debriefCount,
+  queueCount,
+  onDebrief,
+  onReview,
+}: {
+  debriefCount: number;
+  queueCount: number;
+  onDebrief: () => void;
+  onReview: () => void;
+}) {
+  if (debriefCount === 0 && queueCount === 0) return null;
+  return (
+    <View style={styles.pending}>
+      <ActText variant="label" color="textMuted">
+        Waiting on you
+      </ActText>
+      {debriefCount > 0 ? (
+        <ActCard accent="orange" onPress={onDebrief}>
+          <View style={styles.pendingRow}>
+            <ActText variant="bodyStrong">Answer debrief</ActText>
+            <ActText variant="h2" mono color="primary">
+              {debriefCount}
+            </ActText>
+          </View>
+          <ActText variant="small" color="textMuted">
+            30 seconds in your own words builds the card
+          </ActText>
+        </ActCard>
+      ) : null}
+      {queueCount > 0 ? (
+        <ActCard accent="steel" onPress={onReview}>
+          <View style={styles.pendingRow}>
+            <ActText variant="bodyStrong">Review queue</ActText>
+            <ActText variant="h2" mono color="ink">
+              {queueCount}
+            </ActText>
+          </View>
+          <ActText variant="small" color="textMuted">
+            Moments proposed across ready recordings
+          </ActText>
+        </ActCard>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   reportLine: { marginTop: 2 },
-  reportMetrics: {},
   riskRow: { flexDirection: 'row', gap: 9, alignItems: 'flex-start' },
   riskDot: { width: 6, height: 6, borderRadius: 1, backgroundColor: colors.caution, marginTop: 6 },
   riskText: { flex: 1 },
-  signOutRow: { alignItems: 'center', paddingVertical: spacing.sm, gap: 4 },
-  pressed: { opacity: 0.85 },
+  pending: { gap: spacing.sm },
+  pendingRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
 });
