@@ -45,7 +45,7 @@ export default async function ReviewQueuePage() {
       {summary && (
         <section className="col gap-8">
           <div className="h3">Pilot health</div>
-          <div className="row wrap gap-16">
+          <div className="stat-grid">
             <Stat label="Recordings ready" value={summary.recordings_ready} sub={`of ${summary.recordings_total}`} />
             <Stat label="Moments proposed" value={summary.moments_proposed} />
             <Stat label="Moments approved" value={summary.moments_approved} />
@@ -118,10 +118,12 @@ function prettyType(type: string): string {
 
 function Stat({ label, value, sub }: { label: string; value: number; sub?: string }) {
   return (
-    <div className="card col" style={{ gap: 4, minWidth: 160 }}>
-      <div className="h3" style={{ fontSize: 11 }}>{label}</div>
-      <div style={{ fontSize: 26, fontWeight: 800 }} className="mono">{value}</div>
-      {sub && <div className="muted" style={{ fontSize: 11 }}>{sub}</div>}
+    <div className="stat">
+      <div className="h3">{label}</div>
+      <div className="stat-value mono">{value}</div>
+      {/* Always rendered, so a tile without a sub-line doesn't pull its
+          neighbours' numbers off the shared baseline. */}
+      <div className="stat-sub">{sub ?? '\u00A0'}</div>
     </div>
   );
 }

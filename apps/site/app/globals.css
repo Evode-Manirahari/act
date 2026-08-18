@@ -19,8 +19,8 @@
   --verified: #15803d;
   --verified-tint: #e7f5ec;
   --radius: 6px;
-  --font-sans: "Geist", "Inter", system-ui, sans-serif;
-  --font-mono: "Geist Mono", "SFMono-Regular", ui-monospace, monospace;
+  --font-sans: var(--font-geist), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
 * {

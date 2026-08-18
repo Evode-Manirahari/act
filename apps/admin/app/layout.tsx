@@ -1,9 +1,15 @@
 import type { Metadata } from 'next';
+import { Geist, Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
 
 import './globals.css';
 import { api } from '../lib/api';
 import { isActAuthConfigured } from '../lib/actAuth';
+
+// Self-hosted at build time. globals.css asked for Geist by name and nothing
+// ever served it, so every visitor got the OS font instead of the design system.
+const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
   title: 'ACT Capture — Admin',
@@ -27,7 +33,7 @@ async function actingAs(): Promise<string | null> {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const identity = await actingAs();
   return (
-    <html lang="en">
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
       <body>
         <div className="topbar">
           <div className="topbar-inner">

@@ -4,8 +4,15 @@
  * action color, squared radii, mono-accented labels. Light-first, no gradients.
  */
 import type { Metadata } from 'next';
+import { Geist, Geist_Mono } from 'next/font/google';
 import Link from 'next/link';
 import './globals.css';
+
+// Self-hosted at build time. The stylesheet named Geist from the start but
+// nothing loaded it, so visitors without Geist installed locally fell through
+// to system-ui and never saw the type the design system specifies.
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist' });
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' });
 
 export const metadata: Metadata = {
   title: 'Actober AI - capture your senior HVAC techs before they retire',
@@ -15,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
       <body>
         <header className="nav">
           <Link href="/" className="wordmark">
