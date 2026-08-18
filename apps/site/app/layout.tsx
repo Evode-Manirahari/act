@@ -1,16 +1,16 @@
 /**
  * Actober AI marketing site — the Field Instrument system (DESIGN.md)
  * translated to web: Geist + Geist Mono, ink on cool steel, one safety-orange
- * action color, squared radii, mono-accented labels. Light-first.
+ * action color, squared radii, mono-accented labels. Light-first, no gradients.
  */
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Actober AI - the intelligence layer for physical work, starting with HVAC',
+  title: 'Actober AI - capture your senior HVAC techs before they retire',
   description:
-    'Expert technicians film their jobs; Actober turns what they do, see, and reason through into verified knowledge that guides other techs in the field - with the original footage as proof.',
+    'Your senior techs film real calls; Actober turns their reasoning into lead-tech-approved training cards that cut callbacks and ramp new hires - with the original footage as proof.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
