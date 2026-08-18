@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
-import { fonts } from '../theme/typography';
+import { fonts, labelSmallStyle } from '../theme/typography';
 import { radii } from '../design/tokens';
 
 
@@ -86,7 +86,7 @@ const tones = {
   },
   recording: {
     bg: colors.errorLight,
-    border: '#EBC4C4',
+    border: colors.errorBorder,
     text: colors.error,
     dot: colors.error,
   },
@@ -98,19 +98,19 @@ const tones = {
   },
   uploading: {
     bg: colors.cautionLight,
-    border: '#F1D7A8',
+    border: colors.cautionBorder,
     text: colors.caution,
     dot: colors.caution,
   },
   done: {
     bg: colors.successLight,
-    border: '#BCE3C6',
-    text: '#0E6B30',
+    border: colors.successBorder,
+    text: colors.successInk,
     dot: colors.success,
   },
   failed: {
     bg: colors.errorLight,
-    border: '#EBC4C4',
+    border: colors.errorBorder,
     text: colors.error,
     dot: colors.error,
   },
@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
   },
   dot: { width: 7, height: 7, borderRadius: 2 },
   text: {
-    fontSize: 11.5,
+    fontSize: labelSmallStyle.fontSize,
     fontFamily: fonts.monoSemibold, // mono readout for timers/counts
     letterSpacing: 0.3,
     flexShrink: 1,

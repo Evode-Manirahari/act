@@ -31,7 +31,7 @@ import {
 import { Audio } from 'expo-av';
 
 import { colors } from '../theme/colors';
-import { fonts, labelStyle } from '../theme/typography';
+import { fonts, labelStyle, labelSmallStyle } from '../theme/typography';
 import { radii } from '../design/tokens';
 import type {
   ElicitationQuestion,
@@ -468,9 +468,9 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   donePillText: {
-    ...labelStyle,
-    color: '#065F46',
-    fontSize: 10,
+    ...labelSmallStyle,
+    color: colors.successInk,
+    
   },
   lede: {
     color: colors.textMuted,
@@ -506,7 +506,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   voiceCompleteTitle: {
-    color: '#065F46',
+    color: colors.successInk,
     fontFamily: fonts.bold,
     fontSize: 14,
   },
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
     color: colors.steel700,
   },
   stepDotTextDone: {
-    color: '#FFFFFF',
+    color: colors.onSolid,
   },
   stepLabel: {
     fontFamily: fonts.semibold,
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
+    color: colors.onSolid,
     fontFamily: fonts.bold,
     fontSize: 14,
   },
@@ -655,9 +655,9 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   draftBandLabel: {
-    ...labelStyle,
+    ...labelSmallStyle,
     color: colors.steel500,
-    fontSize: 10,
+    
   },
   draftBandTitle: {
     color: colors.text,
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
   },
   momentIdLabel: {
     fontFamily: fonts.mono,
-    fontSize: 10,
+    fontSize: labelSmallStyle.fontSize,
     letterSpacing: 0.5,
     color: colors.textLight,
     textTransform: 'uppercase',

@@ -32,9 +32,9 @@ const ACCENT_COLOR: Record<Exclude<Accent, 'none'>, string> = {
 
 const TONE: Record<Tone, { bg: string; border: string }> = {
   surface: { bg: colors.surface, border: colors.border },
-  warn: { bg: colors.cautionLight, border: '#F1D7A8' },
-  err: { bg: colors.errorLight, border: '#F3C9C9' },
-  ok: { bg: colors.successLight, border: '#BCE3C6' },
+  warn: { bg: colors.cautionLight, border: colors.cautionBorder },
+  err: { bg: colors.errorLight, border: colors.errorBorder },
+  ok: { bg: colors.successLight, border: colors.successBorder },
 };
 
 export default function ActCard({

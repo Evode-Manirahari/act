@@ -2,9 +2,14 @@
  * Actober AI marketing site.
  *
  * The first viewport must make the product obvious: a field recording becomes
- * verified knowledge on every truck. Pitch = "the intelligence layer for
- * physical work, starting with HVAC"; the guidance techs get in the field is
- * always verified, footage-backed, and lead-tech-approved — never improvised.
+ * verified knowledge on every truck. The guidance techs get is always
+ * verified, footage-backed, and lead-tech-approved — never improvised.
+ *
+ * The hero shows the capture screen and nothing else. It used to sit inside a
+ * CSS-drawn rooftop — a div roof, a div RTU with a div fan and coil, div
+ * gauges — under three stacked gradients. That is an illustration of HVAC, not
+ * evidence of a product, and DESIGN.md rules out gradients and decorative
+ * shapes outright. What survives is the one element that shows the real thing.
  */
 const APP_STORE_URL = process.env.NEXT_PUBLIC_APP_STORE_URL;
 const PLAY_STORE_URL = process.env.NEXT_PUBLIC_PLAY_STORE_URL;
@@ -41,7 +46,7 @@ const pipeline = [
   ['03', 'Debrief', 'ACT asks the expert after the job, never during it.'],
   ['04', 'Review', 'Lead tech approves the moment and the lesson.'],
   ['05', 'Learn', 'Apprentices study the cue, reasoning, trap, and safety line.'],
-  ['06', 'Measure', 'Outcomes tie training back to callbacks and ramp.'],
+  ['06', 'Measure', 'Callbacks and time-to-diagnosis, tracked per card.'],
 ] as const;
 
 const users = [
@@ -51,60 +56,18 @@ const users = [
   ['Ops director', 'Sees whether the library is moving callback and ramp signals.'],
 ] as const;
 
-const agents = [
-  ['Moment detection', 'Marks + transcript + frames surface candidate teaching moments.'],
-  ['Debrief question', 'One sharp question captures the expert reasoning.'],
-  ['Training compiler', 'Turns evidence and answers into a structured lesson card.'],
-  ['Safety reviewer', 'Flags unsafe or unsupported claims before publish.'],
-  ['Ask ACT', 'Answers from published cards only, with citations.'],
-  ['Weekly report', 'Summarizes pilot output and operating signals.'],
-] as const;
-
 export default function Home() {
   return (
     <main>
       <section className="hero">
-        <div className="heroScene" aria-hidden="true">
-          <div className="phoneMock">
-            <div className="phoneTop">
-              <span>HVAC CAPTURE</span>
-              <span>02:14</span>
-            </div>
-            <div className="videoFrame">
-              <div className="roofLine" />
-              <div className="rtu">
-                <div className="fan" />
-                <div className="coil" />
-              </div>
-              <div className="gaugeCluster">
-                <span />
-                <span />
-              </div>
-            </div>
-            <div className="markButton">MARK TEACHABLE MOMENT</div>
-            <div className="phoneMeta">
-              <span>NO-COOL</span>
-              <span>AIRFLOW CUE</span>
-            </div>
-          </div>
-
-          <div className="lessonObject">
-            <span className="objectLabel">REVIEWED LESSON</span>
-            <strong>Warm return + frosted suction line</strong>
-            <div className="objectRule">Check airflow before charge.</div>
-            <div className="objectTrap">Novice trap: adding refrigerant first.</div>
-            <div className="objectSafety">Safety: recover before opening the line.</div>
-          </div>
-        </div>
-
         <div className="heroCopy">
-          <p className="heroKicker">Actober AI · The intelligence layer for physical work</p>
+          <p className="heroKicker">Actober AI · HVAC field capture</p>
           <h1>Your best techs film the job. Every truck gets their judgment.</h1>
           <p className="lede">
-            80% of the global workforce doesn&apos;t sit at a desk. Expert technicians
-            film their jobs on a phone or wearable camera, and Actober turns what they
-            do, see, and reason through into verified knowledge that guides your other
-            techs in the field — with the original footage as proof.
+            Your senior techs pass on what they know without writing a word. Actober
+            records the real call, asks one sharp question after the job, and turns
+            the answer into a reviewed card the rest of your techs learn from — with
+            the original footage attached as proof.
           </p>
           <div className="heroActions">
             <a className="pilotCta" href="#pilot">
@@ -115,8 +78,22 @@ export default function Home() {
           </div>
           <div className="trustRail">
             <span>Footage-backed answers, never improvised</span>
-            <span>Lead-tech publish gate</span>
-            <span>Built around callback reduction</span>
+            <span>Nothing publishes without a lead tech</span>
+          </div>
+        </div>
+
+        <div className="phoneMock" aria-hidden="true">
+          <div className="phoneTop">
+            <span>HVAC CAPTURE</span>
+            <span>02:14</span>
+          </div>
+          <div className="videoFrame">
+            <span className="recDot">REC</span>
+          </div>
+          <div className="markButton">MARK TEACHABLE MOMENT</div>
+          <div className="phoneMeta">
+            <span>NO-COOL</span>
+            <span>AIRFLOW CUE</span>
           </div>
         </div>
       </section>
@@ -150,9 +127,9 @@ export default function Home() {
 
         <div className="trainingObject">
           <div className="objectHeader">
-            <span className="objectLabel">EXAMPLE CARD - TEACHABLE MOMENT 2:01</span>
+            <span className="objectLabel">EXAMPLE CARD · TEACHABLE MOMENT 2:01</span>
             <h3>Frost on the suction line means airflow first, not charge</h3>
-            <span className="costChip">CALLBACK AVOIDED - COMPRESSOR PROTECTED</span>
+            <span className="costChip">CALLBACK AVOIDED · COMPRESSOR PROTECTED</span>
           </div>
           <div className="objectGrid">
             <Field label="Observable cue" value="Warm return air, frost at suction line, blower sounds strained." />
@@ -181,21 +158,6 @@ export default function Home() {
             <div className="personCard" key={title}>
               <strong>{title}</strong>
               <p>{body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="section">
-        <div className="sectionHead">
-          <p className="sectionLabel">Behind the scenes</p>
-          <h2>AI agents do the paperwork. Your people keep the judgment.</h2>
-        </div>
-        <div className="agentStrip">
-          {agents.map(([title, body]) => (
-            <div className="agentItem" key={title}>
-              <strong>{title}</strong>
-              <span>{body}</span>
             </div>
           ))}
         </div>

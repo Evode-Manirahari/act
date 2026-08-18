@@ -62,7 +62,7 @@ const styles = StyleSheet.create({
   errWrap: {
     backgroundColor: colors.errorLight,
     borderWidth: 1,
-    borderColor: '#F3C9C9',
+    borderColor: colors.errorBorder,
     borderLeftWidth: 4,
     borderLeftColor: colors.error,
     borderRadius: radii.md,
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
   frame: {
     width: 54,
     height: 54,
-    borderRadius: radii.xl,
+    borderRadius: radii.lg,
     backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
     borderColor: colors.border,

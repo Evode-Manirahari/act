@@ -87,9 +87,9 @@ const VARIANTS: Record<
 > = {
   primary: {
     container: { backgroundColor: colors.primary, borderWidth: 1, borderColor: colors.primaryPressed },
-    fg: '#FFFFFF',
+    fg: colors.onSolid,
     detail: 'rgba(255,255,255,0.85)',
-    spinner: '#FFFFFF',
+    spinner: colors.onSolid,
   },
   secondary: {
     container: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary },

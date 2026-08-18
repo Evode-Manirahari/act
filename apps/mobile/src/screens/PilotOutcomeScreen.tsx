@@ -12,8 +12,6 @@ import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import ActAppShell from '../components/ActAppShell';
-import ActAskPanel from '../components/ActAskPanel';
-import ActBottomBar from '../components/ActBottomBar';
 import { logJobEvent, upsertJobOutcome } from '../api/captureApi';
 import type { JobOutcomeOut } from '../api/captureApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
@@ -26,6 +24,7 @@ import {
   colors,
   radii,
   spacing,
+  tapTarget,
 } from '../design';
 
 type NavProp = NativeStackNavigationProp<PilotStackParamList>;
@@ -54,7 +53,6 @@ export default function PilotOutcomeScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedOutcome, setSavedOutcome] = useState<JobOutcomeOut | null>(null);
-  const [askOpen, setAskOpen] = useState(false);
 
   const jobId = route.params?.jobId;
   const recordedBy = route.params?.recordedBy;
@@ -104,9 +102,7 @@ export default function PilotOutcomeScreen() {
       onMenuPress={() =>
         navigation.canGoBack() ? navigation.goBack() : navigation.navigate('PilotHome')
       }
-      bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
     >
-      <ActAskPanel visible={askOpen} onClose={() => setAskOpen(false)} />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -118,10 +114,6 @@ export default function PilotOutcomeScreen() {
             </ActText>
             <ActText variant="h1" style={styles.summaryTitle}>
               Did this training transfer?
-            </ActText>
-            <ActText variant="small" color="textMuted">
-              Log the repair outcome, callback signal, diagnosis speed, and apprentice progress for
-              this field job.
             </ActText>
           </ActCard>
 
@@ -135,12 +127,6 @@ export default function PilotOutcomeScreen() {
               </ActText>
             </ActCard>
           ) : null}
-
-          <View style={styles.metricsRow}>
-            <Metric label="job" value={jobId ? jobId.slice(0, 8) : 'none'} />
-            <Metric label="callback" value={callback ? 'yes' : 'no'} tone={callback ? 'warn' : 'good'} />
-            <Metric label="diagnosis" value={`${diagnosisMinutes || '0'} min`} />
-          </View>
 
           <ActCard style={styles.form}>
             <ActInput
@@ -185,9 +171,10 @@ export default function PilotOutcomeScreen() {
                 style={styles.inlineInput}
                 value={diagnosisMinutes}
                 onChangeText={(v) => setDiagnosisMinutes(v.replace(/[^0-9]/g, '').slice(0, 3))}
-                placeholder="Minutes"
+                placeholder="Exact min"
                 placeholderTextColor={colors.textLight}
                 keyboardType="number-pad"
+                accessibilityLabel="Exact diagnosis minutes"
               />
             </View>
 
@@ -277,24 +264,6 @@ function Segment({
   );
 }
 
-function Metric({ label, value, tone }: { label: string; value: string; tone?: 'good' | 'warn' }) {
-  return (
-    <ActCard style={styles.metric}>
-      <ActText variant="label" color="textMuted" style={styles.metricLabel}>
-        {label}
-      </ActText>
-      <ActText
-        variant="h2"
-        mono
-        color={tone === 'good' ? 'success' : tone === 'warn' ? 'error' : 'ink'}
-        style={styles.metricValue}
-      >
-        {value}
-      </ActText>
-    </ActCard>
-  );
-}
-
 function buildManagerNotes({
   diagnosisMinutes,
   progress,
@@ -318,15 +287,11 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   summaryTitle: { marginTop: 2 },
   gapTop: { marginTop: 3 },
-  metricsRow: { flexDirection: 'row', gap: spacing.sm + 2 },
-  metric: { flex: 1, minHeight: 72, justifyContent: 'center' },
-  metricLabel: { fontSize: 9.5 },
-  metricValue: { marginTop: 6 },
   form: { gap: spacing.lg },
   fieldGroup: { gap: spacing.sm },
   segmentRow: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
   segment: {
-    minHeight: 42,
+    minHeight: tapTarget,
     minWidth: 84,
     borderRadius: radii.md,
     borderWidth: 1,
@@ -339,8 +304,8 @@ const styles = StyleSheet.create({
   segmentSel: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   segmentText: { textAlign: 'center' },
   inlineInput: {
-    width: 112,
-    minHeight: 44,
+    width: 120,
+    minHeight: tapTarget,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
@@ -349,6 +314,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     fontSize: 14,
   },
-  okTitle: { color: '#0E6B30' },
+  okTitle: { color: colors.successInk },
   pressed: { opacity: 0.76 },
 });

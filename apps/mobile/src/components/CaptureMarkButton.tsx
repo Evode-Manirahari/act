@@ -20,14 +20,14 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { colors } from '../theme/colors';
-import { fonts, labelStyle } from '../theme/typography';
+import { fonts, labelStyle, labelSmallStyle } from '../theme/typography';
 import {
   MARK_CYCLE,
   MARK_CHIP_LABEL,
   MARK_HINT,
   MARK_COLOR,
   type MarkType,
-} from './MarkButton';
+} from './markTypes';
 
 interface Props {
   disabled?: boolean;
@@ -157,14 +157,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
-    shadowColor: '#000',
+    shadowColor: colors.ink,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.18,
     shadowRadius: 8,
     elevation: 6,
   },
   slabLabel: {
-    color: '#FFFFFF',
+    color: colors.onSolid,
     fontSize: 30,
     letterSpacing: 1.5,
     fontFamily: fonts.bold,
@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
   },
   plusGlyph: { color: colors.steel700, fontSize: 30, fontFamily: fonts.medium, lineHeight: 32 },
   plusGlyphActive: { color: colors.primary },
-  plusLabel: { ...labelStyle, color: colors.steel500, fontSize: 9 },
+  plusLabel: { ...labelSmallStyle, color: colors.steel500 },
   plusLabelActive: { color: colors.primary },
   activeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   activeDot: { width: 8, height: 8, borderRadius: 2 },

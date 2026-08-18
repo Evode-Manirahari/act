@@ -1,19 +1,58 @@
+/**
+ * ACT Capture admin — the Field Instrument system (DESIGN.md) on the web.
+ *
+ * This console used to run a palette of its own: warm #FAFAF8 paper against
+ * the app's cool steel, #F97316 orange against the app's safety #EA580C,
+ * Tailwind-default emerald/red/amber against the app's verified/lockout
+ * semantics, 8 and 14px radii against a system whose default is 6, and the OS
+ * font against Geist. A lead tech moving between phone and console saw two
+ * products. These are the app's tokens, one to one.
+ *
+ * Every semantic family is a full ramp — base / tint / border / ink — so a
+ * component never has to invent a shade the way the old file did.
+ */
 :root {
-  --bg: #FAFAF8;
+  --ink: #14181F;
+  --steel-900: #14181F;
+  --steel-700: #2B313B;
+  --steel-500: #586170;
+  --steel-300: #C3C9D0;
+  --steel-100: #E4E7EB;
+
+  --bg: #F5F6F7;
   --surface: #FFFFFF;
-  --surface-alt: #F3F4F6;
-  --border: #E5E7EB;
-  --text: #1A1A1A;
-  --text-muted: #6B7280;
-  --text-light: #9CA3AF;
-  --primary: #F97316;
-  --primary-light: #FED7AA;
-  --success: #10B981;
-  --success-bg: #D1FAE5;
-  --error: #EF4444;
-  --error-bg: #FEE2E2;
-  --warn: #F59E0B;
-  --warn-bg: #FEF3C7;
+  --surface-alt: #EEF0F2;
+  --border: #E4E7EB;
+  --border-strong: #C3C9D0;
+  --text: #14181F;
+  --text-muted: #586170;
+  --text-light: #8A929C;
+  --on-solid: #FFFFFF;
+
+  --primary: #EA580C;
+  --primary-tint: #FFF4ED;
+  --primary-border: #F6D3BC;
+  --primary-pressed: #C2410C;
+
+  --success: #15803D;
+  --success-tint: #E7F5EC;
+  --success-border: #BCE3C6;
+  --success-ink: #0E6B30;
+
+  --error: #C81E1E;
+  --error-tint: #FDEBEB;
+  --error-border: #EBC4C4;
+  --error-ink: #7A1212;
+
+  --caution: #B45309;
+  --caution-tint: #FEF3C7;
+  --caution-border: #F1D7A8;
+  --caution-ink: #7C3B06;
+
+  /* Squared, per DESIGN.md. There is no pill radius. */
+  --radius: 6px;
+  --radius-sm: 4px;
+  --radius-lg: 8px;
 }
 
 * {
@@ -23,11 +62,12 @@
 }
 
 html, body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
   background: var(--bg);
+  -webkit-font-smoothing: antialiased;
 }
 
 a { color: var(--primary); text-decoration: none; }
@@ -37,28 +77,41 @@ button {
   font-family: inherit;
   font-size: inherit;
   cursor: pointer;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: var(--surface);
-  border-radius: 8px;
-  padding: 8px 14px;
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  min-height: 40px;
   font-weight: 600;
-  color: var(--text);
+  color: var(--steel-700);
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
-button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-button.danger { background: var(--error); color: #fff; border-color: var(--error); }
-button.success { background: var(--success); color: #fff; border-color: var(--success); }
-button.ghost { background: transparent; }
+button.primary {
+  background: var(--primary);
+  color: var(--on-solid);
+  border-color: var(--primary-pressed);
+}
+button.danger { background: var(--error); color: var(--on-solid); border-color: var(--error); }
+button.success { background: var(--success); color: var(--on-solid); border-color: var(--success); }
+button.ghost { background: transparent; border-color: var(--border); }
 
-input, textarea {
+input, textarea, select {
   font-family: inherit;
   font-size: inherit;
   padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  min-height: 40px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
   width: 100%;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
 }
 textarea { min-height: 120px; resize: vertical; }
 
@@ -68,16 +121,27 @@ textarea { min-height: 120px; resize: vertical; }
   padding: 24px 20px 60px;
 }
 
-.h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.01em; }
+.h1 { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
 .h2 { font-size: 18px; font-weight: 700; }
-.h3 { font-size: 14px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+/* The mono instrument label — the app's signature section marker. */
+.h3 {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
 .muted { color: var(--text-muted); }
-.mono { font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, monospace; }
+.mono {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
 
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius);
   padding: 16px;
 }
 
@@ -90,20 +154,25 @@ textarea { min-height: 120px; resize: vertical; }
 .gap-24 { gap: 24px; }
 .wrap { flex-wrap: wrap; }
 
+/* Squared instrument tag, never a rounded bubble (DESIGN.md). */
 .pill {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
   background: var(--surface-alt);
-  font-size: 12px;
-  font-weight: 700;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--steel-700);
 }
-.pill.success { background: var(--success-bg); border-color: var(--success); color: #065F46; }
-.pill.warn { background: var(--warn-bg); border-color: var(--warn); color: #92400E; }
-.pill.error { background: var(--error-bg); border-color: var(--error); color: #991B1B; }
+.pill.success { background: var(--success-tint); border-color: var(--success-border); color: var(--success-ink); }
+.pill.warn { background: var(--caution-tint); border-color: var(--caution-border); color: var(--caution-ink); }
+.pill.error { background: var(--error-tint); border-color: var(--error-border); color: var(--error-ink); }
 
 .score {
   display: inline-flex;
@@ -112,10 +181,11 @@ textarea { min-height: 120px; resize: vertical; }
   min-width: 36px;
   height: 28px;
   padding: 0 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   background: var(--primary);
-  color: #fff;
-  font-weight: 800;
+  color: var(--on-solid);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
@@ -133,21 +203,23 @@ textarea { min-height: 120px; resize: vertical; }
   gap: 16px;
 }
 .brand {
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 14px;
-  font-weight: 900;
-  letter-spacing: 3px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   color: var(--primary);
 }
-.navlinks { display: flex; gap: 16px; font-size: 13px; font-weight: 700; color: var(--text-muted); }
+.navlinks { display: flex; gap: 16px; font-size: 13px; font-weight: 600; color: var(--text-muted); }
 .navlinks a { color: var(--text-muted); }
 .navlinks a:hover { color: var(--text); }
 
 .evidence-key {
-  font-size: 11px;
-  font-weight: 700;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.08em;
 }
 .evidence-value {
   font-size: 13px;
@@ -156,10 +228,46 @@ textarea { min-height: 120px; resize: vertical; }
 
 .notice {
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--border-strong);
   background: var(--surface-alt);
   font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Equal-width tiles on one baseline — the stat row is a grid, not a flex wrap. */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 14px;
+}
+
+/* Reserve two lines for every label so a wrapping one ("Training events 7d")
+   doesn't push its number below the row's shared baseline. */
+.stat .h3 {
+  min-height: 2.2em;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.stat-sub {
+  font-size: 11px;
   color: var(--text-muted);
 }
 

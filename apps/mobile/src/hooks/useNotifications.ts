@@ -4,6 +4,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { buildNotificationContent } from '../lib/notificationContent';
 
+import { colors } from '../theme/colors';
+
 const PREFS_KEY = 'act_notification_prefs';
 
 export interface NotificationPrefs {
@@ -76,7 +78,7 @@ export function useNotifications() {
         name: 'Daily Reminders',
         importance: Notifications.AndroidImportance.DEFAULT,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#F97316',
+        lightColor: colors.primary,
       });
     }
     const { status } = await Notifications.requestPermissionsAsync();

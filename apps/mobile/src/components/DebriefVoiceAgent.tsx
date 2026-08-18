@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.error,
   },
-  recordText: { color: '#FFFFFF', fontFamily: fonts.bold, fontSize: 14 },
+  recordText: { color: colors.onSolid, fontFamily: fonts.bold, fontSize: 14 },
   recordTextActive: { color: colors.error },
   workingRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   workingText: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 13 },
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
     padding: 12,
     gap: 3,
   },
-  doneTitle: { fontFamily: fonts.bold, fontSize: 14, color: '#065F46' },
+  doneTitle: { fontFamily: fonts.bold, fontSize: 14, color: colors.successInk },
   doneBody: { fontFamily: fonts.body, fontSize: 13, lineHeight: 18, color: colors.text },
   primaryButton: {
     minHeight: 48,
@@ -351,7 +351,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  primaryButtonText: { color: '#FFFFFF', fontFamily: fonts.bold, fontSize: 14 },
+  primaryButtonText: { color: colors.onSolid, fontFamily: fonts.bold, fontSize: 14 },
   secondaryButton: {
     minHeight: 44,
     borderRadius: 8,

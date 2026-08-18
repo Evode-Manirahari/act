@@ -13,7 +13,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import ActAppShell from '../components/ActAppShell';
 import ActAskPanel from '../components/ActAskPanel';
-import ActBottomBar from '../components/ActBottomBar';
 import { getPilotContext } from '../api/captureApi';
 import type { DemoContext } from '../api/captureApi';
 import { logTrainingEvent, searchLibrary } from '../api/libraryApi';
@@ -27,6 +26,7 @@ import {
   ActPill,
   ActText,
   colors,
+  labelSmallStyle,
   radii,
   spacing,
 } from '../design';
@@ -116,13 +116,12 @@ export default function LearnScreen() {
   return (
     <ActAppShell
       mode="Training"
-      rightLabel="Capture"
+      rightLabel="Ask ACT"
       rightMuted
-      onRightPress={() => navigation.navigate('CaptureJob')}
+      onRightPress={() => setAskOpen(true)}
       onMenuPress={() =>
         navigation.canGoBack() ? navigation.goBack() : navigation.navigate('PilotHome')
       }
-      bottomBar={<ActBottomBar onPress={() => setAskOpen(true)} />}
     >
       <ActAskPanel
         visible={askOpen}
@@ -513,7 +512,7 @@ const styles = StyleSheet.create({
   detailTitle: { fontSize: 22, lineHeight: 28 },
   trustBand: { backgroundColor: colors.surfaceAlt, gap: spacing.sm },
   trustRow: { flexDirection: 'row', gap: spacing.sm + 2 },
-  trustLabel: { width: 92, fontSize: 10 },
+  trustLabel: { width: 92, fontSize: labelSmallStyle.fontSize },
   trustValue: { flex: 1 },
   sectionHd: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   lockoutIcon: {
@@ -524,8 +523,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lockoutIconText: { color: '#FFFFFF', fontSize: 12, letterSpacing: 0 },
-  errBody: { color: '#5B1212' },
+  lockoutIconText: { color: colors.onSolid, fontSize: 12, letterSpacing: 0 },
+  errBody: { color: colors.errorInk },
   block: { gap: spacing.sm + 2 },
   choice: {
     flexDirection: 'row',
@@ -547,6 +546,6 @@ const styles = StyleSheet.create({
   resultRight: { backgroundColor: colors.successLight },
   resultWrong: { backgroundColor: colors.errorLight },
   resultText: { textAlign: 'center' },
-  okLabel: { color: '#0E6B30' },
+  okLabel: { color: colors.successInk },
   completeDone: { backgroundColor: colors.successLight, borderColor: colors.success },
 });

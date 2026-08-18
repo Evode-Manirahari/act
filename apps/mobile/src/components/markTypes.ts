@@ -1,11 +1,7 @@
 /**
- * Mark taxonomy — the single source of truth for teachable-moment types.
- *
- * The on-screen control is CaptureMarkButton (the Field Instrument slab). This
- * module holds only the shared data model — types, cycle order, labels, hints,
- * and colors — so the slab and any future surface stay in lockstep. The legacy
- * round-bubble MarkButton was removed once CaptureMarkButton replaced it; the
- * design system uses a squared industrial slab, not a round bubble.
+ * Mark taxonomy — the single source of truth for teachable-moment types:
+ * types, cycle order, labels, hints, and colors. Data only, no component; the
+ * on-screen control is CaptureMarkButton (the Field Instrument slab).
  */
 import { colors } from '../theme/colors';
 

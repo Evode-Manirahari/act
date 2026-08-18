@@ -14,21 +14,32 @@ export type SidebarNavItem = {
   onPress: () => void;
 };
 
+export type ActSidebarAccount = {
+  /** Signed-in email, shown so a shared truck phone makes the account obvious. */
+  email?: string;
+  onSignOut: () => void;
+  onDeleteAccount: () => void;
+  /** Surfaced inline; sign-out failing shouldn't be silent. */
+  error?: string | null;
+};
+
 export type ActSidebarProps = {
   visible: boolean;
   onClose: () => void;
-  /** "+ New chat" row — opens Ask ACT fresh. Always the first, primary row. */
-  onNewChat: () => void;
   items: SidebarNavItem[];
+  /** Account controls live here, not on the home screen. */
+  account?: ActSidebarAccount;
 };
 
 /**
- * Left-hand nav drawer, opened from ActAppShell's hamburger button. Field
- * Instrument reskin of the familiar chat-app sidebar: "+ New chat" up top,
- * then the app's real destinations below it — no icon library, mono
- * instrument labels, same tokens as everywhere else in the app.
+ * Left-hand nav drawer, opened from ActAppShell's menu button: the app's real
+ * destinations, then the account footer.
+ *
+ * Deliberately NOT a chat-app sidebar. There is no "+ New chat" primary — the
+ * first row is Record, because recording a job is what this product does; Ask
+ * ACT is one destination among several, not the reason the drawer exists.
  */
-export default function ActSidebar({ visible, onClose, onNewChat, items }: ActSidebarProps) {
+export default function ActSidebar({ visible, onClose, items, account }: ActSidebarProps) {
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const [mounted, setMounted] = useState(visible);
 
@@ -67,29 +78,11 @@ export default function ActSidebar({ visible, onClose, onNewChat, items }: ActSi
         <Animated.View style={[styles.drawer, { transform: [{ translateX }] }]}>
           <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
             <View style={styles.header}>
-              <ActText variant="label" color="primary" style={styles.kicker}>
+              <ActText variant="label" color="primary">
                 HVAC · Field Capture
               </ActText>
               <ActText variant="h1">ACT</ActText>
             </View>
-
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="New chat with Ask ACT"
-              onPress={onNewChat}
-              style={({ pressed }) => [styles.newChat, pressed && styles.pressed]}
-            >
-              <ActText variant="h2" color="surface" style={styles.newChatPlus}>
-                +
-              </ActText>
-              <ActText variant="bodyStrong" color="surface">
-                New chat
-              </ActText>
-            </Pressable>
-
-            <ActText variant="label" color="textMuted" style={styles.sectionLabel}>
-              Workspace
-            </ActText>
 
             <View style={styles.list}>
               {items.map((item) => (
@@ -106,7 +99,7 @@ export default function ActSidebar({ visible, onClose, onNewChat, items }: ActSi
                     </ActText>
                     {item.badge ? (
                       <View style={styles.badge}>
-                        <ActText variant="label" color="primary" style={styles.badgeText} mono>
+                        <ActText variant="label" color="primary" mono style={styles.badgeText}>
                           {item.badge}
                         </ActText>
                       </View>
@@ -118,6 +111,43 @@ export default function ActSidebar({ visible, onClose, onNewChat, items }: ActSi
                 </Pressable>
               ))}
             </View>
+
+            {account ? (
+              <View style={styles.account}>
+                {account.email ? (
+                  <ActText variant="label" color="textMuted" numberOfLines={1}>
+                    {account.email}
+                  </ActText>
+                ) : null}
+                {account.error ? (
+                  <ActText variant="small" color="caution">
+                    {account.error}
+                  </ActText>
+                ) : null}
+                <View style={styles.accountActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Sign out"
+                    onPress={account.onSignOut}
+                    style={({ pressed }) => [styles.accountButton, pressed && styles.pressed]}
+                  >
+                    <ActText variant="small" weight="semibold" color="steel700">
+                      Sign out
+                    </ActText>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete my account"
+                    onPress={account.onDeleteAccount}
+                    style={({ pressed }) => [styles.accountButton, pressed && styles.pressed]}
+                  >
+                    <ActText variant="small" weight="semibold" color="error">
+                      Delete account
+                    </ActText>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
           </SafeAreaView>
         </Animated.View>
       </View>
@@ -140,18 +170,6 @@ const styles = StyleSheet.create({
   },
   safe: { flex: 1, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, gap: spacing.md },
   header: { gap: spacing['2xs'] },
-  kicker: { fontSize: 10 },
-  newChat: {
-    minHeight: 48,
-    borderRadius: radii.md,
-    backgroundColor: colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
-  },
-  newChatPlus: { lineHeight: 20 },
-  sectionLabel: { marginTop: spacing.sm, fontSize: 10 },
   list: { gap: spacing['2xs'] },
   row: {
     minHeight: 56,
@@ -167,6 +185,23 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     backgroundColor: colors.primaryLight,
   },
-  badgeText: { fontSize: 9 },
+  badgeText: {},
+  account: {
+    marginTop: 'auto',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.md,
+    gap: spacing.sm,
+  },
+  accountActions: { flexDirection: 'row', gap: spacing.sm },
+  accountButton: {
+    minHeight: 44,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+  },
   pressed: { opacity: 0.7 },
 });

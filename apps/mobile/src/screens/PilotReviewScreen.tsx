@@ -909,7 +909,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lockGlyphText: { color: '#FFFFFF', fontSize: 12, letterSpacing: 0 },
+  lockGlyphText: { color: colors.onSolid, fontSize: 12, letterSpacing: 0 },
   center: {
     flex: 1,
     alignItems: 'center',

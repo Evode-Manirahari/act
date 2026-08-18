@@ -32,9 +32,9 @@ import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { colors } from '../theme/colors';
-import { fonts, labelStyle } from '../theme/typography';
+import { fonts, labelStyle, labelSmallStyle } from '../theme/typography';
 import ActAppShell from '../components/ActAppShell';
-import { MarkType } from '../components/MarkButton';
+import { MarkType } from '../components/markTypes';
 import CaptureMarkButton from '../components/CaptureMarkButton';
 import UploadStatusPill, { UploadStatus } from '../components/UploadStatusPill';
 import {
@@ -748,7 +748,7 @@ const styles = StyleSheet.create({
     height: 220,
     borderRadius: 6,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: colors.ink,
     borderWidth: 1,
     borderColor: colors.borderStrong,
   },
@@ -768,7 +768,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     backgroundColor: colors.primary,
   },
-  permButtonText: { color: '#fff', fontFamily: fonts.semibold, fontSize: 15 },
+  permButtonText: { color: colors.onSolid, fontFamily: fonts.semibold, fontSize: 15 },
   recBadge: {
     position: 'absolute',
     top: 10,
@@ -782,7 +782,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
   },
   recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.error },
-  recBadgeText: { color: '#fff', fontFamily: fonts.monoSemibold, fontSize: 11, letterSpacing: 1 },
+  recBadgeText: { color: colors.onSolid, fontFamily: fonts.monoSemibold, fontSize: 11, letterSpacing: 1 },
 
   // ---- Recording readout ----
   readoutRow: { flexDirection: 'row', gap: 12 },
@@ -800,7 +800,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   readoutValue: { color: colors.ink, fontSize: 28, fontFamily: fonts.mono },
-  readoutLabel: { ...labelStyle, color: colors.steel500, fontSize: 10, marginTop: 4 },
+  readoutLabel: { ...labelSmallStyle, color: colors.steel500, marginTop: 4 },
 
   micRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   micGlyph: { width: 18, alignItems: 'center', gap: 2 },
@@ -836,7 +836,7 @@ const styles = StyleSheet.create({
   },
   startButtonDisabled: { opacity: 0.5 },
   startButtonBlocked: { backgroundColor: colors.error, borderColor: colors.error },
-  startButtonText: { color: '#fff', fontSize: 19, letterSpacing: 1, fontFamily: fonts.bold },
+  startButtonText: { color: colors.onSolid, fontSize: 19, letterSpacing: 1, fontFamily: fonts.bold },
   startButtonDetail: { color: 'rgba(255,255,255,0.88)', fontSize: 13, marginTop: 4, fontFamily: fonts.medium },
 
   // ---- Review-ready ----
@@ -850,9 +850,9 @@ const styles = StyleSheet.create({
     padding: 14,
     gap: 4,
   },
-  readyKicker: { ...labelStyle, color: '#065F46', fontSize: 10 },
-  readyTitle: { color: '#065F46', fontSize: 19, fontFamily: fonts.semibold },
-  readyDetail: { color: '#047857', fontSize: 14, lineHeight: 20, fontFamily: fonts.body },
+  readyKicker: { ...labelSmallStyle, color: colors.successInk },
+  readyTitle: { color: colors.successInk, fontSize: 19, fontFamily: fonts.semibold },
+  readyDetail: { color: colors.successInk, fontSize: 14, lineHeight: 20, fontFamily: fonts.body },
   reviewButton: {
     minHeight: 72,
     borderRadius: 6,
@@ -862,7 +862,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     justifyContent: 'center',
   },
-  reviewButtonText: { color: '#fff', fontSize: 17, letterSpacing: 1, fontFamily: fonts.bold },
+  reviewButtonText: { color: colors.onSolid, fontSize: 17, letterSpacing: 1, fontFamily: fonts.bold },
   reviewButtonDetail: { color: 'rgba(255,255,255,0.88)', fontSize: 13, marginTop: 4, fontFamily: fonts.medium },
 
   // ---- Shared ----

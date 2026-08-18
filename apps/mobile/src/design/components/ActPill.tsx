@@ -6,7 +6,7 @@
 import React from 'react';
 import { StyleSheet, View, ViewStyle } from 'react-native';
 
-import { colors, radii } from '../tokens';
+import { colors, labelSmallStyle, radii } from '../tokens';
 import ActText from './ActText';
 
 type Tone = 'neutral' | 'orange' | 'ok' | 'err' | 'warn';
@@ -21,10 +21,10 @@ export type ActPillProps = {
 
 const TONE: Record<Tone, { bg: string; border: string; fg: string }> = {
   neutral: { bg: colors.surfaceAlt, border: colors.border, fg: colors.steel700 },
-  orange: { bg: colors.primaryLight, border: '#F6D3BC', fg: colors.primaryPressed },
-  ok: { bg: colors.successLight, border: '#BCE3C6', fg: '#0E6B30' },
-  err: { bg: colors.errorLight, border: '#EBC4C4', fg: colors.error },
-  warn: { bg: colors.cautionLight, border: '#F1D7A8', fg: colors.caution },
+  orange: { bg: colors.primaryLight, border: colors.primaryBorder, fg: colors.primaryPressed },
+  ok: { bg: colors.successLight, border: colors.successBorder, fg: colors.successInk },
+  err: { bg: colors.errorLight, border: colors.errorBorder, fg: colors.error },
+  warn: { bg: colors.cautionLight, border: colors.cautionBorder, fg: colors.caution },
 };
 
 export default function ActPill({ label, tone = 'neutral', dot = false, dotColor, style }: ActPillProps) {
@@ -32,7 +32,7 @@ export default function ActPill({ label, tone = 'neutral', dot = false, dotColor
   return (
     <View style={[styles.pill, { backgroundColor: t.bg, borderColor: t.border }, style]}>
       {dot ? <View style={[styles.dot, { backgroundColor: dotColor ?? t.fg }]} /> : null}
-      <ActText variant="label" style={{ color: t.fg, fontSize: 10 }}>
+      <ActText variant="label" style={{ color: t.fg, fontSize: labelSmallStyle.fontSize }}>
         {label}
       </ActText>
     </View>

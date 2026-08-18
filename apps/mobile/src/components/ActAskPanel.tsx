@@ -12,7 +12,7 @@ import {
 import { askLibrary, type LibraryAskResponse } from '../api/libraryApi';
 import { getPilotContext } from '../api/captureApi';
 import { colors } from '../theme/colors';
-import { fonts, labelStyle } from '../theme/typography';
+import { fonts, labelStyle, labelSmallStyle } from '../theme/typography';
 
 type Props = {
   visible: boolean;
@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  askButtonText: { color: '#FFFFFF', fontSize: 14, fontFamily: fonts.bold },
+  askButtonText: { color: colors.onSolid, fontSize: 14, fontFamily: fonts.bold },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.7 },
   result: {
@@ -193,6 +193,6 @@ const styles = StyleSheet.create({
   answerText: { color: colors.steel700, fontSize: 14, lineHeight: 21, fontFamily: fonts.body },
   errorText: { color: colors.error, fontSize: 13, lineHeight: 19, fontFamily: fonts.semibold },
   citations: { gap: 6, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10 },
-  citationLabel: { ...labelStyle, color: colors.steel500, fontSize: 10 },
+  citationLabel: { ...labelSmallStyle, color: colors.steel500 },
   citationText: { color: colors.text, fontSize: 13, fontFamily: fonts.semibold },
 });
