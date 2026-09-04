@@ -283,3 +283,51 @@ textarea { min-height: 120px; resize: vertical; }
   color: var(--text-muted);
   font-size: 14px;
 }
+
+/* Readiness matrix: a real table, scrolls sideways rather than wrapping columns. */
+.matrix-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.matrix {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  min-width: 720px;
+  font-size: 13px;
+}
+.matrix th,
+.matrix td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  vertical-align: top;
+  text-align: left;
+}
+.matrix thead th {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  background: var(--surface-alt);
+  white-space: nowrap;
+}
+.matrix tbody th {
+  font-weight: 600;
+  background: var(--surface-alt);
+  white-space: nowrap;
+  position: sticky;
+  left: 0;
+}
+.matrix tbody th a { color: var(--text); }
+.matrix tr:last-child th,
+.matrix tr:last-child td { border-bottom: none; }
+.matrix th:last-child,
+.matrix td:last-child { border-right: none; }
+.matrix td.review {
+  box-shadow: inset 3px 0 0 var(--primary);
+}

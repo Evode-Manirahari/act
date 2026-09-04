@@ -7,7 +7,9 @@ import {
   CHALLENGE_PROMPT,
   COMPARISON_LABEL,
   EPISODE_LABEL,
+  VARIANT_PROMPT,
   canPractice,
+  commitEventNote,
   commitReady,
   compareCommitToExpert,
   diagnosticCaseFromKnowledgeObject,
@@ -15,18 +17,40 @@ import {
   filled,
   initialPlayerState,
   reducePlayer,
+  variantEventNote,
   type LearnerCommit,
   type PlayerEvent,
   type PlayerState,
 } from '@act/domain';
 
-export default function CasePractice({ card }: { card: KnowledgeObjectOut }) {
+interface Props {
+  card: KnowledgeObjectOut;
+  /** Delayed variant: the title stays hidden until the reveal; the learner names the principle first. */
+  variant?: boolean;
+  /** Post practice events to act-api through this server. Off for demo cases. */
+  record?: boolean;
+}
+
+async function postEvent(body: { knowledge_object_id: string; event_type: string; note: string }) {
+  const response = await fetch('/api/training-events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error((await response.text().catch(() => '')) || `save failed (${response.status})`);
+  }
+}
+
+export default function CasePractice({ card, variant = false, record = false }: Props) {
   const diag = useMemo(() => diagnosticCaseFromKnowledgeObject(card), [card]);
   const [state, dispatch] = useReducer(
     reducePlayer,
     { hasSafety: Boolean(diag.safetyBoundary?.trim()) },
     initialPlayerState,
   );
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const hideExpert = expertHidden(state.stage);
   const comparisons = compareCommitToExpert(diag, state.commit);
 
@@ -38,13 +62,47 @@ export default function CasePractice({ card }: { card: KnowledgeObjectOut }) {
     );
   }
 
+  const note = () =>
+    variant
+      ? variantEventNote(state.commit, state.disconfirm, state.reflection)
+      : commitEventNote(state.commit, state.disconfirm, state.reflection);
+
+  async function save(eventType: 'quiz_attempted' | 'completed'): Promise<boolean> {
+    if (!record) return true;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await postEvent({ knowledge_object_id: card.id, event_type: eventType, note: note() });
+      return true;
+    } catch (e) {
+      setSaveError(e instanceof Error ? e.message : 'could not save your decision');
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onCommit() {
+    if (await save('quiz_attempted')) dispatch({ type: 'submit_commit' });
+  }
+
+  async function onFinish() {
+    dispatch({ type: 'submit_reflect' });
+    await save('completed');
+  }
+
   return (
     <article className="card col gap-16">
       <div className="col gap-8">
-        <div className="evidence-key">{EPISODE_LABEL[diag.episodeType]} · commit first</div>
-        <div className="h2">{diag.title}</div>
+        <div className="evidence-key">
+          {variant ? 'Delayed variant · ' : ''}
+          {EPISODE_LABEL[diag.episodeType]} · commit first
+        </div>
+        <div className="h2">{variant && hideExpert ? 'Same principle, different call' : diag.title}</div>
         <div className="muted">
-          State your diagnosis before the expert view. This is practice, not a score.
+          {variant
+            ? VARIANT_PROMPT
+            : 'State your diagnosis before the expert view. This is practice, not a score.'}
         </div>
       </div>
 
@@ -92,11 +150,16 @@ export default function CasePractice({ card }: { card: KnowledgeObjectOut }) {
           />
           <button
             className="primary"
-            disabled={!commitReady(state.commit)}
-            onClick={() => dispatch({ type: 'submit_commit' })}
+            disabled={!commitReady(state.commit) || saving}
+            onClick={onCommit}
           >
-            Commit decision
+            {saving ? 'Saving…' : 'Commit decision'}
           </button>
+          {saveError ? (
+            <div className="notice" style={{ color: 'var(--error)', borderColor: 'var(--error)' }}>
+              {saveError}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
@@ -150,17 +213,21 @@ export default function CasePractice({ card }: { card: KnowledgeObjectOut }) {
           />
           <button
             className="primary"
-            disabled={!filled(state.reflection)}
-            onClick={() => dispatch({ type: 'submit_reflect' })}
+            disabled={!filled(state.reflection) || saving}
+            onClick={onFinish}
           >
-            Finish practice
+            {variant ? 'Finish variant' : 'Finish practice'}
           </button>
         </div>
       ) : null}
 
       {state.stage === 'complete' ? (
         <div className="notice" style={{ background: 'var(--success-tint)', borderColor: 'var(--success)' }}>
-          Practice complete. This browser session does not grade you and does not change readiness.
+          {variant ? 'Variant complete.' : 'Practice complete.'}{' '}
+          {record
+            ? 'Your commit and reflection are recorded as evidence. Nobody is graded here; your manager sets readiness.'
+            : 'Demo session — nothing was recorded.'}
+          {saveError ? <div style={{ color: 'var(--error)', marginTop: 8 }}>{saveError}</div> : null}
         </div>
       ) : null}
     </article>

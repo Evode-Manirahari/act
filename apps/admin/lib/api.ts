@@ -166,6 +166,43 @@ export interface MeOut {
   role: string;
 }
 
+export interface TrainingEventOut {
+  id: string;
+  knowledge_object_id: string;
+  user_id: string | null;
+  event_type: string;
+  score: number | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface JobOut {
+  id: string;
+  user_id: string;
+  equipment_label: string | null;
+  system_type: string | null;
+  equipment_make: string | null;
+  equipment_model: string | null;
+  customer_site_label: string | null;
+  jurisdiction: string | null;
+  status: string;
+  summary: string | null;
+  created_at: string;
+  ended_at: string | null;
+}
+
+export interface JobOutcomeOut {
+  id: string;
+  job_id: string;
+  final_diagnosis: string | null;
+  fix: string | null;
+  callback: boolean;
+  callback_at: string | null;
+  manager_notes: string | null;
+  recorded_by: string | null;
+  created_at: string;
+}
+
 
 export const api = {
   me: () => json<MeOut>('/me'),
@@ -284,6 +321,44 @@ export const api = {
         trade: body.trade ?? 'hvac',
         account_id: null,
         limit: body.limit ?? 3,
+      }),
+    }),
+  knowledgeObjects: (params: { status?: string; trade?: string; limit?: number } = {}) => {
+    const search = new URLSearchParams();
+    if (params.status) search.set('status', params.status);
+    if (params.trade) search.set('trade', params.trade);
+    search.set('limit', String(params.limit ?? 200));
+    return json<KnowledgeObjectOut[]>(`/knowledge-objects?${search}`);
+  },
+  apprenticeEvents: (userId: string, limit = 500) =>
+    json<TrainingEventOut[]>(`/apprentices/${userId}/events?limit=${limit}`),
+  jobs: () => json<JobOut[]>('/jobs'),
+  jobOutcome: async (jobId: string): Promise<JobOutcomeOut | null> => {
+    try {
+      return await json<JobOutcomeOut>(`/jobs/${jobId}/outcomes`);
+    } catch (e) {
+      // 404 is the one answer that means "no outcome recorded". Anything else is
+      // a failed read and must surface, not read as an absence.
+      if (e instanceof Error && / -> 404:/.test(e.message)) return null;
+      throw e;
+    }
+  },
+  // user_id is the act-api user behind this server's own token (/me), never a
+  // value the browser supplied. Same rule as the mobile client.
+  logTrainingEvent: (body: {
+    knowledge_object_id: string;
+    user_id: string | null;
+    event_type: string;
+    note?: string | null;
+  }) =>
+    json<{ id: string }>('/training-events', {
+      method: 'POST',
+      body: JSON.stringify({
+        knowledge_object_id: body.knowledge_object_id,
+        user_id: body.user_id,
+        event_type: body.event_type,
+        score: null,
+        note: body.note ?? null,
       }),
     }),
 };

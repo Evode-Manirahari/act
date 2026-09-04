@@ -1,13 +1,35 @@
+import Link from 'next/link';
+
 import { api, type KnowledgeObjectOut, type LibraryAskResponse } from '@/lib/api';
+import { isActAuthConfigured } from '@/lib/actAuth';
+import { demoCardsAsKnowledgeObjects } from '@/lib/readiness';
 import CasePractice from '@/components/CasePractice';
-import { EPISODE_LABEL, diagnosticCaseFromKnowledgeObject } from '@act/domain';
+import {
+  DEMO_SHOP_NAME,
+  EPISODE_LABEL,
+  VARIANT_STATUS_LABEL,
+  demoShop,
+  diagnosticCaseFromKnowledgeObject,
+  practiceEventFromTrainingEvent,
+  variantSchedule,
+  type PracticeEvent,
+  type VariantSchedule,
+} from '@act/domain';
 
 export const dynamic = 'force-dynamic';
 
 interface SearchParamsShape {
   q?: string;
   ask?: string;
-  preview?: string;
+  demo?: string;
+}
+
+interface LearnerContext {
+  learnerId: string | null;
+  learnerLabel: string | null;
+  events: PracticeEvent[];
+  /** The event read failed; variant state is unknown, not "not started". */
+  eventsUnconfirmed: boolean;
 }
 
 export default async function LearnPage({
@@ -18,22 +40,53 @@ export default async function LearnPage({
   const sp = await searchParams;
   const q = sp.q?.trim() ?? '';
   const ask = sp.ask?.trim() ?? '';
-  const preview =
-    process.env.NODE_ENV !== 'production' && sp.preview === '1';
-  let cards: KnowledgeObjectOut[] = preview ? [PREVIEW_CASE] : [];
+  const demo = sp.demo === '1';
+  const now = new Date();
+
+  let cards: KnowledgeObjectOut[] = [];
   let answer: LibraryAskResponse | null = null;
   let error: string | null = null;
   let askError: string | null = null;
+  let learner: LearnerContext = {
+    learnerId: null,
+    learnerLabel: null,
+    events: [],
+    eventsUnconfirmed: false,
+  };
 
-  try {
-    if (!preview) {
+  if (demo) {
+    const shop = demoShop(now);
+    cards = demoCardsAsKnowledgeObjects(now).filter((card) => matches(card, q));
+    const learnerTech = shop.techs.find((tech) => tech.id === shop.learnerId);
+    learner = {
+      learnerId: shop.learnerId,
+      learnerLabel: learnerTech ? `${learnerTech.name} · ${learnerTech.role}` : shop.learnerId,
+      events: shop.events,
+      eventsUnconfirmed: false,
+    };
+  } else {
+    try {
       cards = await api.library(q, 'hvac');
+    } catch (e) {
+      error = e instanceof Error ? e.message : 'library failed';
     }
-  } catch (e) {
-    error = e instanceof Error ? e.message : 'library failed';
+    if (isActAuthConfigured) {
+      try {
+        const me = await api.me();
+        const rows = await api.apprenticeEvents(me.user_id);
+        learner = {
+          learnerId: me.user_id,
+          learnerLabel: me.email,
+          events: rows.map(practiceEventFromTrainingEvent),
+          eventsUnconfirmed: false,
+        };
+      } catch {
+        learner = { ...learner, eventsUnconfirmed: true };
+      }
+    }
   }
 
-  if (ask) {
+  if (ask && !demo) {
     try {
       answer = await api.askLibrary({ query: ask, trade: 'hvac', limit: 3 });
     } catch (e) {
@@ -41,76 +94,106 @@ export default async function LearnPage({
     }
   }
 
+  const schedules = new Map<string, VariantSchedule>();
+  if (learner.learnerId && !learner.eventsUnconfirmed) {
+    for (const card of cards) {
+      schedules.set(card.id, variantSchedule(learner.events, card.id, learner.learnerId, now));
+    }
+  }
+  const ordered = [...cards].sort((a, b) => rank(schedules.get(a.id)) - rank(schedules.get(b.id)));
+  const dueCount = ordered.filter((card) => isDue(schedules.get(card.id))).length;
+
+  const base = demo ? '/learn?demo=1' : '/learn';
+
   return (
     <div className="col gap-24">
       <header className="col gap-8">
         <div className="row between wrap gap-16">
-          <div>
+          <div className="col gap-8">
             <h1 className="h1">Diagnostic cases</h1>
             <div className="muted">
               Practice the decision before you see what the senior did. Published cases only.
             </div>
-            {preview ? (
-              <div className="notice" style={{ background: 'var(--caution-tint)', borderColor: 'var(--caution)' }}>
-                Preview fixture — not a field case, not production evidence.
+            {learner.learnerLabel ? (
+              <div className="muted" style={{ fontSize: 13 }}>
+                Practicing as <span className="mono">{learner.learnerLabel}</span>
               </div>
             ) : null}
           </div>
-          <span className="pill success">company-approved library</span>
+          <div className="row gap-8 wrap">
+            {demo ? (
+              <span className="pill warn">demo · {DEMO_SHOP_NAME}</span>
+            ) : (
+              <span className="pill success">company-approved library</span>
+            )}
+            {dueCount > 0 ? <span className="pill warn">{dueCount} variant{dueCount === 1 ? '' : 's'} due</span> : null}
+          </div>
         </div>
+        {demo ? (
+          <div className="notice" style={{ background: 'var(--caution-tint)', borderColor: 'var(--caution)' }}>
+            Fictional shop. These cases were written for the demo, not captured on a job. Nothing you
+            do here is recorded. <Link href="/learn">Leave demo</Link> · <Link href="/readiness?demo=1">Manager view</Link>
+          </div>
+        ) : null}
+        {learner.eventsUnconfirmed ? (
+          <div className="notice" style={{ color: 'var(--error)', borderColor: 'var(--error)' }}>
+            Your practice history could not be read, so variant timing is unknown for this page load.
+          </div>
+        ) : null}
       </header>
 
-      <section className="card col gap-16" style={{ borderLeft: '4px solid var(--primary)' }}>
-        <div className="row between wrap gap-16">
+      {!demo ? (
+        <section className="card col gap-16" style={{ borderLeft: '4px solid var(--primary)' }}>
           <div>
             <div className="h2">Ask ACT</div>
             <div className="muted" style={{ fontSize: 13 }}>
               Answers come from reviewed cases and citations. Live job instructions are refused.
             </div>
           </div>
-        </div>
-        <form className="row gap-8 wrap" action="/learn">
-          <input type="hidden" name="q" value={q} />
-          <input
-            name="ask"
-            defaultValue={ask}
-            placeholder="Ask about a published case, callback pattern, or safety boundary..."
-            style={{ minWidth: 280, flex: 1 }}
-          />
-          <button type="submit" className="primary">Ask published library</button>
-        </form>
+          <form className="row gap-8 wrap" action="/learn">
+            <input type="hidden" name="q" value={q} />
+            <input
+              name="ask"
+              defaultValue={ask}
+              placeholder="Ask about a published case, callback pattern, or safety boundary..."
+              style={{ minWidth: 280, flex: 1 }}
+            />
+            <button type="submit" className="primary">Ask published library</button>
+          </form>
 
-        {askError ? (
-          <div className="notice" style={{ color: 'var(--error)', borderColor: 'var(--error)' }}>
-            {askError}
-          </div>
-        ) : null}
+          {askError ? (
+            <div className="notice" style={{ color: 'var(--error)', borderColor: 'var(--error)' }}>
+              {askError}
+            </div>
+          ) : null}
 
-        {answer ? (
-          <div
-            className="notice col gap-8"
-            style={{
-              background: answer.refusal_reason ? 'var(--caution-tint)' : 'var(--surface-alt)',
-              borderColor: answer.refusal_reason ? 'var(--caution)' : 'var(--border)',
-            }}
-          >
-            <div>{answer.answer}</div>
-            {answer.citations.length > 0 ? (
-              <div className="col gap-8">
-                <div className="evidence-key">Sources</div>
-                <div className="row gap-8 wrap">
-                  {answer.citations.map((citation) => (
-                    <span key={citation.card_id} className="pill">{citation.title}</span>
-                  ))}
+          {answer ? (
+            <div
+              className="notice col gap-8"
+              style={{
+                background: answer.refusal_reason ? 'var(--caution-tint)' : 'var(--surface-alt)',
+                borderColor: answer.refusal_reason ? 'var(--caution)' : 'var(--border)',
+              }}
+            >
+              <div>{answer.answer}</div>
+              {answer.citations.length > 0 ? (
+                <div className="col gap-8">
+                  <div className="evidence-key">Sources</div>
+                  <div className="row gap-8 wrap">
+                    {answer.citations.map((citation) => (
+                      <span key={citation.card_id} className="pill">{citation.title}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="col gap-16">
         <form className="row gap-8 wrap" action="/learn">
+          {demo ? <input type="hidden" name="demo" value="1" /> : null}
           <input
             name="q"
             defaultValue={q}
@@ -118,6 +201,7 @@ export default async function LearnPage({
             style={{ maxWidth: 520 }}
           />
           <button type="submit">Search cases</button>
+          {q ? <Link href={base}>Clear</Link> : null}
         </form>
 
         {error ? (
@@ -128,18 +212,24 @@ export default async function LearnPage({
 
         <div className="row between wrap">
           <div className="h2">Published cases</div>
-          <div className="muted">{cards.length} cases</div>
+          <div className="muted">{ordered.length} cases</div>
         </div>
 
-        {cards.length === 0 ? (
+        {ordered.length === 0 ? (
           <div className="empty">
-            No published HVAC cases yet. Capture a high-value episode, debrief it, and publish
-            before apprentices can practice.
+            {q
+              ? 'No published cases match that search.'
+              : 'No published HVAC cases yet. Capture a high-value episode, debrief it, and publish before apprentices can practice.'}
           </div>
         ) : (
           <div className="col gap-16">
-            {cards.map((card) => (
-              <CaseBlock key={card.id} card={card} />
+            {ordered.map((card) => (
+              <CaseBlock
+                key={card.id}
+                card={card}
+                schedule={schedules.get(card.id)}
+                record={!demo}
+              />
             ))}
           </div>
         )}
@@ -148,8 +238,46 @@ export default async function LearnPage({
   );
 }
 
-function CaseBlock({ card }: { card: KnowledgeObjectOut }) {
+function matches(card: KnowledgeObjectOut, q: string): boolean {
+  if (!q) return true;
+  const needle = q.toLowerCase();
+  return [card.title, card.situation, card.observable_cue, card.decision, ...(card.tags_json ?? [])]
+    .filter((value): value is string => Boolean(value))
+    .some((value) => value.toLowerCase().includes(needle));
+}
+
+function isDue(schedule: VariantSchedule | undefined): boolean {
+  return schedule?.status === 'due' || schedule?.status === 'overdue';
+}
+
+/** Due variants first, then untouched cases, then waiting, then done. */
+function rank(schedule: VariantSchedule | undefined): number {
+  switch (schedule?.status) {
+    case 'overdue':
+      return 0;
+    case 'due':
+      return 1;
+    case 'not_started':
+    case undefined:
+      return 2;
+    case 'waiting':
+      return 3;
+    case 'done':
+      return 4;
+  }
+}
+
+function CaseBlock({
+  card,
+  schedule,
+  record,
+}: {
+  card: KnowledgeObjectOut;
+  schedule: VariantSchedule | undefined;
+  record: boolean;
+}) {
   const diag = diagnosticCaseFromKnowledgeObject(card);
+  const due = isDue(schedule);
   return (
     <div className="col gap-16">
       <div className="row gap-8 wrap">
@@ -157,30 +285,18 @@ function CaseBlock({ card }: { card: KnowledgeObjectOut }) {
         {card.status === 'published' && card.published_at ? (
           <span className="pill success">company-approved</span>
         ) : null}
+        {schedule && schedule.status !== 'not_started' ? (
+          <span className={`pill ${due ? 'warn' : ''}`}>
+            {VARIANT_STATUS_LABEL[schedule.status]}
+            {schedule.status === 'waiting' && schedule.dueAt ? ` · ${shortDate(schedule.dueAt)}` : ''}
+          </span>
+        ) : null}
       </div>
-      <CasePractice card={card} />
+      <CasePractice card={card} variant={due} record={record} />
     </div>
   );
 }
 
-/** Local-dev only. Never counted as a field episode. */
-const PREVIEW_CASE: KnowledgeObjectOut = {
-  id: 'preview-not-a-field-case',
-  moment_id: 'preview-moment',
-  title: 'PREVIEW — airflow before charge',
-  trade: 'hvac',
-  situation: 'Residential no-cool. Outdoor unit cycles. Filter looks dirty from the hallway.',
-  observable_cue: 'Weak return airflow at the grille; suction line frosting after a few minutes.',
-  expert_reasoning: 'Restriction can mimic low charge. Confirm airflow before adding refrigerant.',
-  decision: 'Measure static pressure and restore airflow, then recheck the split.',
-  novice_trap: 'Adding refrigerant first because the suction line is cold.',
-  safety_boundary: 'Isolate power before opening the blower compartment.',
-  verification: 'After airflow is restored, split, superheat, and subcooling sit in spec across a full cycle.',
-  quiz_json: null,
-  tags_json: ['callback', 'airflow'],
-  status: 'published',
-  created_by: null,
-  published_at: '2026-08-01T00:00:00.000Z',
-  created_at: '2026-08-01T00:00:00.000Z',
-};
-
+function shortDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}

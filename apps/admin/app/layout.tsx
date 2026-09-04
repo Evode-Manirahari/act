@@ -45,6 +45,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <Link href="/">Review queue</Link>
               <Link href="/library">Library</Link>
               <Link href="/learn">Cases</Link>
+              <Link href="/readiness">Readiness</Link>
+              <Link href="/demo">Demo</Link>
               <form action="/api/sign-out" method="POST" style={{ marginLeft: 8 }}>
                 <button type="submit" className="ghost" style={{ padding: '4px 10px', fontSize: 12 }}>
                   Sign out
