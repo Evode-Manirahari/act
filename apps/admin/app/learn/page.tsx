@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 interface SearchParamsShape {
   q?: string;
   ask?: string;
+  preview?: string;
 }
 
 export default async function LearnPage({
@@ -17,13 +18,17 @@ export default async function LearnPage({
   const sp = await searchParams;
   const q = sp.q?.trim() ?? '';
   const ask = sp.ask?.trim() ?? '';
-  let cards: KnowledgeObjectOut[] = [];
+  const preview =
+    process.env.NODE_ENV !== 'production' && sp.preview === '1';
+  let cards: KnowledgeObjectOut[] = preview ? [PREVIEW_CASE] : [];
   let answer: LibraryAskResponse | null = null;
   let error: string | null = null;
   let askError: string | null = null;
 
   try {
-    cards = await api.library(q, 'hvac');
+    if (!preview) {
+      cards = await api.library(q, 'hvac');
+    }
   } catch (e) {
     error = e instanceof Error ? e.message : 'library failed';
   }
@@ -45,6 +50,11 @@ export default async function LearnPage({
             <div className="muted">
               Practice the decision before you see what the senior did. Published cases only.
             </div>
+            {preview ? (
+              <div className="notice" style={{ background: 'var(--caution-tint)', borderColor: 'var(--caution)' }}>
+                Preview fixture — not a field case, not production evidence.
+              </div>
+            ) : null}
           </div>
           <span className="pill success">company-approved library</span>
         </div>
@@ -152,3 +162,25 @@ function CaseBlock({ card }: { card: KnowledgeObjectOut }) {
     </div>
   );
 }
+
+/** Local-dev only. Never counted as a field episode. */
+const PREVIEW_CASE: KnowledgeObjectOut = {
+  id: 'preview-not-a-field-case',
+  moment_id: 'preview-moment',
+  title: 'PREVIEW — airflow before charge',
+  trade: 'hvac',
+  situation: 'Residential no-cool. Outdoor unit cycles. Filter looks dirty from the hallway.',
+  observable_cue: 'Weak return airflow at the grille; suction line frosting after a few minutes.',
+  expert_reasoning: 'Restriction can mimic low charge. Confirm airflow before adding refrigerant.',
+  decision: 'Measure static pressure and restore airflow, then recheck the split.',
+  novice_trap: 'Adding refrigerant first because the suction line is cold.',
+  safety_boundary: 'Isolate power before opening the blower compartment.',
+  verification: 'After airflow is restored, split, superheat, and subcooling sit in spec across a full cycle.',
+  quiz_json: null,
+  tags_json: ['callback', 'airflow'],
+  status: 'published',
+  created_by: null,
+  published_at: '2026-08-01T00:00:00.000Z',
+  created_at: '2026-08-01T00:00:00.000Z',
+};
+
