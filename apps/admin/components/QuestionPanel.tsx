@@ -5,6 +5,10 @@ import { useState, useTransition } from 'react';
 
 import type { ElicitationQuestionOut, ExpertAnswerOut, KnowledgeObjectOut } from '@/lib/api';
 import AudioAnswerRecorder from './AudioAnswerRecorder';
+import {
+  diagnosticCaseFromKnowledgeObject,
+  nextDebriefQuestion,
+} from '@act/domain';
 
 
 interface Props {
@@ -197,16 +201,37 @@ export default function QuestionPanel({
       )}
 
       {card && (
-        <CardEditor
-          card={card}
-          onSaved={(updated) => setCard(updated)}
-        />
+        <>
+          <NextGapHint card={card} />
+          <CardEditor
+            card={card}
+            onSaved={(updated) => setCard(updated)}
+          />
+        </>
       )}
       {error && <div className="notice" style={{ color: 'var(--error)' }}>{error}</div>}
     </div>
   );
 }
 
+function NextGapHint({ card }: { card: KnowledgeObjectOut }) {
+  const next = nextDebriefQuestion(diagnosticCaseFromKnowledgeObject(card));
+  if (!next) {
+    return (
+      <div className="notice" style={{ background: 'var(--success-tint)', borderColor: 'var(--success)' }}>
+        Case fields look complete. Publish only if the evidence chain still holds.
+      </div>
+    );
+  }
+  return (
+    <div className="notice" style={{ background: 'var(--caution-tint)', borderColor: 'var(--caution)' }}>
+      <div className="evidence-key">Next debrief question</div>
+      <div>
+        Still missing {next.gap.replace(/_/g, ' ')}. Ask this before publishing: {next.question}
+      </div>
+    </div>
+  );
+}
 
 function QuestionCard({
   question,

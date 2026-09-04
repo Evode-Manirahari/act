@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-mono' });
 
 export const metadata: Metadata = {
   title: 'ACT Capture — Admin',
-  description: 'Review proposed teachable moments and publish training cards.',
+  description: 'Review high-value HVAC episodes and publish diagnostic cases.',
 };
 
 /** "Acting as" readout: which act-api user this admin's actions are
@@ -44,7 +44,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               ) : null}
               <Link href="/">Review queue</Link>
               <Link href="/library">Library</Link>
-              <Link href="/learn">Lessons</Link>
+              <Link href="/learn">Cases</Link>
               <form action="/api/sign-out" method="POST" style={{ marginLeft: 8 }}>
                 <button type="submit" className="ghost" style={{ padding: '4px 10px', fontSize: 12 }}>
                   Sign out

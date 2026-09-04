@@ -1,10 +1,8 @@
 # ACT - Actober AI
 
-**Actober AI is building the intelligence layer for physical work, starting with HVAC.**
+Actober AI is building a company-specific diagnostic apprenticeship and technician-readiness system for HVAC. It turns real callbacks, hard service calls, and field evidence into verified diagnostic cases that technicians practice — so they learn to reason, not just read the answer — and it shows managers which job types each technician is ready to handle independently.
 
-80% of the global workforce doesn't sit at a desk. Expert technicians film their jobs on a phone or wearable camera. Actober turns what they do, see, and reason through into verified knowledge that train other techs in the field — with the original footage as proof. Over time, Actober becomes the operating layer coordinating human workers, AI agents, and robots.
-
-Today that starts with one sharp problem: your best HVAC techs retire, and their judgment walks out the door with them. ACT captures what senior technicians know while they are doing real jobs, turns those teachable moments into verified lessons, and measures whether they cut callbacks and speed up new-hire ramp. AI agents work behind the scenes to capture events, detect teachable moments, ask post-job questions, compile cards, enforce review, and measure outcomes.
+Today that starts with one sharp problem: your best HVAC techs retire, and their judgment walks out the door with them. ACT captures high-value jobs (callbacks, hard diagnoses, near misses, successful adaptations), asks the expert the missing question after the job, compiles a versioned diagnostic case, and has developing technicians commit a hypothesis before they see the expert. AI interviews, compiles, retrieves, and challenges. It does not diagnose live jobs or decide who is ready.
 
 ![Example ACT lesson card](docs/assets/act-lesson-card.svg)
 
@@ -35,23 +33,23 @@ The ACT loop runs end to end against the deployed backend at `https://act-api-ev
 | Capture | One-button, glove-friendly job recording with consent state, "mark this" taps, and offline upload retry/resume. |
 | Detect | Postgres-backed processing pipeline for frame extraction, Deepgram transcription, moment detection, and Claude ranking. |
 | Ask | Approved moments auto-chain into drafted debrief questions. The senior tech sees a waiting-question badge and answers by voice, guided voice debrief, or text. |
-| Structure | Expert answers compile into lesson cards with evidence grounding, novice traps, safety boundaries, and quiz checks. |
+| Structure | Expert answers compile into a versioned diagnostic case with cues, hypotheses, a discriminating test, novice traps, safety boundaries, and verification. |
 | Review | Mobile and web-admin gates keep lead tech approval in the loop; nothing publishes itself. |
-| Teach | Mobile Learn library, web lessons portal, and Ask ACT, which answers only from published cards with citations and refuses live job diagnosis. |
+| Teach | Commit-first case practice on mobile and web. Ask ACT answers only from published cases with citations and refuses live job diagnosis. |
 | Measure | Per-job outcome capture, callback / first-time-fix signals, dashboard summaries, and weekly operator reports. |
 | Trust | Invite-only auth, server-side token verification, per-account tenant isolation, and customer-requested redaction / purge. |
 
 ## The Product
 
-ACT creates one durable training object from one real teachable moment:
+ACT creates one durable diagnostic case from one real high-value episode:
 
 1. **Record** - a senior tech captures a real job from a phone, chest mount, or existing camera.
 2. **Mark** - the tech taps moments worth remembering: sensory cue, safety call, verification step, counterfactual, novice trap.
 3. **Detect** - the backend processes video, audio, transcript, and frames to propose expertise-rich moments.
 4. **Ask** - after the job, ACT asks the expert the question an apprentice would ask if they knew what to notice.
-5. **Structure** - the answer becomes a lesson card: situation, cue, reasoning, trap, safety boundary, quiz.
+5. **Structure** - the answer becomes a diagnostic case: situation, cue, hypotheses, discriminating test, trap, safety boundary, verification.
 6. **Review** - a lead tech approves, edits, or rejects before publishing.
-7. **Measure** - apprentice usage and job outcomes show whether the lesson reduced callback risk and improved ramp.
+7. **Practice** - the apprentice states a hypothesis and next test before seeing the expert, then a delayed variant tests transfer.
 
 The expert never has to write documentation. The apprentice gets company-specific judgment, not generic textbook training.
 
@@ -62,9 +60,9 @@ The buyer is the Owner-GM, service manager, operations director, regional servic
 The users are different:
 
 - **Senior techs** capture real jobs and answer quick debrief questions.
-- **Lead techs** review and publish the lessons.
-- **Apprentices and newer techs** learn from approved company-specific cards.
-- **Operators** track whether the training is moving callback and ramp metrics.
+- **Lead techs** review and publish the cases.
+- **Apprentices and newer techs** practice the decision before seeing the expert.
+- **Service managers** see which job types a technician is ready to handle independently.
 
 ACT is not for solo shops first, and it is not generic apprentice training. The wedge is operators with enough volume, turnover, and repeated job patterns to make captured institutional knowledge valuable.
 
@@ -127,11 +125,12 @@ This repo contains the mobile client, web admin, and marketing site. The backend
   - `src/screens/CaptureJobScreen.tsx` - record, mark teachable moments, upload with retry
   - `src/screens/DebriefScreen.tsx` - pending questions, voice/text answers, guided voice debrief
   - `src/screens/PilotReviewScreen.tsx` - review, debrief, compile, publish
-  - `src/screens/LearnScreen.tsx` - apprentice-facing library and quiz events
+  - `src/screens/LearnScreen.tsx` - commit-first diagnostic case practice
   - `src/screens/PilotOutcomeScreen.tsx` - callback / first-time-fix / ramp signal capture
   - `src/api/captureApi.ts`, `src/api/libraryApi.ts` - typed clients for the deployed backend
-- `apps/admin` - Next.js pilot admin: review queue, debrief answers, publish gate, web lessons portal (`/learn`)
+- `apps/admin` - Next.js pilot admin: review queue, debrief answers, publish gate, case practice (`/learn`)
 - `apps/site` - Actober AI marketing site: static export, privacy, support, store-link slots
+- `packages/domain` - DiagnosticCase contract, debrief completeness, commit-first player
 - `packages/act-kb` - trade-aware knowledge stubs; electrical retained pending migration
 - [`../act-api`](https://github.com/Evode-Manirahari/act-api) - Python FastAPI backend, deployed at `https://act-api-evode.fly.dev`
 
