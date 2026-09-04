@@ -97,9 +97,9 @@ Pilot distribution:
 1. Create the operator account and users in act-api/Supabase.
 2. Give the senior tech mobile access.
 3. Give the lead tech the web review URL.
-4. Give apprentices `/learn`.
+4. Give apprentices `/learn` (commit-first case practice).
 5. Run one shop practice capture before a real customer job.
-6. First week target: 3 recorded jobs, 5 published cards, 2 apprentice lesson completions.
+6. First week target: 3 high-value episodes, 5 published cases, 2 apprentice practice completions.
 
 Optional: wire OpenClaw as the pilot notification/control channel after the
 core app loop works. See [`docs/openclaw.md`](openclaw.md). Keep OpenClaw to
@@ -121,9 +121,7 @@ Offer:
 
 Buyer pitch:
 
-> ACT captures how your best HVAC techs diagnose real jobs, turns those moments
-> into reviewed company-specific training cards, and measures whether new techs
-> are learning the judgment that cuts callbacks.
+> ACT turns your callbacks and hardest solves into verified diagnostic practice, and shows where each developing technician still needs supervision.
 
 Do not position this as live AI advice in the field. The product is post-job
 expertise capture plus reviewed training.

@@ -22,16 +22,20 @@ HVAC. Expert technicians film real jobs. Actober turns what they do, see, and
 reason through into verified knowledge that guides other techs in the field,
 with the original footage as proof.
 
-Today's product is narrower than that sentence: capture a real job, detect the
-teachable moment, ask the expert the right question *after* the job, compile a
-structured card, review it, publish it, measure transfer.
+Today's product is narrower than that sentence: select a high-value episode
+(callback, hard diagnosis, near miss, successful adaptation), debrief the
+expert after the job, compile a versioned diagnostic case, have the apprentice
+commit a hypothesis before seeing the expert, and collect the evidence a
+manager needs to decide what work that technician can handle under what
+supervision.
 
 **Wedge: HVAC** residential/commercial troubleshooting. Chosen for tight
 feedback loops (no-cool/no-heat is a repeated, controlled event), measurable
 outcomes (callbacks, first-time fix, time-to-diagnosis), and rich tacit signals
 (sound, vibration, line temp, frost patterns).
 
-**Users:** senior tech captures, lead tech reviews, apprentice learns.
+**Users:** senior tech captures and debriefs, lead tech reviews, apprentice
+practices, service manager entrusts.
 **Buyer:** ops director / service manager / training lead at a 20-250 tech
 multi-site operator, franchise group, or consolidator branch. Not the solo shop.
 

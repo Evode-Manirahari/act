@@ -1,7 +1,7 @@
 # Design System — ACT ("Field Instrument")
 
 ## Product Context
-- **What this is:** ACT captures how senior HVAC techs diagnose hard jobs, before they retire, and turns it into company-specific training that cuts callbacks.
+- **What this is:** ACT turns HVAC callbacks and hard service calls into verified diagnostic cases that technicians practice, and shows managers which job types each technician is ready to handle independently.
 - **Who it's for:** senior tech (captures, Field), lead tech (approves, Review), apprentice/new hire (learns, Lessons). Buyer = ops director at a multi-site operator.
 - **Space/industry:** HVAC/refrigeration field service; trades training.
 - **Project type:** React Native (Expo) mobile app, plus two Next.js surfaces on the same system — the marketing site (`apps/site`) and the lead-tech review console (`apps/admin`).
@@ -45,12 +45,12 @@
 - **Information architecture — 3 tabs for the 3 users:**
   - **Field** — record a job, mark the teachable moment (capture). Primary action = safety-orange.
   - **Review** — lead tech approves/edits a proposed moment before publish.
-  - **Lessons** — apprentice library + the lesson card.
+  - **Lessons** — diagnostic case practice. The apprentice commits a hypothesis and next test before the expert view.
 - **⚠️ This is not a chat app.** The home screen opens on the field-size Record CTA, not a greeting or a composer; the drawer leads with Record, not "+ New chat"; Ask ACT is one destination among several because it only answers from published cards. Any surface that starts to look like a familiar assistant home is drifting away from "a serious field tool."
 - **Nothing renders a zero.** An empty queue shows no row at all, not a tile reading "0" — that's one more thing to parse on a roof. And never show a readout of a value the user just typed into the field beneath it.
 
 ## Component notes
-- **Lesson card (hero):** clip thumbnail (with mono "TEACHABLE MOMENT 0:42") → title (Geist display) → **cost-anchor chip** ("$1,400 part avoided", mono, orange-tinted, left orange rule) → **Reasoning** → **Novice traps** (✕ bullets in danger red) → **Safety boundary** rendered as a lockout-style panel (heavy `#C81E1E` left rule, alert icon, tinted bg) → primary "Take the quiz" button.
+- **Lesson card / diagnostic case (hero):** clip thumbnail (with mono "TEACHABLE MOMENT 0:42") → title (Geist display) → **cost-anchor chip** ("$1,400 part avoided", mono, orange-tinted, left orange rule) → commit-first practice (hypothesis + next test before expert reveal) → **Novice traps** (✕ bullets in danger red) → **Safety boundary** rendered as a lockout-style panel (heavy `#C81E1E` left rule, alert icon, tinted bg).
 - **Cost/impact is first-class** on every card — it's the ROI hook for operators.
 - **Section labels:** mono, uppercase, steel-500, letter-spacing 0.1em.
 - **Safety always reads loud** — never a soft tip; always the lockout panel treatment.

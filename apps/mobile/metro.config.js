@@ -15,5 +15,9 @@ config.resolver.nodeModulesPaths = [
   path.resolve(projectRoot, 'node_modules'),
   path.resolve(workspaceRoot, 'node_modules'),
 ];
+config.resolver.extraNodeModules = {
+  ...(config.resolver.extraNodeModules ?? {}),
+  '@act/domain': path.resolve(workspaceRoot, 'packages/domain'),
+};
 
 module.exports = config;

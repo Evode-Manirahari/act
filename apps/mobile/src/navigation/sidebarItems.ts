@@ -52,8 +52,8 @@ export function buildDefaultSidebarItems(
     },
     {
       key: 'learn',
-      label: 'Apprentice training',
-      detail: 'Open reviewed cards and quick checks',
+      label: 'Diagnostic cases',
+      detail: 'Commit a diagnosis before seeing the expert',
       onPress: () => {
         onNavigate();
         navigation.navigate('Learn');

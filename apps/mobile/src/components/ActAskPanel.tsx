@@ -68,8 +68,8 @@ export default function ActAskPanel({ visible, onClose, accountId }: Props) {
           </View>
 
           <Text style={styles.note}>
-            Ask about published training cards, past jobs, callback patterns, or pilot
-            metrics. ACT will not give live job instructions.
+            Ask about published diagnostic cases, past jobs, callback patterns, or
+            pilot metrics. ACT will not give live job instructions.
           </Text>
 
           <TextInput

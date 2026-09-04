@@ -14,7 +14,8 @@
     "jsx": "preserve",
     "incremental": true,
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@act/domain": ["../../packages/domain/src/index.ts"]
     },
     "plugins": [{ "name": "next" }]
   },

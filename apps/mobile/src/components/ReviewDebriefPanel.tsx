@@ -37,6 +37,7 @@ import type {
   ElicitationQuestion,
   KnowledgeObject,
 } from '../api/libraryApi';
+import { diagnosticCaseFromKnowledgeObject, nextDebriefQuestion } from '@act/domain';
 import {
   actionLabel,
   canCompile,
@@ -373,6 +374,7 @@ export default function ReviewDebriefPanel({
               ) : null}
             </Pressable>
           )}
+          {draft ? <NextGapHint card={draft} /> : null}
         </>
       ) : null}
 
@@ -416,6 +418,22 @@ export default function ReviewDebriefPanel({
 
       <Text style={styles.momentIdLabel}>Moment {momentId.slice(0, 8)}</Text>
     </View>
+  );
+}
+
+function NextGapHint({ card }: { card: KnowledgeObject }) {
+  const next = nextDebriefQuestion(diagnosticCaseFromKnowledgeObject(card));
+  if (!next) {
+    return (
+      <Text style={styles.gapHintDone}>
+        Case fields look complete. Publish only if the evidence chain still holds.
+      </Text>
+    );
+  }
+  return (
+    <Text style={styles.gapHint}>
+      Still missing: {next.gap.replace(/_/g, ' ')}. Ask this next — {next.question}
+    </Text>
   );
 }
 
@@ -671,6 +689,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 17,
     marginTop: 2,
+  },
+  gapHint: {
+    color: colors.cautionInk,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  gapHintDone: {
+    color: colors.successInk,
+    fontFamily: fonts.body,
+    fontSize: 13,
+    lineHeight: 18,
   },
   momentIdLabel: {
     fontFamily: fonts.mono,
