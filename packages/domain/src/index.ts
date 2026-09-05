@@ -99,9 +99,42 @@ export {
   type VariantSchedule,
 } from './variant';
 export {
+  contentTokens,
+  answerRejectReason,
+  groundClaim,
+  checkCaseGrounding,
+  REJECT_LABEL,
+  type EvidenceSource,
+  type AnswerRejectReason,
+  type ClaimGrounding,
+  type GroundingReason,
+  type CaseGroundingReport,
+} from './grounding';
+export {
+  startInterview,
+  currentQuestion,
+  applyAnswer,
+  recordAnswer,
+  interviewComplete,
+  claimsFromDraft,
+  type CaseDraft,
+  type InterviewTurn,
+  type InterviewState,
+} from './interview';
+export {
+  DEBRIEF_EVAL_SET,
+  NEXT_GAP_CASES,
+  ANSWER_CASES,
+  GROUNDING_CASES,
+  type NextGapCase,
+  type AnswerCase,
+  type GroundingCase,
+} from './evals/debriefEvalSet';
+export {
   DEMO_ID_PREFIX,
   DEMO_SHOP_NAME,
   isDemoId,
   demoShop,
   type DemoShop,
 } from './demo';
+export { DEMO_DEBRIEF, type DemoDebrief } from './demoDebrief';
