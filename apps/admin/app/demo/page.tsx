@@ -62,7 +62,7 @@ export default function DemoPage() {
           />
           <Step
             title="Set a level, with the reason the tech will read"
-            body="Open Maya. Refrigerant charge has practice evidence and no level. The manager sets it and writes one line. Nothing in the system picks a level for her."
+            body="Open Maya. Refrigerant charge has practice evidence and no level. The manager sets it and writes one line, and the decision sticks: refresh the page, the cell shows her level and the review flag is gone. Nothing in the system picks a level for her."
             href={`/readiness?demo=1&tech=${shop.learnerId}`}
             cta="Open the learner's row"
           />

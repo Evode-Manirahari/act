@@ -204,6 +204,17 @@ export interface JobOutcomeOut {
 }
 
 
+/** docs/act-api-handoff.md — not deployed yet; the client is ready for it. */
+export interface ReadinessLevelOut {
+  id: string;
+  tech_user_id: string;
+  activity_id: string;
+  level: string;
+  set_by_user_id: string;
+  set_at: string;
+  note: string | null;
+}
+
 export const api = {
   me: () => json<MeOut>('/me'),
   reviewQueue: (status = 'proposed', limit = 50) =>
@@ -361,4 +372,13 @@ export const api = {
         note: body.note ?? null,
       }),
     }),
+  readinessLevels: () => json<ReadinessLevelOut[]>('/readiness/levels'),
+  // set_by_user_id is derived by act-api from this server's bearer token.
+  setReadinessLevel: (body: {
+    tech_user_id: string;
+    activity_id: string;
+    level: string | null;
+    note: string | null;
+  }) =>
+    json<ReadinessLevelOut>('/readiness/levels', { method: 'POST', body: JSON.stringify(body) }),
 };
