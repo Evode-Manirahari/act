@@ -38,9 +38,9 @@ export default function DemoPage() {
         <ol className="col gap-16" style={{ paddingLeft: 20 }}>
           <Step
             title="A callback becomes a case"
-            body="Ray's second visit to a frosted suction line. The first tech added refrigerant. The debrief asked one question at a time until cue, hypotheses, discriminating test, boundary, verification, and novice trap were all on the record. A lead tech approved it."
-            href="/learn?demo=1&q=airflow"
-            cta="Open the case"
+            body="Ray's second visit to a frosted suction line. The first tech added refrigerant. Replay the debrief: one question at a time for the first missing field, an answer that gets refused because it is the moment's own labels, and a grounding check every claim has to pass before a lead tech sees it."
+            href="/debrief"
+            cta="Replay the debrief"
           />
           <Step
             title={`${learner?.name ?? 'The apprentice'} commits before seeing the expert`}
@@ -88,6 +88,7 @@ export default function DemoPage() {
         <div className="h2">What the demo does not do</div>
         <ul className="col gap-8" style={{ paddingLeft: 20 }}>
           <li>Diagnose a live job. Ask ACT is hidden in demo mode because the demo cases are not in the published library.</li>
+          <li>Write the expert&apos;s answer. The debrief asks; the grounding check refuses anything nobody said.</li>
           <li>Score readiness. Cells count evidence; the manager sets the level.</li>
           <li>Write anything. Demo ids never reach act-api.</li>
         </ul>
