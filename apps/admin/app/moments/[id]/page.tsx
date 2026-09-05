@@ -146,6 +146,14 @@ export default async function MomentDetail({ params }: { params: Promise<{ id: s
           momentId={moment.id}
           initialQuestions={questions}
           momentApproved={moment.status === 'approved'}
+          transcript={windowSegments.map((s) => ({ id: s.id, kind: 'transcript' as const, text: s.text }))}
+          momentMeta={[
+            moment.moment_type,
+            prettyType(moment.moment_type),
+            formatSeconds(moment.start_s),
+            formatSeconds(moment.end_s),
+            `score ${moment.score.toFixed(1)}`,
+          ]}
         />
       </section>
     </div>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 
 import LevelPicker from '@/components/LevelPicker';
+import { readDemoOverrides } from '@/lib/levelStore';
 import { demoReadiness, liveReadiness, type ReadinessData } from '@/lib/readiness';
 import {
   READINESS_LABEL,
@@ -32,7 +33,7 @@ export default async function ReadinessPage({
   let data: ReadinessData | null = null;
   let error: string | null = null;
   try {
-    data = demo ? demoReadiness(new Date()) : await liveReadiness();
+    data = demo ? demoReadiness(new Date(), await readDemoOverrides()) : await liveReadiness();
   } catch (e) {
     error = e instanceof Error ? e.message : 'readiness read failed';
   }
@@ -77,8 +78,19 @@ export default async function ReadinessPage({
         ))}
         {data?.source === 'live' && data.levelsSource === 'none' ? (
           <div className="notice">
-            Levels are not stored yet. act-api needs a readiness endpoint before a manager&apos;s
-            decision can be saved. The evidence columns are live.
+            Levels are not stored yet. act-api needs <code>/readiness/levels</code> (spec in
+            docs/act-api-handoff.md); this app already calls it. The evidence columns are live.
+          </div>
+        ) : null}
+        {data?.source === 'live' && data.levelsSource === 'unconfirmed' ? (
+          <div className="notice" style={{ color: 'var(--error)', borderColor: 'var(--error)' }}>
+            The level read failed. Cells show without levels because the read failed, not because
+            none are set.
+          </div>
+        ) : null}
+        {data?.source === 'demo' ? (
+          <div className="notice" style={{ background: 'var(--caution-tint)', borderColor: 'var(--caution)' }}>
+            Demo: levels you set here are kept in this browser only. Nothing is written to act-api.
           </div>
         ) : null}
       </header>
@@ -223,6 +235,8 @@ function TechDetail({ data, techId, demo }: { data: ReadinessData; techId: strin
             </div>
           ) : null}
           <LevelPicker
+            techId={tech.id}
+            activityId={cell.activityId}
             current={cell.level?.level ?? null}
             techName={tech.name}
             activityLabel={activityLabel(cell.activityId)}

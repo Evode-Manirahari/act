@@ -6,8 +6,12 @@ import { useState, useTransition } from 'react';
 import type { ElicitationQuestionOut, ExpertAnswerOut, KnowledgeObjectOut } from '@/lib/api';
 import AudioAnswerRecorder from './AudioAnswerRecorder';
 import {
+  REJECT_LABEL,
+  answerRejectReason,
+  checkCaseGrounding,
   diagnosticCaseFromKnowledgeObject,
   nextDebriefQuestion,
+  type EvidenceSource,
 } from '@act/domain';
 
 
@@ -15,15 +19,22 @@ interface Props {
   momentId: string;
   initialQuestions: ElicitationQuestionOut[];
   momentApproved: boolean;
+  /** Transcript segments inside the moment window, for the grounding readout. */
+  transcript?: EvidenceSource[];
+  /** What the system knew before asking: moment type, window, score. */
+  momentMeta?: string[];
 }
 
 export default function QuestionPanel({
   momentId,
   initialQuestions,
   momentApproved,
+  transcript = [],
+  momentMeta = [],
 }: Props) {
   const [questions, setQuestions] = useState(initialQuestions);
   const [answer, setAnswer] = useState('');
+  const [sessionAnswers, setSessionAnswers] = useState<EvidenceSource[]>([]);
   const [activeId, setActiveId] = useState<string | null>(
     initialQuestions.find((q) => q.status !== 'answered')?.id ?? null,
   );
@@ -52,6 +63,12 @@ export default function QuestionPanel({
   function submitAnswer() {
     if (!activeId || !answer.trim()) return;
     setError(null);
+    const active = questions.find((q) => q.id === activeId);
+    const rejected = active ? answerRejectReason(answer, active.question, momentMeta) : null;
+    if (rejected) {
+      setError(`Not saved (${rejected}): ${REJECT_LABEL[rejected]}`);
+      return;
+    }
     startTransition(async () => {
       const response = await fetch(`/api/questions/${activeId}/answer`, {
         method: 'POST',
@@ -62,6 +79,10 @@ export default function QuestionPanel({
         setError(await response.text());
         return;
       }
+      setSessionAnswers((prev) => [
+        ...prev,
+        { id: `answer-${activeId}`, kind: 'expert_answer', text: answer.trim() },
+      ]);
       setAnswer('');
       setQuestions((prev) =>
         prev.map((q) => (q.id === activeId ? { ...q, status: 'answered' } : q)),
@@ -203,6 +224,7 @@ export default function QuestionPanel({
       {card && (
         <>
           <NextGapHint card={card} />
+          <GroundingReadout card={card} sources={[...transcript, ...sessionAnswers]} />
           <CardEditor
             card={card}
             onSaved={(updated) => setCard(updated)}
@@ -228,6 +250,42 @@ function NextGapHint({ card }: { card: KnowledgeObjectOut }) {
       <div className="evidence-key">Next debrief question</div>
       <div>
         Still missing {next.gap.replace(/_/g, ' ')}. Ask this before publishing: {next.question}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Advisory. Answers recorded in earlier sessions are not loaded on this page,
+ * so an "ungrounded" here means "check it", not "block it". act-api runs the
+ * authoritative grounding check at publish.
+ */
+function GroundingReadout({ card, sources }: { card: KnowledgeObjectOut; sources: EvidenceSource[] }) {
+  const report = checkCaseGrounding(diagnosticCaseFromKnowledgeObject(card), sources);
+  const ungrounded = report.claims.filter((c) => !c.grounded);
+  if (report.reasons.includes('no_evidence')) {
+    return (
+      <div className="notice" style={{ color: 'var(--error)', borderColor: 'var(--error)' }}>
+        <div className="evidence-key" style={{ color: 'var(--error)' }}>Grounding · no evidence loaded</div>
+        No transcript inside the window and no answer recorded in this session. A card with nothing
+        behind it is the incident, not an edge case. Do not publish from here.
+      </div>
+    );
+  }
+  if (ungrounded.length === 0) {
+    return (
+      <div className="notice" style={{ background: 'var(--success-tint)', borderColor: 'var(--success)' }}>
+        <div className="evidence-key">Grounding · {report.claims.length} claims</div>
+        Every claim traces to the transcript window or an answer recorded here.
+      </div>
+    );
+  }
+  return (
+    <div className="notice col" style={{ gap: 6, background: 'var(--caution-tint)', borderColor: 'var(--caution)' }}>
+      <div className="evidence-key">Grounding · {ungrounded.length} of {report.claims.length} claims not traced here</div>
+      <div style={{ fontSize: 13 }}>
+        {ungrounded.map((c) => c.claimId).join(', ')} — not found in the transcript window or this
+        session&apos;s answers. If they came from an earlier answer, confirm it before publishing.
       </div>
     </div>
   );

@@ -57,21 +57,47 @@ read renders as unconfirmed, not as an empty cell.
 
 ### What act-api needs next
 
-Nothing in slice 2 persists a manager's decision. The picker changes the level
-on screen and says it is not saved. To close that:
-
-```
-readiness_levels
-  id, account_id, tech_user_id, activity_id, level, set_by_user_id, set_at, note
-  set_by_user_id derived from the bearer token; client never sends it
-GET  /readiness/levels                      -> current level per tech × activity
-POST /readiness/levels                      -> {tech_user_id, activity_id, level, note}
-```
-
-Also still pending: `episode_type` column on `knowledge_objects` (inferred from
-tags today), `activity_id` on `knowledge_objects` and `jobs` so bucketing is a
-manager choice rather than an inference, and a `GET /users` roster so live mode
-shows names instead of id prefixes.
+Moved to `docs/act-api-handoff.md` (table, routes, status codes, the eval set
+as JSON, and the client code that already calls each endpoint). In the
+meantime a manager's decision persists in the demo through a browser cookie
+(`apps/admin/lib/levelStore.ts`, demo ids only), and live technicians take
+their names from `ACT_TECH_ROSTER`.
 
 **Not in slice 2:** glasses, multi-agent compile, eval set against fabricated
 debrief questions, mobile readiness surface.
+
+## Slice 3 — the debrief that can't fabricate
+
+The 2026-07-31 autopsy: five cards published from a bare timestamp, "expert
+answers" that were the moment's own metadata echoed back. Slice 3 is the step
+that chain was missing, as deterministic code in `packages/domain`.
+
+**Answer guard** (`answerRejectReason`): an answer is refused if it is too
+short, if it mostly repeats the question, or if every content word in it came
+from what the system already knew (moment type, window, score, mark label).
+Reason codes: `empty_answer`, `answer_echoes_prompt`, `answer_is_metadata`.
+
+**Interview machine** (`interview.ts`): one question for the first missing
+field, one accepted answer fills only that field. Refused answers stay in the
+record with their reason and never touch the draft.
+
+**Grounding check** (`checkCaseGrounding`): every claim must trace, by content
+token overlap, to a transcript segment or an accepted answer. Fail-closed:
+`no_evidence`, `no_claims`, `claim_ungrounded:<id>`. It can refuse; it cannot
+approve what a lead tech has not read.
+
+**Eval set** (`evals/debriefEvalSet.ts`): plain data, the incident is the
+first case. act-api should port it verbatim and run it against the real
+compile path.
+
+**Surfaces:** `/debrief` replays the airflow callback's interview for the demo
+(bad answer refused, grounding gates "send to lead review"). The live moment
+page now checks typed answers before saving and shows an advisory grounding
+readout on the compiled card — advisory because earlier sessions' answers are
+not loaded there; act-api's `grounding-check` stays authoritative at publish.
+
+**Mobile:** Learn reads the learner's history, orders due variants first, and
+opens them with the title hidden. A failed history read shows as unknown
+timing, never as "not practiced".
+
+**Still pending in act-api:** see `docs/act-api-handoff.md`.

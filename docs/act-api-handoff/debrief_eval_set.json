@@ -1,0 +1,305 @@
+{
+  "_source": "packages/domain/src/evals/debriefEvalSet.ts",
+  "_rules": {
+    "nextGap": "nextDebriefQuestion(draft, episodeType).gap must equal expectGap (null = no question).",
+    "answers": "answerRejectReason(answer, question, momentMeta) must equal expectReject.",
+    "grounding": "groundClaim(claimId, claim, sources).grounded must equal expectGrounded."
+  },
+  "nextGap": [
+    {
+      "name": "empty draft asks for the cue first",
+      "draft": {},
+      "expectGap": "cue",
+      "expectQuestionMatches": null
+    },
+    {
+      "name": "callback episode asks the callback-shaped cue question",
+      "draft": {},
+      "episodeType": "callback",
+      "expectGap": "cue",
+      "expectQuestionMatches": "prevented this callback"
+    },
+    {
+      "name": "near miss asks for the stop trigger when boundary is the gap",
+      "draft": {
+        "cues": "Meter showed 240 VDC on the capacitor two minutes after power off.",
+        "hypotheses": [
+          {
+            "label": "Stalled fan left no discharge path.",
+            "support": [],
+            "refute": []
+          }
+        ],
+        "discriminatingTest": "Discharge through a resistor tool and re-meter.",
+        "expertReasoning": "Pulling the disconnect stops new power; it does not empty the capacitor."
+      },
+      "episodeType": "near_miss",
+      "expectGap": "boundary",
+      "expectQuestionMatches": "stop or escalation"
+    },
+    {
+      "name": "does not ask about a field that is already filled",
+      "draft": {
+        "cues": "Suction line frosted back to the compressor."
+      },
+      "expectGap": "hypothesis",
+      "expectQuestionMatches": null
+    },
+    {
+      "name": "expert reasoning alone satisfies hypothesis but not causal link order",
+      "draft": {
+        "cues": "Frost plus weak return.",
+        "expertReasoning": "Restriction mimics low charge."
+      },
+      "expectGap": "discriminating_test",
+      "expectQuestionMatches": null
+    },
+    {
+      "name": "complete draft asks nothing",
+      "draft": {
+        "cues": "Weak return.",
+        "hypotheses": [
+          {
+            "label": "restriction",
+            "support": [],
+            "refute": []
+          }
+        ],
+        "discriminatingTest": "Measure static.",
+        "expertReasoning": "Restriction mimics low charge.",
+        "safetyBoundary": "Isolate power first.",
+        "verification": "Split back in spec.",
+        "noviceTrap": "Add refrigerant first."
+      },
+      "expectGap": null,
+      "expectQuestionMatches": null
+    },
+    {
+      "name": "whitespace is not an answer",
+      "draft": {
+        "cues": "   ",
+        "expertReasoning": "\n"
+      },
+      "expectGap": "cue",
+      "expectQuestionMatches": null
+    }
+  ],
+  "answers": [
+    {
+      "name": "INCIDENT 2026-07-31: moment metadata echoed back as the expert answer",
+      "question": "What did you notice that made you stop following the obvious path?",
+      "answer": "measurement_threshold 04:12–04:31 score 0.82",
+      "momentMeta": [
+        "measurement_threshold",
+        "04:12",
+        "04:31",
+        "score 0.82",
+        "teachable"
+      ],
+      "expectReject": "answer_is_metadata"
+    },
+    {
+      "name": "metadata dressed as a sentence is still metadata",
+      "question": "What did you notice that made you stop following the obvious path?",
+      "answer": "Teachable measurement threshold at 04:12 to 04:31.",
+      "momentMeta": [
+        "measurement_threshold",
+        "04:12",
+        "04:31",
+        "score 0.82",
+        "teachable"
+      ],
+      "expectReject": "answer_is_metadata"
+    },
+    {
+      "name": "the question repeated back is not an answer",
+      "question": "What did you notice that made you stop following the obvious path?",
+      "answer": "I noticed something that made me stop following the obvious path.",
+      "momentMeta": [
+        "measurement_threshold",
+        "04:12",
+        "04:31",
+        "score 0.82",
+        "teachable"
+      ],
+      "expectReject": "answer_echoes_prompt"
+    },
+    {
+      "name": "callback question repeated back",
+      "question": "What cue or test was missed on the first visit that would have prevented this callback?",
+      "answer": "A cue was missed on the first visit that would have prevented the callback.",
+      "momentMeta": [],
+      "expectReject": "answer_echoes_prompt"
+    },
+    {
+      "name": "one word is not an answer",
+      "question": "What did you notice that made you stop following the obvious path?",
+      "answer": "Frost.",
+      "momentMeta": [
+        "measurement_threshold",
+        "04:12",
+        "04:31",
+        "score 0.82",
+        "teachable"
+      ],
+      "expectReject": "empty_answer"
+    },
+    {
+      "name": "a real cue answer is accepted",
+      "question": "What did you notice that made you stop following the obvious path?",
+      "answer": "Suction line frosted back to the compressor within ten minutes and the return grille barely moved a tissue.",
+      "momentMeta": [
+        "measurement_threshold",
+        "04:12",
+        "04:31",
+        "score 0.82",
+        "teachable"
+      ],
+      "expectReject": null
+    },
+    {
+      "name": "a short but specific answer is accepted",
+      "question": "Which test would most quickly separate those possibilities?",
+      "answer": "Total external static before the gauges go on.",
+      "momentMeta": [
+        "measurement_threshold",
+        "04:12",
+        "04:31",
+        "score 0.82",
+        "teachable"
+      ],
+      "expectReject": null
+    },
+    {
+      "name": "an answer that reuses some question words but adds content is accepted",
+      "question": "What did you check after the repair to prove the fault was gone?",
+      "answer": "After the repair I checked static, split, and subcooling through a full 15-minute cycle.",
+      "momentMeta": [],
+      "expectReject": null
+    }
+  ],
+  "grounding": [
+    {
+      "name": "claim paraphrased from the transcript is grounded",
+      "claimId": "cue",
+      "claim": "Suction line frosted back to the compressor; return grille barely moving; filter clean.",
+      "sources": [
+        {
+          "id": "seg-1",
+          "kind": "transcript",
+          "text": "Hold on. Look at that suction line, it's frosted all the way back to the compressor."
+        },
+        {
+          "id": "seg-2",
+          "kind": "transcript",
+          "text": "Grille's barely moving. Filter's clean though, she said she changed it after the last guy."
+        },
+        {
+          "id": "ans-1",
+          "kind": "expert_answer",
+          "text": "Frost plus a weak return says the evaporator is starving for air, not for refrigerant. I measure total external static before I touch the gauges."
+        }
+      ],
+      "expectGrounded": true
+    },
+    {
+      "name": "claim taken from the expert answer is grounded",
+      "claimId": "reasoning",
+      "claim": "Frost plus a weak return means the evaporator is starving for air, not refrigerant.",
+      "sources": [
+        {
+          "id": "seg-1",
+          "kind": "transcript",
+          "text": "Hold on. Look at that suction line, it's frosted all the way back to the compressor."
+        },
+        {
+          "id": "seg-2",
+          "kind": "transcript",
+          "text": "Grille's barely moving. Filter's clean though, she said she changed it after the last guy."
+        },
+        {
+          "id": "ans-1",
+          "kind": "expert_answer",
+          "text": "Frost plus a weak return says the evaporator is starving for air, not for refrigerant. I measure total external static before I touch the gauges."
+        }
+      ],
+      "expectGrounded": true
+    },
+    {
+      "name": "a plausible HVAC claim nobody said is not grounded",
+      "claimId": "decision",
+      "claim": "Replaced the compressor contactor and recharged the system with two pounds of R-410A.",
+      "sources": [
+        {
+          "id": "seg-1",
+          "kind": "transcript",
+          "text": "Hold on. Look at that suction line, it's frosted all the way back to the compressor."
+        },
+        {
+          "id": "seg-2",
+          "kind": "transcript",
+          "text": "Grille's barely moving. Filter's clean though, she said she changed it after the last guy."
+        },
+        {
+          "id": "ans-1",
+          "kind": "expert_answer",
+          "text": "Frost plus a weak return says the evaporator is starving for air, not for refrigerant. I measure total external static before I touch the gauges."
+        }
+      ],
+      "expectGrounded": false
+    },
+    {
+      "name": "a safety line the expert never gave is not grounded",
+      "claimId": "safety",
+      "claim": "Lock out the disconnect and discharge the capacitor before opening the panel.",
+      "sources": [
+        {
+          "id": "seg-1",
+          "kind": "transcript",
+          "text": "Hold on. Look at that suction line, it's frosted all the way back to the compressor."
+        },
+        {
+          "id": "seg-2",
+          "kind": "transcript",
+          "text": "Grille's barely moving. Filter's clean though, she said she changed it after the last guy."
+        },
+        {
+          "id": "ans-1",
+          "kind": "expert_answer",
+          "text": "Frost plus a weak return says the evaporator is starving for air, not for refrigerant. I measure total external static before I touch the gauges."
+        }
+      ],
+      "expectGrounded": false
+    },
+    {
+      "name": "no sources grounds nothing",
+      "claimId": "cue",
+      "claim": "Suction line frosted back to the compressor.",
+      "sources": [],
+      "expectGrounded": false
+    },
+    {
+      "name": "one shared word is not grounding",
+      "claimId": "verification",
+      "claim": "Compressor amps back within nameplate after the new start capacitor.",
+      "sources": [
+        {
+          "id": "seg-1",
+          "kind": "transcript",
+          "text": "Hold on. Look at that suction line, it's frosted all the way back to the compressor."
+        },
+        {
+          "id": "seg-2",
+          "kind": "transcript",
+          "text": "Grille's barely moving. Filter's clean though, she said she changed it after the last guy."
+        },
+        {
+          "id": "ans-1",
+          "kind": "expert_answer",
+          "text": "Frost plus a weak return says the evaporator is starving for air, not for refrigerant. I measure total external static before I touch the gauges."
+        }
+      ],
+      "expectGrounded": false
+    }
+  ]
+}

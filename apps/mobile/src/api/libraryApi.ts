@@ -599,6 +599,33 @@ export async function getPilotWeeklyReport(input: {
 }
 
 
+export interface TrainingEvent {
+  id: string;
+  knowledge_object_id: string;
+  user_id: string | null;
+  event_type: string;
+  score: number | null;
+  note: string | null;
+  created_at: string;
+}
+
+/**
+ * This learner's practice history. Drives delayed-variant timing on Learn.
+ *
+ * Auth required: a 401 read as "no history" would put every case back at
+ * "not practiced yet" and silently reset the variant schedule.
+ */
+export async function listApprenticeEvents(
+  userId: string,
+  limit = 500,
+): Promise<TrainingEvent[]> {
+  return jsonFetch<TrainingEvent[]>(
+    `/apprentices/${userId}/events?limit=${limit}`,
+    undefined,
+    { requireAuth: true },
+  );
+}
+
 export async function logTrainingEvent(input: {
   knowledgeObjectId: string;
   userId?: string;
