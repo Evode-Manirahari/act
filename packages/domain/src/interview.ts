@@ -88,7 +88,7 @@ export function recordAnswer(
       turns: [...state.turns, { ...question, answer, rejected, sourceId: null }],
     };
   }
-  const sourceId = `answer-${state.turns.length + 1}`;
+  const sourceId = `answer-${state.turns.filter((turn) => !turn.rejected).length + 1}`;
   return {
     draft: applyAnswer(state.draft, question.gap, answer),
     turns: [...state.turns, { ...question, answer, rejected: null, sourceId }],
@@ -104,6 +104,7 @@ export function interviewComplete(state: InterviewState, episodeType?: EpisodeTy
 export function claimsFromDraft(draft: CaseDraft): CaseClaim[] {
   const entries: Array<[string, ClaimType, string | null | undefined]> = [
     ['cue', 'observed_fact', draft.cues],
+    ['hypothesis', 'inference', draft.hypotheses?.map((h) => h.label).join(' ')],
     ['decision', 'technician_statement', draft.discriminatingTest],
     ['reasoning', 'inference', draft.expertReasoning],
     ['verification', 'observed_fact', draft.verification],

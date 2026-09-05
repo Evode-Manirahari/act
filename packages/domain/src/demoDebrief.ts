@@ -57,7 +57,7 @@ export const DEMO_DEBRIEF: DemoDebrief = {
     {
       id: 'demo-seg-4',
       kind: 'transcript',
-      text: 'One point one. Blower is rated for half an inch. There is your problem, and it is not the charge.',
+      text: 'Static is 1.1. Blower is rated for 0.5. There is your problem, and it is not the charge.',
     },
   ],
   base: {

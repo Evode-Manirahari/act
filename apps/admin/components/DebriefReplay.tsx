@@ -7,6 +7,7 @@ import {
   REJECT_LABEL,
   checkCaseGrounding,
   claimsFromDraft,
+  contentTokens,
   currentQuestion,
   interviewComplete,
   recordAnswer,
@@ -28,6 +29,7 @@ const GAP_LABEL: Record<CaseGap, string> = {
 
 const CLAIM_LABEL: Record<string, string> = {
   cue: 'Cue',
+  hypothesis: 'Hypotheses',
   decision: 'Discriminating test',
   reasoning: 'Why it fit',
   verification: 'Verification',
@@ -48,7 +50,19 @@ export default function DebriefReplay({ script }: { script: DemoDebrief }) {
     () => (complete ? checkCaseGrounding({ claims: claimsFromDraft(state.draft) }, state.sources) : null),
     [complete, state.draft, state.sources],
   );
-  const groundingSources = new Set(report?.claims.map((c) => c.sourceId).filter(Boolean));
+  // Transcript lines that share three or more content words with a drafted
+  // claim. The answer is the source of record; this shows the footage agrees.
+  const transcriptHits = useMemo(() => {
+    const claimTokens = claimsFromDraft(state.draft).map((c) => new Set(contentTokens(c.text)));
+    return new Set(
+      script.transcript
+        .filter((seg) => {
+          const segTokens = Array.from(new Set(contentTokens(seg.text)));
+          return claimTokens.some((set) => segTokens.filter((t) => set.has(t)).length >= 3);
+        })
+        .map((seg) => seg.id),
+    );
+  }, [script.transcript, state.draft]);
   const lastTurn = state.turns[state.turns.length - 1];
   const firstTurn = state.turns.length === 0;
 
@@ -76,13 +90,18 @@ export default function DebriefReplay({ script }: { script: DemoDebrief }) {
           </div>
 
           <div className="card col gap-8">
-            <div className="evidence-key">Transcript inside the window</div>
+            <div className="row between wrap gap-8">
+              <div className="evidence-key">Transcript inside the window</div>
+              {transcriptHits.size > 0 ? (
+                <span className="muted" style={{ fontSize: 11 }}>orange edge: echoed by a drafted claim</span>
+              ) : null}
+            </div>
             {script.transcript.map((seg) => (
               <div
                 key={seg.id}
                 className="notice"
                 style={
-                  groundingSources.has(seg.id)
+                  transcriptHits.has(seg.id)
                     ? { borderLeftColor: 'var(--primary)', background: 'var(--surface)' }
                     : undefined
                 }
