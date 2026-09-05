@@ -123,7 +123,7 @@ Beyond HVAC, the same retirement and ramp problem appears across trades. Earlier
 
 This repo contains the mobile client, web admin, and marketing site. The backend lives in a sibling repo.
 
-- `apps/mobile` - React Native Expo app for capture, review, debrief, learning, and outcomes
+- `apps/mobile` - React Native Expo app for capture, review, debrief, learning, your readiness, and outcomes
   - `src/screens/CaptureJobScreen.tsx` - record, mark teachable moments, upload with retry
   - `src/screens/DebriefScreen.tsx` - pending questions, voice/text answers, guided voice debrief
   - `src/screens/PilotReviewScreen.tsx` - review, debrief, compile, publish

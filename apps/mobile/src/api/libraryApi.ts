@@ -5,6 +5,7 @@
  */
 import { getAuthHeaders, requireAuthHeaders } from '../lib/authToken';
 import { API_BASE } from '../lib/config';
+import type { JobOutcomeOut } from './captureApi';
 
 
 export interface KnowledgeObjectQuiz {
@@ -583,6 +584,49 @@ export async function askLibrary(input: {
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   return jsonFetch<DashboardSummary>('/dashboard/summary');
+}
+
+export interface JobOut {
+  id: string;
+  user_id: string;
+  equipment_label: string | null;
+  system_type: string | null;
+  equipment_make: string | null;
+  equipment_model: string | null;
+  customer_site_label: string | null;
+  jurisdiction: string | null;
+  status: string;
+  summary: string | null;
+  created_at: string;
+  ended_at: string | null;
+}
+
+/** docs/act-api-handoff.md — returns null when act-api has not shipped the route yet. */
+export interface ReadinessLevelOut {
+  id: string;
+  tech_user_id: string;
+  activity_id: string;
+  level: string;
+  set_by_user_id: string;
+  set_at: string;
+  note: string | null;
+}
+
+export async function listJobs(): Promise<JobOut[]> {
+  return jsonFetch<JobOut[]>('/jobs');
+}
+
+export async function tryJobOutcome(jobId: string): Promise<JobOutcomeOut | null> {
+  try {
+    return await jsonFetch<JobOutcomeOut>(`/jobs/${jobId}/outcomes`);
+  } catch (e) {
+    if (e instanceof LibraryApiError && e.status === 404) return null;
+    throw e;
+  }
+}
+
+export async function listReadinessLevels(): Promise<ReadinessLevelOut[]> {
+  return jsonFetch<ReadinessLevelOut[]>('/readiness/levels', undefined, { requireAuth: true });
 }
 
 export async function getPilotWeeklyReport(input: {

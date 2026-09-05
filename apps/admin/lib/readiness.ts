@@ -91,9 +91,21 @@ export async function liveReadiness(): Promise<ReadinessData> {
   ]);
   const cases = cards.map(diagnosticCaseFromKnowledgeObject);
 
-  // act-api has no /users yet. Names come from the admin's roster config
-  // (ACT_TECH_ROSTER); anyone not in it shows as an id prefix, never a guess.
+  // Names from act-api /users when deployed, else ACT_TECH_ROSTER; id prefix if neither.
   const roster = rosterFromEnv(process.env.ACT_TECH_ROSTER);
+  try {
+    for (const user of await api.users()) {
+      roster.set(user.id, {
+        name: user.display_name?.trim() || user.email,
+        role: user.role,
+      });
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'unknown';
+    if (!/ -> 404:/.test(message)) {
+      warnings.push(`users roster could not be read: ${message}`);
+    }
+  }
   const techById = new Map<string, Technician>();
   for (const job of jobsOut) {
     if (!techById.has(job.user_id)) {
@@ -111,7 +123,7 @@ export async function liveReadiness(): Promise<ReadinessData> {
   }
   const techs = Array.from(techById.values());
   if (roster.size === 0 && techs.length > 0) {
-    warnings.push('no ACT_TECH_ROSTER set; technicians show as id prefixes');
+    warnings.push('no /users or ACT_TECH_ROSTER; technicians show as id prefixes');
   }
 
   const unconfirmedTechs: string[] = [];

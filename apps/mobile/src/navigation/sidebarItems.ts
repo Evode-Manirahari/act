@@ -59,6 +59,15 @@ export function buildDefaultSidebarItems(
         navigation.navigate('Learn');
       },
     },
+    {
+      key: 'readiness',
+      label: 'Your readiness',
+      detail: 'What your manager has entrusted you to handle',
+      onPress: () => {
+        onNavigate();
+        navigation.navigate('Readiness');
+      },
+    },
   ];
 
   if (onAsk) {

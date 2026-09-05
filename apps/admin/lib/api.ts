@@ -215,6 +215,13 @@ export interface ReadinessLevelOut {
   note: string | null;
 }
 
+export interface UserOut {
+  id: string;
+  email: string;
+  display_name: string | null;
+  role: string;
+}
+
 export const api = {
   me: () => json<MeOut>('/me'),
   reviewQueue: (status = 'proposed', limit = 50) =>
@@ -373,6 +380,7 @@ export const api = {
       }),
     }),
   readinessLevels: () => json<ReadinessLevelOut[]>('/readiness/levels'),
+  users: () => json<UserOut[]>('/users'),
   // set_by_user_id is derived by act-api from this server's bearer token.
   setReadinessLevel: (body: {
     tech_user_id: string;

@@ -101,3 +101,18 @@ opens them with the title hidden. A failed history read shows as unknown
 timing, never as "not practiced".
 
 **Still pending in act-api:** see `docs/act-api-handoff.md`.
+
+## Slice 4 — mobile readiness surface
+
+The manager sets levels in admin (`/readiness`). The technician sees their
+row on mobile: read-only, one card per work activity, evidence counts plus
+the level and the one-line note the manager wrote. Nothing on this screen
+computes or changes a level.
+
+**Surfaces:** sidebar → **Your readiness** (`ReadinessScreen`). Uses the same
+domain matrix as admin, filtered to `/me`'s `user_id`.
+
+**API:** `/library/search`, `/jobs`, `/jobs/{id}/outcomes`, `/apprentices/{id}/events`, `/readiness/levels`. A 404 on levels means the endpoint is not deployed yet (evidence still shows). Any other failed read is unconfirmed, never an empty cell.
+
+**Not in slice 4:** setting levels on mobile (manager stays on admin), full
+team matrix on mobile, glasses.
