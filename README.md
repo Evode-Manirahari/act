@@ -35,8 +35,9 @@ The ACT loop runs end to end against the deployed backend at `https://act-api-ev
 | Ask | Approved moments auto-chain into drafted debrief questions. The senior tech sees a waiting-question badge and answers by voice, guided voice debrief, or text. |
 | Structure | Expert answers compile into a versioned diagnostic case with cues, hypotheses, a discriminating test, novice traps, safety boundaries, and verification. |
 | Review | Mobile and web-admin gates keep lead tech approval in the loop; nothing publishes itself. |
-| Teach | Commit-first case practice on mobile and web. Ask ACT answers only from published cases with citations and refuses live job diagnosis. |
+| Teach | Commit-first case practice on mobile and web, with a delayed variant 7–14 days later. Ask ACT answers only from published cases with citations and refuses live job diagnosis. |
 | Measure | Per-job outcome capture, callback / first-time-fix signals, dashboard summaries, and weekly operator reports. |
+| Entrust | Readiness matrix (technician × work activity) counting practice, variants, jobs, and callbacks. The manager sets the level; the system flags where to look. |
 | Trust | Invite-only auth, server-side token verification, per-account tenant isolation, and customer-requested redaction / purge. |
 
 ## The Product
@@ -50,6 +51,7 @@ ACT creates one durable diagnostic case from one real high-value episode:
 5. **Structure** - the answer becomes a diagnostic case: situation, cue, hypotheses, discriminating test, trap, safety boundary, verification.
 6. **Review** - a lead tech approves, edits, or rejects before publishing.
 7. **Practice** - the apprentice states a hypothesis and next test before seeing the expert, then a delayed variant tests transfer.
+8. **Entrust** - the manager sees evidence per technician per job type and sets what each one can handle, and under what supervision.
 
 The expert never has to write documentation. The apprentice gets company-specific judgment, not generic textbook training.
 
@@ -128,7 +130,7 @@ This repo contains the mobile client, web admin, and marketing site. The backend
   - `src/screens/LearnScreen.tsx` - commit-first diagnostic case practice
   - `src/screens/PilotOutcomeScreen.tsx` - callback / first-time-fix / ramp signal capture
   - `src/api/captureApi.ts`, `src/api/libraryApi.ts` - typed clients for the deployed backend
-- `apps/admin` - Next.js pilot admin: review queue, debrief answers, publish gate, case practice (`/learn`)
+- `apps/admin` - Next.js pilot admin: review queue, debrief answers, publish gate, case practice (`/learn`), readiness matrix (`/readiness`), fictional demo shop (`/demo`)
 - `apps/site` - Actober AI marketing site: static export, privacy, support, store-link slots
 - `packages/domain` - DiagnosticCase contract, debrief completeness, commit-first player
 - `packages/act-kb` - trade-aware knowledge stubs; electrical retained pending migration
