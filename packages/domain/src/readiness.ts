@@ -71,6 +71,7 @@ export interface ReadinessEvidence {
   jobsWithOutcome: number;
   callbacks: number;
   lastActivityAt: string | null;
+  lastCallbackAt: string | null;
 }
 
 export interface ReadinessCell {
@@ -80,6 +81,30 @@ export interface ReadinessCell {
   level: ReadinessLevelRecord | null;
   /** Evidence exists that the manager has not looked at since the level was set. */
   reviewSuggested: boolean;
+}
+
+/**
+ * When new evidence should pull the manager back to a cell.
+ *
+ * No level yet: any evidence. Observe / assist / supervised: any evidence,
+ * because the next step up is the question. Independent: only a callback,
+ * since routine jobs are what the level predicts. Mentor: never; it is the
+ * top of the scale and a mentor's own jobs are not a readiness question.
+ */
+export function shouldSuggestReview(
+  evidence: ReadinessEvidence,
+  level: ReadinessLevelRecord | null,
+): boolean {
+  if (!hasEvidence(evidence)) return false;
+  if (level == null) return true;
+  switch (level.level) {
+    case 'mentor':
+      return false;
+    case 'independent':
+      return evidence.lastCallbackAt != null && evidence.lastCallbackAt > level.setAt;
+    default:
+      return evidence.lastActivityAt != null && evidence.lastActivityAt > level.setAt;
+  }
 }
 
 export interface ReadinessMatrix {
@@ -113,6 +138,7 @@ const NO_EVIDENCE: ReadinessEvidence = {
   jobsWithOutcome: 0,
   callbacks: 0,
   lastActivityAt: null,
+  lastCallbackAt: null,
 };
 
 export function hasEvidence(evidence: ReadinessEvidence): boolean {
@@ -190,6 +216,9 @@ export function buildReadinessMatrix(input: ReadinessInput): ReadinessMatrix {
       jobsWithOutcome: current.jobsWithOutcome + (job.outcome ? 1 : 0),
       callbacks: current.callbacks + (job.outcome?.callback ? 1 : 0),
       lastActivityAt: later(current.lastActivityAt, job.createdAt),
+      lastCallbackAt: job.outcome?.callback
+        ? later(current.lastCallbackAt, job.createdAt)
+        : current.lastCallbackAt,
     }));
   }
 
@@ -217,11 +246,13 @@ export function buildReadinessMatrix(input: ReadinessInput): ReadinessMatrix {
       const key = cellKey(tech.id, activityId);
       const cellEvidence = evidence.get(key) ?? { ...NO_EVIDENCE };
       const level = levelByKey.get(key) ?? null;
-      const reviewSuggested = hasEvidence(cellEvidence)
-        ? level == null ||
-          (cellEvidence.lastActivityAt != null && cellEvidence.lastActivityAt > level.setAt)
-        : false;
-      cells.push({ techId: tech.id, activityId, evidence: cellEvidence, level, reviewSuggested });
+      cells.push({
+        techId: tech.id,
+        activityId,
+        evidence: cellEvidence,
+        level,
+        reviewSuggested: shouldSuggestReview(cellEvidence, level),
+      });
     }
   }
 

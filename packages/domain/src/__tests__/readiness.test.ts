@@ -193,6 +193,42 @@ describe('readiness matrix', () => {
     ]);
   });
 
+  it('re-flags independent only on a callback, and never re-flags a mentor', () => {
+    const setAt = '2026-08-15T00:00:00.000Z';
+    const levels: ReadinessLevelRecord[] = [
+      { techId: 'maya', activityId: 'no_cool_split', level: 'independent', setBy: 'lena', setAt, note: null },
+      { techId: 'jordan', activityId: 'no_cool_split', level: 'mentor', setBy: 'lena', setAt, note: null },
+    ];
+    const routine = buildReadinessMatrix({
+      techs,
+      cases,
+      events: [],
+      jobs: [job('maya', '2026-08-20T00:00:00.000Z', false), job('jordan', '2026-08-20T00:00:00.000Z', true)],
+      levels,
+    });
+    expect(cellFor(routine, 'maya', 'no_cool_split')?.reviewSuggested).toBe(false);
+    expect(cellFor(routine, 'jordan', 'no_cool_split')?.reviewSuggested).toBe(false);
+
+    const callback = buildReadinessMatrix({
+      techs,
+      cases,
+      events: [],
+      jobs: [job('maya', '2026-08-20T00:00:00.000Z', true)],
+      levels,
+    });
+    expect(cellFor(callback, 'maya', 'no_cool_split')?.reviewSuggested).toBe(true);
+    expect(cellFor(callback, 'maya', 'no_cool_split')?.evidence.lastCallbackAt).toBe('2026-08-20T00:00:00.000Z');
+
+    const oldCallback = buildReadinessMatrix({
+      techs,
+      cases,
+      events: [],
+      jobs: [job('maya', '2026-08-10T00:00:00.000Z', true)],
+      levels,
+    });
+    expect(cellFor(oldCallback, 'maya', 'no_cool_split')?.reviewSuggested).toBe(false);
+  });
+
   it('keeps the newest level when two exist for a cell', () => {
     const matrix = buildReadinessMatrix({
       techs,
@@ -219,6 +255,7 @@ describe('readiness matrix', () => {
         jobsWithOutcome: 3,
         callbacks: 1,
         lastActivityAt: null,
+        lastCallbackAt: null,
       }),
     ).toBe('2 cases practiced · 1 variant · 4 jobs · 1 callback');
     expect(
@@ -231,6 +268,7 @@ describe('readiness matrix', () => {
         jobsWithOutcome: 0,
         callbacks: 0,
         lastActivityAt: null,
+        lastCallbackAt: null,
       }),
     ).toBe('');
   });

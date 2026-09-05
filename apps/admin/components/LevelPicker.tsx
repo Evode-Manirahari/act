@@ -43,6 +43,7 @@ export default function LevelPicker({ current, techName, activityLabel, mode }: 
         <span className="evidence-key">Why (one line the tech will read)</span>
         <textarea
           rows={2}
+          style={{ minHeight: 64 }}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="What you saw. What has to be true before the next level."
