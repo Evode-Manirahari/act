@@ -57,21 +57,11 @@ read renders as unconfirmed, not as an empty cell.
 
 ### What act-api needs next
 
-Nothing in slice 2 persists a manager's decision. The picker changes the level
-on screen and says it is not saved. To close that:
-
-```
-readiness_levels
-  id, account_id, tech_user_id, activity_id, level, set_by_user_id, set_at, note
-  set_by_user_id derived from the bearer token; client never sends it
-GET  /readiness/levels                      -> current level per tech × activity
-POST /readiness/levels                      -> {tech_user_id, activity_id, level, note}
-```
-
-Also still pending: `episode_type` column on `knowledge_objects` (inferred from
-tags today), `activity_id` on `knowledge_objects` and `jobs` so bucketing is a
-manager choice rather than an inference, and a `GET /users` roster so live mode
-shows names instead of id prefixes.
+Moved to `docs/act-api-handoff.md` (table, routes, status codes, the eval set
+as JSON, and the client code that already calls each endpoint). In the
+meantime a manager's decision persists in the demo through a browser cookie
+(`apps/admin/lib/levelStore.ts`, demo ids only), and live technicians take
+their names from `ACT_TECH_ROSTER`.
 
 **Not in slice 2:** glasses, multi-agent compile, eval set against fabricated
 debrief questions, mobile readiness surface.
@@ -110,5 +100,4 @@ not loaded there; act-api's `grounding-check` stays authoritative at publish.
 opens them with the title hidden. A failed history read shows as unknown
 timing, never as "not practiced".
 
-**Still pending in act-api:** `readiness_levels`, `episode_type`,
-`activity_id`, a users roster, and porting the eval set.
+**Still pending in act-api:** see `docs/act-api-handoff.md`.
