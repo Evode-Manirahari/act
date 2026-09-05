@@ -10,6 +10,7 @@ import LoginScreen from '../screens/LoginScreen';
 import PilotHomeScreen from '../screens/PilotHomeScreen';
 import PilotOutcomeScreen from '../screens/PilotOutcomeScreen';
 import PilotReviewScreen from '../screens/PilotReviewScreen';
+import ReadinessScreen from '../screens/ReadinessScreen';
 import type { KnowledgeObject } from '../api/libraryApi';
 import { useAuthSession } from '../hooks/useAuthSession';
 import { requireAuth, supabaseConfigStatus } from '../lib/supabase';
@@ -21,6 +22,7 @@ export type PilotStackParamList = {
   CaptureJob: undefined;
   PilotReview: { recordingId?: string; queue?: boolean } | undefined;
   Learn: { card?: KnowledgeObject; cardId?: string } | undefined;
+  Readiness: undefined;
   PilotOutcome: { jobId?: string; recordedBy?: string; sourceRecordingId?: string } | undefined;
   Debrief: undefined;
   DeleteAccount: undefined;
@@ -35,6 +37,7 @@ function PilotStack() {
       <Stack.Screen name="CaptureJob" component={CaptureJobScreen} />
       <Stack.Screen name="PilotReview" component={PilotReviewScreen} />
       <Stack.Screen name="Learn" component={LearnScreen} />
+      <Stack.Screen name="Readiness" component={ReadinessScreen} />
       <Stack.Screen name="PilotOutcome" component={PilotOutcomeScreen} />
       <Stack.Screen name="Debrief" component={DebriefScreen} />
       <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
