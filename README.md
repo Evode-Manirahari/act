@@ -130,7 +130,7 @@ This repo contains the mobile client, web admin, and marketing site. The backend
   - `src/screens/LearnScreen.tsx` - commit-first diagnostic case practice
   - `src/screens/PilotOutcomeScreen.tsx` - callback / first-time-fix / ramp signal capture
   - `src/api/captureApi.ts`, `src/api/libraryApi.ts` - typed clients for the deployed backend
-- `apps/admin` - Next.js pilot admin: review queue, debrief answers, publish gate, case practice (`/learn`), readiness matrix (`/readiness`), fictional demo shop (`/demo`)
+- `apps/admin` - Next.js pilot admin: review queue, debrief answers, publish gate, case practice (`/learn`), readiness matrix (`/readiness`), fictional demo shop (`/demo`), debrief replay (`/debrief`)
 - `apps/site` - Actober AI marketing site: static export, privacy, support, store-link slots
 - `packages/domain` - DiagnosticCase contract, debrief completeness, commit-first player
 - `packages/act-kb` - trade-aware knowledge stubs; electrical retained pending migration

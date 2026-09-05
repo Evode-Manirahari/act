@@ -75,3 +75,40 @@ shows names instead of id prefixes.
 
 **Not in slice 2:** glasses, multi-agent compile, eval set against fabricated
 debrief questions, mobile readiness surface.
+
+## Slice 3 — the debrief that can't fabricate
+
+The 2026-07-31 autopsy: five cards published from a bare timestamp, "expert
+answers" that were the moment's own metadata echoed back. Slice 3 is the step
+that chain was missing, as deterministic code in `packages/domain`.
+
+**Answer guard** (`answerRejectReason`): an answer is refused if it is too
+short, if it mostly repeats the question, or if every content word in it came
+from what the system already knew (moment type, window, score, mark label).
+Reason codes: `empty_answer`, `answer_echoes_prompt`, `answer_is_metadata`.
+
+**Interview machine** (`interview.ts`): one question for the first missing
+field, one accepted answer fills only that field. Refused answers stay in the
+record with their reason and never touch the draft.
+
+**Grounding check** (`checkCaseGrounding`): every claim must trace, by content
+token overlap, to a transcript segment or an accepted answer. Fail-closed:
+`no_evidence`, `no_claims`, `claim_ungrounded:<id>`. It can refuse; it cannot
+approve what a lead tech has not read.
+
+**Eval set** (`evals/debriefEvalSet.ts`): plain data, the incident is the
+first case. act-api should port it verbatim and run it against the real
+compile path.
+
+**Surfaces:** `/debrief` replays the airflow callback's interview for the demo
+(bad answer refused, grounding gates "send to lead review"). The live moment
+page now checks typed answers before saving and shows an advisory grounding
+readout on the compiled card — advisory because earlier sessions' answers are
+not loaded there; act-api's `grounding-check` stays authoritative at publish.
+
+**Mobile:** Learn reads the learner's history, orders due variants first, and
+opens them with the title hidden. A failed history read shows as unknown
+timing, never as "not practiced".
+
+**Still pending in act-api:** `readiness_levels`, `episode_type`,
+`activity_id`, a users roster, and porting the eval set.
