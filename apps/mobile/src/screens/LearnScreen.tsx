@@ -16,7 +16,7 @@ import ActAskPanel from '../components/ActAskPanel';
 import CasePlayer from '../components/CasePlayer';
 import { getPilotContext } from '../api/captureApi';
 import type { DemoContext } from '../api/captureApi';
-import { logTrainingEvent, searchLibrary } from '../api/libraryApi';
+import { listApprenticeEvents, logTrainingEvent, searchLibrary } from '../api/libraryApi';
 import type { KnowledgeObject } from '../api/libraryApi';
 import type { PilotStackParamList } from '../navigation/PilotNavigator';
 import {
@@ -28,10 +28,15 @@ import {
   colors,
   spacing,
 } from '../design';
-import { EPISODE_LABEL, diagnosticCaseFromKnowledgeObject } from '@act/domain';
+import { EPISODE_LABEL, VARIANT_STATUS_LABEL, diagnosticCaseFromKnowledgeObject } from '@act/domain';
 import {
+  countDue,
   getVisibleTrainingCards,
+  isVariantDue,
+  orderCards,
+  scheduleCards,
   shouldShowEmptyState,
+  type LearnerHistory,
   type TrainingCard,
 } from './learnScreenModel';
 
@@ -50,6 +55,8 @@ export default function LearnScreen() {
   const [learnerLoading, setLearnerLoading] = useState(true);
   const [learnerError, setLearnerError] = useState<string | null>(null);
   const [askOpen, setAskOpen] = useState(false);
+  const [history, setHistory] = useState<LearnerHistory>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const loadLearnerContext = useCallback(async () => {
     setLearnerLoading(true);
@@ -84,8 +91,32 @@ export default function LearnScreen() {
     }, [loadLearnerContext, refresh]),
   );
 
-  const cards = getVisibleTrainingCards(results);
   const learnerId = learnerContext?.user_id;
+
+  // History is read once identity is known. A failed read leaves `history`
+  // null: no variant pills, nothing opens in variant mode, and the screen says
+  // why. It never becomes "no history".
+  useEffect(() => {
+    if (!learnerId) return;
+    let cancelled = false;
+    setHistoryError(null);
+    listApprenticeEvents(learnerId)
+      .then((events) => {
+        if (!cancelled) setHistory(events);
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setHistory(null);
+        setHistoryError(err instanceof Error ? err.message : 'history read failed');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [learnerId, results]);
+
+  const schedules = scheduleCards(getVisibleTrainingCards(results), history, learnerId, new Date());
+  const cards = orderCards(getVisibleTrainingCards(results), schedules);
+  const dueCount = countDue(schedules);
   const showingEmpty = shouldShowEmptyState({ loading, error, resultsCount: results.length });
 
   useEffect(() => {
@@ -127,7 +158,12 @@ export default function LearnScreen() {
         accountId={learnerContext?.account_id}
       />
       {selected ? (
-        <CasePlayer card={selected} userId={learnerId} onBack={() => setSelected(null)} />
+        <CasePlayer
+          card={selected}
+          userId={learnerId}
+          variant={isVariantDue(schedules.get(selected.id))}
+          onBack={() => setSelected(null)}
+        />
       ) : (
         <View style={styles.container}>
           <FlatList
@@ -172,11 +208,21 @@ export default function LearnScreen() {
                     Loading apprentice identity…
                   </ActText>
                 ) : null}
+                {historyError ? (
+                  <ActText variant="small" color="textMuted">
+                    Practice history could not be read, so variant timing is unknown right now.
+                  </ActText>
+                ) : null}
 
                 {!loading && !showingEmpty ? (
-                  <ActText variant="label" color="textMuted">
-                    {cards.length} published cases
-                  </ActText>
+                  <View style={styles.meta}>
+                    <ActText variant="label" color="textMuted">
+                      {cards.length} published cases
+                    </ActText>
+                    {dueCount > 0 ? (
+                      <ActPill label={`${dueCount} variant${dueCount === 1 ? '' : 's'} due`} tone="warn" />
+                    ) : null}
+                  </View>
                 ) : null}
               </View>
             }
@@ -192,17 +238,22 @@ export default function LearnScreen() {
             }
             renderItem={({ item }) => {
               const diag = diagnosticCaseFromKnowledgeObject(item);
+              const schedule = schedules.get(item.id);
+              const due = isVariantDue(schedule);
               return (
                 <ActCard
                   onPress={() => openCard(item)}
                   style={learnerId ? styles.card : [styles.card, styles.cardDisabled]}
                 >
                   <ActText variant="h2" weight="semibold">
-                    {item.title}
+                    {due ? 'Same principle, different call' : item.title}
                   </ActText>
                   <View style={styles.meta}>
                     <ActPill label={EPISODE_LABEL[diag.episodeType]} tone="orange" />
                     {isCompanyApproved(item) ? <ActPill label="company-approved" tone="ok" /> : null}
+                    {schedule && schedule.status !== 'not_started' ? (
+                      <ActPill label={VARIANT_STATUS_LABEL[schedule.status]} tone={due ? 'warn' : 'neutral'} />
+                    ) : null}
                     {item.jurisdiction ? <ActPill label={item.jurisdiction} /> : null}
                   </View>
                   {item.situation ? (

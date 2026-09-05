@@ -22,6 +22,7 @@ import {
   CHALLENGE_PROMPT,
   COMPARISON_LABEL,
   EPISODE_LABEL,
+  VARIANT_PROMPT,
   canPractice,
   commitEventNote,
   commitReady,
@@ -31,6 +32,7 @@ import {
   filled,
   initialPlayerState,
   reducePlayer,
+  variantEventNote,
   type LearnerCommit,
   type PlayerEvent,
   type PlayerState,
@@ -39,10 +41,12 @@ import {
 type Props = {
   card: KnowledgeObject;
   userId: string | undefined;
+  /** Delayed variant: title hidden until the reveal; the completion is logged as transfer evidence. */
+  variant?: boolean;
   onBack: () => void;
 };
 
-export default function CasePlayer({ card, userId, onBack }: Props) {
+export default function CasePlayer({ card, userId, variant = false, onBack }: Props) {
   const diag = useMemo(() => diagnosticCaseFromKnowledgeObject(card), [card]);
   const [state, dispatch] = useReducer(
     reducePlayer,
@@ -54,6 +58,10 @@ export default function CasePlayer({ card, userId, onBack }: Props) {
   const [savedComplete, setSavedComplete] = useState(false);
 
   const hideExpert = expertHidden(state.stage);
+  const note = () =>
+    variant
+      ? variantEventNote(state.commit, state.disconfirm, state.reflection)
+      : commitEventNote(state.commit, state.disconfirm, state.reflection);
   const comparisons = useMemo(
     () => compareCommitToExpert(diag, state.commit),
     [diag, state.commit],
@@ -85,7 +93,7 @@ export default function CasePlayer({ card, userId, onBack }: Props) {
         knowledgeObjectId: card.id,
         userId,
         eventType: 'quiz_attempted',
-        note: commitEventNote(state.commit, state.disconfirm, state.reflection),
+        note: note(),
       });
       return true;
     } catch (err) {
@@ -108,7 +116,7 @@ export default function CasePlayer({ card, userId, onBack }: Props) {
         knowledgeObjectId: card.id,
         userId,
         eventType: 'completed',
-        note: commitEventNote(state.commit, state.disconfirm, state.reflection),
+        note: note(),
       });
       setSavedComplete(true);
     } catch (err) {
@@ -138,11 +146,17 @@ export default function CasePlayer({ card, userId, onBack }: Props) {
         renderItem={() => (
           <>
             <ActText variant="label" color="primary">
+              {variant ? 'Delayed variant · ' : ''}
               {EPISODE_LABEL[diag.episodeType]} · commit first
             </ActText>
             <ActText variant="display" style={styles.detailTitle}>
-              {diag.title}
+              {variant && hideExpert ? 'Same principle, different call' : diag.title}
             </ActText>
+            {variant && hideExpert ? (
+              <ActText variant="small" color="textMuted">
+                {VARIANT_PROMPT}
+              </ActText>
+            ) : null}
             <View style={styles.meta}>
               <ActPill label={diag.trade} tone="orange" />
               {diag.status === 'published' ? <ActPill label="company-approved" tone="ok" /> : null}
@@ -318,7 +332,7 @@ export default function CasePlayer({ card, userId, onBack }: Props) {
             {state.stage === 'complete' ? (
               <ActCard tone="ok" accent="ok">
                 <ActText variant="label" color="success">
-                  Practice recorded
+                  {variant ? 'Variant recorded' : 'Practice recorded'}
                 </ActText>
                 <ActText variant="small" color="textMuted">
                   {savedComplete
