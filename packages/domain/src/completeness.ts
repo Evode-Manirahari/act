@@ -64,6 +64,18 @@ export function nextDebriefQuestion(
       question: 'What cue or test was missed on the first visit that would have prevented this callback?',
     };
   }
+  if (first === 'cue' && episodeType === 'hard_solve') {
+    return {
+      gap: first,
+      question: 'What did you notice that a newer technician may not notice?',
+    };
+  }
+  if (first === 'cue' && episodeType === 'adaptation') {
+    return {
+      gap: first,
+      question: 'What made the standard path difficult or insufficient in this context?',
+    };
+  }
   if (first === 'boundary' && episodeType === 'near_miss') {
     return {
       gap: first,

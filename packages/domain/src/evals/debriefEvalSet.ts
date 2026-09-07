@@ -55,6 +55,20 @@ export const NEXT_GAP_CASES: NextGapCase[] = [
     expectQuestionMatches: /prevented this callback/,
   },
   {
+    name: 'hard diagnosis asks what a newer tech would miss',
+    draft: {},
+    episodeType: 'hard_solve',
+    expectGap: 'cue',
+    expectQuestionMatches: /newer technician/,
+  },
+  {
+    name: 'adaptation asks what made the standard path insufficient',
+    draft: {},
+    episodeType: 'adaptation',
+    expectGap: 'cue',
+    expectQuestionMatches: /standard path/,
+  },
+  {
     name: 'near miss asks for the stop trigger when boundary is the gap',
     draft: {
       cues: 'Meter showed 240 VDC on the capacitor two minutes after power off.',

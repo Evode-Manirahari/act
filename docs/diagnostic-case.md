@@ -123,3 +123,9 @@ with provenance. Do not add surfaces.
 Admin review uses this to keep Publish closed when the evidence chain does
 not hold. act-api still owns the authoritative publish check; port
 `checkMvpPublish` there (handoff item 5).
+
+## Pilot 0 — fifteen days
+
+Operating kit: `docs/pilot-0.md` and admin `/pilot`. Five slots (two
+callbacks, near miss, hard solve, adaptation). Hypotheses have pass/fail
+lines in `packages/domain/src/pilot0.ts`. The notebook is not traction.
