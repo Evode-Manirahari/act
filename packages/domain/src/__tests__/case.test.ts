@@ -31,6 +31,9 @@ describe('diagnosticCaseFromKnowledgeObject', () => {
     expect(diag.discriminatingTest).toBe('Verify airflow first.');
     expect(diag.hypotheses).toHaveLength(1);
     expect(diag.claims.some((c) => c.type === 'safety_constraint')).toBe(true);
+    expect(diag.safetyState).toBe('reviewed_constraint');
+    expect(diag.tenantId).toBeNull();
+    expect(diag.sourceExpertId).toBeNull();
   });
 
   it('does not treat an empty card as practiceable', () => {

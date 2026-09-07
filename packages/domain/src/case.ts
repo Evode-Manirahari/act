@@ -23,8 +23,17 @@ export interface CaseClaim {
   id: string;
   type: ClaimType;
   text: string;
+  /** Evidence artifact ids or accepted-answer ids. Card-field paths are not evidence. */
   sourceRefs: string[];
   reviewStatus: 'pending_expert' | 'approved' | 'rejected';
+}
+
+export type SafetyState = 'not_applicable' | 'reviewed_constraint' | 'lead_review_required';
+
+export interface SourceEvent {
+  type: EpisodeType;
+  jobId: string | null;
+  occurredAt: string | null;
 }
 
 export interface CaseHypothesis {
@@ -53,10 +62,19 @@ export interface DiagnosticCase {
   discriminatingTest: string | null;
   action: string | null;
   verification: string | null;
+  outcome: string | null;
   noviceTrap: string | null;
   safetyBoundary: string | null;
+  safetyState: SafetyState | null;
   expertReasoning: string | null;
   claims: CaseClaim[];
+  /** Server-derived. Null means unconfirmed, not "no tenant." */
+  tenantId: string | null;
+  /** Server-derived from a verified token. Never a client-supplied user id. */
+  sourceExpertId: string | null;
+  sourceEvent: SourceEvent;
+  scope: string | null;
+  evidenceIds: string[];
   publishedAt: string | null;
   createdAt: string;
   tags: string[];
@@ -91,6 +109,14 @@ export interface KnowledgeCardSource {
   equipment_make?: string | null;
   equipment_model?: string | null;
   jurisdiction?: string | null;
+  /** Server-derived account. Absent means unconfirmed. */
+  account_id?: string | null;
+  job_id?: string | null;
+  occurred_at?: string | null;
+  /** Server-derived expert id. Do not send this from the client. */
+  source_expert_id?: string | null;
+  outcome?: string | null;
+  scope?: string | null;
 }
 
 function asStatus(status: string): CaseStatus {
@@ -99,31 +125,33 @@ function asStatus(status: string): CaseStatus {
   return 'draft';
 }
 
-function claim(
-  id: string,
-  type: ClaimType,
-  text: string | null,
-  sourceRefs: string[],
-): CaseClaim | null {
+function claim(id: string, type: ClaimType, text: string | null): CaseClaim | null {
   if (!text?.trim()) return null;
   return {
     id,
     type,
     text: text.trim(),
-    sourceRefs,
+    sourceRefs: [],
     reviewStatus: 'approved',
   };
 }
 
+function safetyStateFrom(card: KnowledgeCardSource): SafetyState | null {
+  if (!card.safety_boundary?.trim()) return null;
+  if (card.status === 'published') return 'reviewed_constraint';
+  return 'lead_review_required';
+}
+
 export function diagnosticCaseFromKnowledgeObject(card: KnowledgeCardSource): DiagnosticCase {
   const tags = card.tags_json ?? [];
+  const episodeType = inferEpisodeType({ tags, explicit: null });
   const claims = [
-    claim('cue', 'observed_fact', card.observable_cue, ['knowledge_object.observable_cue']),
-    claim('decision', 'technician_statement', card.decision, ['knowledge_object.decision']),
-    claim('reasoning', 'inference', card.expert_reasoning, ['knowledge_object.expert_reasoning']),
-    claim('verification', 'observed_fact', card.verification, ['knowledge_object.verification']),
-    claim('trap', 'local_heuristic', card.novice_trap, ['knowledge_object.novice_trap']),
-    claim('safety', 'safety_constraint', card.safety_boundary, ['knowledge_object.safety_boundary']),
+    claim('cue', 'observed_fact', card.observable_cue),
+    claim('decision', 'technician_statement', card.decision),
+    claim('reasoning', 'inference', card.expert_reasoning),
+    claim('verification', 'observed_fact', card.verification),
+    claim('trap', 'local_heuristic', card.novice_trap),
+    claim('safety', 'safety_constraint', card.safety_boundary),
   ].filter((item): item is CaseClaim => item != null);
 
   const hypotheses: CaseHypothesis[] = card.expert_reasoning?.trim()
@@ -135,7 +163,7 @@ export function diagnosticCaseFromKnowledgeObject(card: KnowledgeCardSource): Di
     momentId: card.moment_id,
     version: 1,
     status: asStatus(card.status),
-    episodeType: inferEpisodeType({ tags }),
+    episodeType,
     title: card.title,
     trade: card.trade,
     presentingProblem: card.situation,
@@ -145,10 +173,21 @@ export function diagnosticCaseFromKnowledgeObject(card: KnowledgeCardSource): Di
     discriminatingTest: card.decision,
     action: card.decision,
     verification: card.verification,
+    outcome: card.outcome ?? null,
     noviceTrap: card.novice_trap,
     safetyBoundary: card.safety_boundary,
+    safetyState: safetyStateFrom(card),
     expertReasoning: card.expert_reasoning,
     claims,
+    tenantId: card.account_id ?? null,
+    sourceExpertId: card.source_expert_id ?? null,
+    sourceEvent: {
+      type: episodeType,
+      jobId: card.job_id ?? null,
+      occurredAt: card.occurred_at ?? null,
+    },
+    scope: card.scope ?? null,
+    evidenceIds: [],
     publishedAt: card.published_at,
     createdAt: card.created_at,
     tags,

@@ -10,6 +10,16 @@ import { nextDebriefQuestion, type CaseGap, type NextDebriefQuestion } from './c
 import type { EpisodeType } from './episode';
 import { answerRejectReason, type AnswerRejectReason, type EvidenceSource } from './grounding';
 
+const CLAIM_GAP: Record<string, CaseGap> = {
+  cue: 'cue',
+  hypothesis: 'hypothesis',
+  decision: 'discriminating_test',
+  reasoning: 'causal_link',
+  verification: 'verification',
+  trap: 'novice_trap',
+  safety: 'boundary',
+};
+
 export type CaseDraft = Partial<
   Pick<
     DiagnosticCase,
@@ -101,7 +111,11 @@ export function interviewComplete(state: InterviewState, episodeType?: EpisodeTy
 }
 
 /** Claims a draft would carry into review. Same ids as a compiled case. */
-export function claimsFromDraft(draft: CaseDraft): CaseClaim[] {
+export function claimsFromDraft(draft: CaseDraft, turns: InterviewTurn[] = []): CaseClaim[] {
+  const sourceByGap = new Map<CaseGap, string>();
+  for (const turn of turns) {
+    if (!turn.rejected && turn.sourceId) sourceByGap.set(turn.gap, turn.sourceId);
+  }
   const entries: Array<[string, ClaimType, string | null | undefined]> = [
     ['cue', 'observed_fact', draft.cues],
     ['hypothesis', 'inference', draft.hypotheses?.map((h) => h.label).join(' ')],
@@ -113,11 +127,14 @@ export function claimsFromDraft(draft: CaseDraft): CaseClaim[] {
   ];
   return entries
     .filter((entry): entry is [string, ClaimType, string] => Boolean(entry[2]?.trim()))
-    .map(([id, type, text]) => ({
-      id,
-      type,
-      text: text.trim(),
-      sourceRefs: [`draft.${id}`],
-      reviewStatus: 'pending_expert' as const,
-    }));
+    .map(([id, type, text]) => {
+      const sourceId = sourceByGap.get(CLAIM_GAP[id]);
+      return {
+        id,
+        type,
+        text: text.trim(),
+        sourceRefs: sourceId ? [sourceId] : [],
+        reviewStatus: 'pending_expert' as const,
+      };
+    });
 }

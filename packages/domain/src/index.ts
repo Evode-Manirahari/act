@@ -15,6 +15,8 @@ export {
   type CaseHypothesis,
   type ClaimType,
   type KnowledgeCardSource,
+  type SafetyState,
+  type SourceEvent,
 } from './case';
 export {
   missingGaps,
@@ -110,6 +112,20 @@ export {
   type GroundingReason,
   type CaseGroundingReport,
 } from './grounding';
+export {
+  isCardFieldRef,
+  bindClaimSourceRefs,
+  attachEvidence,
+  checkMvpPublish,
+  learnerPrompt,
+  mvpReasonLabel,
+  MVP_HARD_LABEL,
+  MVP_UNCONFIRMED_LABEL,
+  type MvpHardReason,
+  type MvpUnconfirmedReason,
+  type MvpPublishReason,
+  type MvpPublishReport,
+} from './provenance';
 export {
   startInterview,
   currentQuestion,

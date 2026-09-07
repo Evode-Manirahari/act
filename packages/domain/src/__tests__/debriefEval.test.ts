@@ -109,9 +109,12 @@ describe('interview state machine', () => {
       'verification',
       'novice_trap',
     ]);
-    const report = checkCaseGrounding({ claims: claimsFromDraft(state.draft) }, state.sources);
+    const report = checkCaseGrounding({ claims: claimsFromDraft(state.draft, state.turns) }, state.sources);
     expect(report.publishable).toBe(true);
     expect(report.claims.every((c) => c.grounded)).toBe(true);
+    expect(claimsFromDraft(state.draft, state.turns).every((c) => c.sourceRefs[0]?.startsWith('answer-'))).toBe(
+      true,
+    );
   });
 });
 

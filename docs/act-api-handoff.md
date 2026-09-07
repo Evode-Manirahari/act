@@ -95,8 +95,23 @@ stemming; port the thresholds (`MIN_ANSWER_TOKENS = 3`,
 `MIN_MATCHED_TOKENS = 3`) rather than re-tuning them, so both sides refuse the
 same answers.
 
+## 5. Pilot 0 provenance gate at compile and publish
+
+`checkMvpPublish` in `packages/domain/src/provenance.ts`. AND it with the
+existing grounding-check. Token overlap cannot approve; this cannot either.
+
+A claim whose `source_refs` are `knowledge_object.*` or `draft.*` is the
+2026-07-31 incident and must 409. Empty evidence is `no_evidence`, not a
+guess. Tenant, `source_expert_id`, and `job_id` are derived on the server
+from the moment's recording and a verified token — never from the client
+body. Until those columns exist on `knowledge_objects`, treat them as
+unconfirmed (do not render "no tenant").
+
+Reference reasons: `MvpHardReason` / `MvpUnconfirmedReason`. Keep the strings
+identical so admin and API refuse the same cases.
+
 ## Access
 
 This repo's cloud agent cannot read `Evode-Manirahari/act-api` (private, not
-in the agent's GitHub installation). Granting it makes items 1–4 a normal PR
+in the agent's GitHub installation). Granting it makes items 1–5 a normal PR
 instead of a handoff.
