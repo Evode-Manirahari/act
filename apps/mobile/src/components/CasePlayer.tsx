@@ -31,6 +31,7 @@ import {
   expertHidden,
   filled,
   initialPlayerState,
+  learnerPrompt,
   reducePlayer,
   variantEventNote,
   type LearnerCommit,
@@ -200,7 +201,7 @@ export default function CasePlayer({ card, userId, variant = false, onBack }: Pr
                   Your call
                 </ActText>
                 <ActText variant="small" color="textMuted">
-                  State what you would do. The expert view stays hidden until you commit.
+                  {learnerPrompt(diag)}
                 </ActText>
                 <CommitField
                   state={state}
