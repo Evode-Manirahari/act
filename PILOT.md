@@ -1,6 +1,6 @@
 # ACT Capture - HVAC Operator Pilot
 
-**Status:** current pilot operating plan, 2026-06-30
+**Status:** 60-day paid concierge plan (2026-06-30). **Current run is Research Pilot 0:** fifteen days, five cases — `docs/pilot-0.md`. Do not skip it for this 60-day offer.
 **Wedge:** HVAC residential and light-commercial troubleshooting
 **Mode:** ACT Capture. Record senior-tech jobs, mark teachable moments, debrief after the job, publish reviewed training cards, and measure apprentice transfer.
 **Buyer:** Owner-GM, service manager, operations director, regional service director, or training leader at a 20-250 tech multi-site HVAC/resi-commercial service operator, franchise group, or consolidator-owned branch. Not a solo shop. Not the apprentice.

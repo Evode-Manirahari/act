@@ -12,6 +12,11 @@ describe('debrief completeness', () => {
     expect(nextDebriefQuestion({}, 'callback')?.question).toMatch(/prevented this callback/);
   });
 
+  it('uses episode-shaped cue questions for hard solves and adaptations', () => {
+    expect(nextDebriefQuestion({}, 'hard_solve')?.question).toMatch(/newer technician/);
+    expect(nextDebriefQuestion({}, 'adaptation')?.question).toMatch(/standard path/);
+  });
+
   it('asks one missing field at a time', () => {
     const afterCue = nextDebriefQuestion({ cues: 'Frost on the suction line.' });
     expect(afterCue?.gap).toBe('hypothesis');

@@ -33,7 +33,10 @@ export default async function ReviewQueuePage() {
       <header className="col gap-8">
         <div className="row between wrap gap-16">
           <h1 className="h1">Review queue</h1>
-          <div className="muted mono" style={{ fontSize: 12 }}>{ACT_API_BASE}</div>
+          <div className="row gap-8 wrap">
+            <Link href="/pilot" className="muted">Pilot 0 · 15 days</Link>
+            <div className="muted mono" style={{ fontSize: 12 }}>{ACT_API_BASE}</div>
+          </div>
         </div>
         {error && (
           <div className="notice" style={{ borderColor: 'var(--error)', color: 'var(--error)' }}>
