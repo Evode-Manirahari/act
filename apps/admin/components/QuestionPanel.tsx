@@ -8,8 +8,11 @@ import AudioAnswerRecorder from './AudioAnswerRecorder';
 import {
   REJECT_LABEL,
   answerRejectReason,
+  attachEvidence,
   checkCaseGrounding,
+  checkMvpPublish,
   diagnosticCaseFromKnowledgeObject,
+  mvpReasonLabel,
   nextDebriefQuestion,
   type EvidenceSource,
 } from '@act/domain';
@@ -126,6 +129,10 @@ export default function QuestionPanel({
 
   const activeQuestion = questions.find((q) => q.id === activeId);
   const hasAnsweredQuestion = questions.some((q) => q.status === 'answered');
+  const liveSources = [...transcript, ...sessionAnswers];
+  const mvp = card
+    ? checkMvpPublish(attachEvidence(diagnosticCaseFromKnowledgeObject(card), liveSources), liveSources)
+    : null;
 
   return (
     <div className="col gap-16">
@@ -172,7 +179,16 @@ export default function QuestionPanel({
                 ),
               );
               if (savedAnswer.transcript) {
-                setAnswer(savedAnswer.transcript);
+                const spoken = savedAnswer.transcript;
+                setSessionAnswers((prev) => [
+                  ...prev,
+                  {
+                    id: `answer-${activeQuestion.id}`,
+                    kind: 'expert_answer',
+                    text: spoken,
+                  },
+                ]);
+                setAnswer(spoken);
               }
               router.refresh();
             }}
@@ -212,7 +228,11 @@ export default function QuestionPanel({
               <button
                 className="success"
                 onClick={publish}
-                disabled={isPending || card.status === 'published'}
+                disabled={
+                  isPending ||
+                  card.status === 'published' ||
+                  (mvp != null && !mvp.readyForLeadReview)
+                }
               >
                 {card.status === 'published' ? 'Published' : 'Publish to apprentice library'}
               </button>
@@ -224,7 +244,8 @@ export default function QuestionPanel({
       {card && (
         <>
           <NextGapHint card={card} />
-          <GroundingReadout card={card} sources={[...transcript, ...sessionAnswers]} />
+          <MvpReadout report={mvp} />
+          <GroundingReadout card={card} sources={liveSources} />
           <CardEditor
             card={card}
             onSaved={(updated) => setCard(updated)}
@@ -255,10 +276,35 @@ function NextGapHint({ card }: { card: KnowledgeObjectOut }) {
   );
 }
 
+function MvpReadout({ report }: { report: ReturnType<typeof checkMvpPublish> | null }) {
+  if (!report) return null;
+  if (report.readyForLeadReview) {
+    return (
+      <div className="notice" style={{ background: 'var(--success-tint)', borderColor: 'var(--success)' }}>
+        <div className="evidence-key">Provenance · ready for lead review</div>
+        Every claim names evidence in this window or an answer recorded here.
+        {report.unconfirmed.length > 0 && (
+          <div style={{ fontSize: 13, marginTop: 6 }}>
+            Unconfirmed, not absent: {report.unconfirmed.map(mvpReasonLabel).join(' ')}
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="notice col" style={{ gap: 6, color: 'var(--error)', borderColor: 'var(--error)' }}>
+      <div className="evidence-key" style={{ color: 'var(--error)' }}>Provenance · not ready</div>
+      <div style={{ fontSize: 13 }}>
+        {report.reasons.map(mvpReasonLabel).join(' ')} Publish stays closed until the evidence chain holds.
+      </div>
+    </div>
+  );
+}
+
 /**
- * Advisory. Answers recorded in earlier sessions are not loaded on this page,
- * so an "ungrounded" here means "check it", not "block it". act-api runs the
- * authoritative grounding check at publish.
+ * Token-overlap readout. Provenance above is the structural gate. Answers from
+ * earlier sessions are not loaded here, so act-api grounding-check stays
+ * authoritative for those.
  */
 function GroundingReadout({ card, sources }: { card: KnowledgeObjectOut; sources: EvidenceSource[] }) {
   const report = checkCaseGrounding(diagnosticCaseFromKnowledgeObject(card), sources);

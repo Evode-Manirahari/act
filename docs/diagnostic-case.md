@@ -101,3 +101,25 @@ opens them with the title hidden. A failed history read shows as unknown
 timing, never as "not practiced".
 
 **Still pending in act-api:** see `docs/act-api-handoff.md`.
+
+## Pilot 0 — provenance for the first five cases
+
+Blueprint days 1–14: add only the fields needed to process five real cases
+with provenance. Do not add surfaces.
+
+`packages/domain/src/provenance.ts` is the gate.
+
+- Claims must name a transcript span, frame note, or accepted expert answer.
+  `knowledge_object.*` and `draft.*` refs are the July 31 failure mode and
+  are refused.
+- Missing tenant, job, or source expert is **unconfirmed**, not absent. The
+  client does not supply those ids. Lead review may proceed; `publishable`
+  stays false until the server has derived them.
+- Safety state is derived from a written boundary (`lead_review_required` or
+  `reviewed_constraint`). Empty is missing — never invented as `not_applicable`.
+- Outcome may be the verification sentence for these five cases.
+- `learnerPrompt` is the situation only. Action and outcome stay off it.
+
+Admin review uses this to keep Publish closed when the evidence chain does
+not hold. act-api still owns the authoritative publish check; port
+`checkMvpPublish` there (handoff item 5).

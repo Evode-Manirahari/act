@@ -16,6 +16,7 @@ import {
   expertHidden,
   filled,
   initialPlayerState,
+  learnerPrompt,
   reducePlayer,
   variantEventNote,
   type LearnerCommit,
@@ -100,9 +101,7 @@ export default function CasePractice({ card, variant = false, record = false }: 
         </div>
         <div className="h2">{variant && hideExpert ? 'Same principle, different call' : diag.title}</div>
         <div className="muted">
-          {variant
-            ? VARIANT_PROMPT
-            : 'State your diagnosis before the expert view. This is practice, not a score.'}
+          {variant ? VARIANT_PROMPT : learnerPrompt(diag)}
         </div>
       </div>
 
